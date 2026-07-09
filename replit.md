@@ -1,10 +1,11 @@
-# [Project name]
+# DDBot (CKK Edge)
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Deriv trading bot application cloned from https://github.com/Cliff-e/flex. Provides a visual bot builder, quick-strategy wizard, live charts, and automated trading via the Deriv WebSocket API.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/ddbot-app run dev` — run the DDBot frontend (port 23030, via workflow `artifacts/ddbot-app: web`)
+- `pnpm --filter @workspace/api-server run dev` — run the Express API server (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -14,23 +15,34 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- **DDBot frontend**: React 18, rsbuild, MobX, Blockly, `@deriv/deriv-charts`
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Build: esbuild (CJS bundle) for API; rsbuild for DDBot frontend
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/ddbot-app/` — DDBot React frontend (rsbuild, port 23030, preview path `/`)
+- `artifacts/ddbot-app/src/app/` — App root, auth wrapper, store provider
+- `artifacts/ddbot-app/src/bot/` — Bot engine, trading engine, global tick engine
+- `artifacts/ddbot-app/src/external/bot-skeleton/` — Blockly-based bot builder core
+- `artifacts/ddbot-app/rsbuild.config.ts` — Build config (rsbuild, SASS, aliased imports)
+- `artifacts/api-server/` — Express API server (preview path `/api`)
+- `lib/api-spec/openapi.yaml` — OpenAPI source of truth
+- `lib/db/src/schema/` — Drizzle ORM schema
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- DDBot uses **rsbuild** (not Vite) — do not change to Vite; rsbuild is required for the SASS + raw-loader + rspack pipeline the Deriv charts depend on.
+- React 18.3.1 is pinned in ddbot-app (workspace catalog uses React 19) — rsbuild aliases enforce this to avoid multi-React issues with `@deriv-com/auth-client`.
+- `@deriv/deriv-charts` assets are copied via rsbuild output.copy into `dist/js/smartcharts/` and `dist/assets/`.
+- Production `publicDir` is `artifacts/ddbot-app/dist` (rsbuild default) — not `dist/public`.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+DDBot lets traders build, test, and run automated trading bots on Deriv without coding. Features: drag-and-drop Blockly bot builder, quick-strategy templates (Martingale, D'Alembert, etc.), live trading charts, run/stop controls, and a transaction journal.
 
 ## User preferences
 
@@ -38,7 +50,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- **rsbuild only**: The `dev` script uses `./node_modules/.bin/rsbuild dev`. Do not switch to `vite` — the webpack/rspack rules (raw-loader for XML, SASS) won't work.
+- Peer dep warnings for `chai`, `sinon`, `semantic-release` are expected and harmless — they come from `@deriv/deriv-charts` dev deps.
+- `@parcel/watcher`, `core-js` build scripts are ignored by pnpm — this is intentional and safe.
 
 ## Pointers
 

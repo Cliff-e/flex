@@ -1,0 +1,43 @@
+.ai-bots-page {
+    @media (max-width: 768px) {
+        padding: 10px !important;
+    }
+}
+
+.ai-bots-split {
+    @media (max-width: 900px) {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.ai-bots-digit-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    @media (max-width: 480px) {
+        gap: 4px;
+    }
+}
+
+.ai-bots-grid2 {
+    @media (max-width: 600px) {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.ai-bots-status-bar {
+    @media (max-width: 480px) {
+        flex-wrap: wrap;
+        gap: 8px !important;
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }
+}
+
+.ai-bots-strat-group {
+    @media (max-width: 400px) {
+        flex-direction: column;
+        gap: 6px !important;
+    }
+}
