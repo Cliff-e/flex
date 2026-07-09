@@ -10,9 +10,9 @@ import { useFirebaseCountriesConfig } from '@/hooks/firebase/useFirebaseCountrie
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
 import useTMB from '@/hooks/useTMB';
+import { AccountModeController } from '@/utils/AccountModeController';
 import { clearAuthData } from '@/utils/auth-utils';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
-import { initiateDerivAuth } from '@/utils/pkce';
 import { StandaloneCircleUserRegularIcon } from '@deriv/quill-icons/Standalone';
 import { Localize, useTranslations } from '@deriv-com/translations';
 import { Header, useDevice, Wrapper } from '@deriv-com/ui';
@@ -149,19 +149,16 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                             clearAuthData(false);
                             const getQueryParams = new URLSearchParams(window.location.search);
                             const currency = getQueryParams.get('account') ?? '';
-                            const query_param_currency =
-                                currency || sessionStorage.getItem('query_param_currency') || 'USD';
 
                             try {
-                                // First, explicitly wait for TMB status to be determined
-                                const tmbEnabled = await isTmbEnabled();
-                                // Now use the result of the explicit check
-                                if (tmbEnabled) {
-                                    await onRenderTMBCheck(true); // Pass true to indicate it's from login button
-                                } else {
-                                    // DO backend OAuth flow
-                                    await initiateDerivAuth();
-                                }
+                                // All authentication flows through AccountModeController.
+                                // fromLoginButton:true marks this as an explicit user action.
+                                await AccountModeController.enter({
+                                    fromLoginButton: true,
+                                    isTmbEnabled,
+                                    onRenderTMBCheck,
+                                    currency: currency || sessionStorage.getItem('query_param_currency') || 'USD',
+                                });
                             } catch (error) {
                                 // eslint-disable-next-line no-console
                                 console.error(error);

@@ -8,8 +8,8 @@ import { api_base } from '@/external/bot-skeleton';
 import { useOfflineDetection } from '@/hooks/useOfflineDetection';
 import { useStore } from '@/hooks/useStore';
 import useTMB from '@/hooks/useTMB';
+import { AccountModeController } from '@/utils/AccountModeController';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
-import { initiateDerivAuth } from '@/utils/pkce';
 import { useDevice } from '@deriv-com/ui';
 import { crypto_currencies_display_order, fiat_currencies_display_order } from '../shared';
 import Footer from './footer';
@@ -179,33 +179,23 @@ const Layout = observer(() => {
             return;
         }
 
-        // Create an async IIFE to handle authentication
-        (async () => {
-            try {
-                // First, explicitly wait for TMB status to be determined
-                // This ensures we have the correct TMB status before proceeding
-                const tmbEnabled = await isTmbEnabled();
-
-                // Now use the result of the explicit check
-                if (tmbEnabled) {
-                    await onRenderTMBCheck();
-                } else if (shouldAuthenticate) {
-                    const query_param_currency = currency || sessionStorage.getItem('query_param_currency') || 'USD';
-
-                    // Make sure we have the currency in session storage before redirecting
-                    if (query_param_currency) {
-                        sessionStorage.setItem('query_param_currency', query_param_currency);
-                    }
-                    await initiateDerivAuth();
-                }
-            } catch (err) {
-                // eslint-disable-next-line no-console
-                setIsAuthenticating(false);
-                console.error('Authentication error:', err);
-            } finally {
-                setIsAuthenticating(false);
-            }
-        })();
+        // All authentication is routed through AccountModeController.
+        // Behavior is unchanged (Checkpoint 1). The startup call here
+        // will be REMOVED in Checkpoint 3 — auth will only begin from
+        // the Login button after that point.
+        AccountModeController.enter({
+            fromLoginButton: false,
+            setIsAuthenticating,
+            isTmbEnabled,
+            onRenderTMBCheck,
+            shouldAuthenticate,
+            currency: currency || sessionStorage.getItem('query_param_currency') || 'USD',
+        }).catch(err => {
+            // eslint-disable-next-line no-console
+            console.error('[Layout] Authentication error:', err);
+        }).finally(() => {
+            setIsAuthenticating(false);
+        });
     }, [
         isLoggedInCookie,
         isClientAccountsPopulated,

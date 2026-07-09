@@ -10,7 +10,7 @@ import { StoreProvider } from '@/hooks/useStore';
 import CallbackPage from '@/pages/callback';
 import Endpoint from '@/pages/endpoint';
 import { TAuthData } from '@/types/api-types';
-import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import { AccountModeController } from '@/utils/AccountModeController';
 import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
 import CoreStoreProvider from './CoreStoreProvider';
 import { AuthReadyProvider } from '@/utils/AuthReadyContext';
@@ -122,7 +122,10 @@ function App() {
 
                 if (demo_account) {
                     const [loginid, token] = demo_account;
-                    AuthSessionManager.setActiveAccount(loginid, String(token));
+                    // Routed through AccountModeController — all credential
+                    // writes from restore paths must flow through here.
+                    // This startup trigger will be gated in Checkpoint 3.
+                    AccountModeController.restoreFromUrl(loginid, String(token));
                     return;
                 }
             }
@@ -137,7 +140,8 @@ function App() {
                 if (real_account) {
                     const [loginid, account] = real_account;
                     if ('token' in account) {
-                        AuthSessionManager.setActiveAccount(loginid, String(account?.token));
+                        // Routed through AccountModeController — will be gated in Checkpoint 3.
+                        AccountModeController.restoreFromUrl(loginid, String(account?.token));
                     }
                     return;
                 }
