@@ -66,12 +66,43 @@ export type EnterAccountModeOptions = {
 
 class AccountModeControllerClass {
     /**
+     * Runtime flag — TRUE only after this controller explicitly enables Account Mode.
+     *
+     * NEVER set from localStorage, cookies, or existing tokens.
+     * Set ONLY inside enter() when an auth action is actually dispatched.
+     */
+    private _accountModeActive = false;
+
+    /**
+     * Mark Account Mode as active.
+     * Called internally by enter() when auth is actually dispatched.
+     * May also be called by the callback page after a successful PKCE exchange.
+     */
+    enableAccountMode(): void {
+        if (!this._accountModeActive) {
+            console.log('[AccountModeController] Account Mode ENABLED');
+            this._accountModeActive = true;
+        }
+    }
+
+    /**
+     * Returns true only after the controller has explicitly enabled Account Mode.
+     * Used by api-base and WebSocketManager to gate all account-mode operations.
+     */
+    isAccountModeActive(): boolean {
+        return this._accountModeActive;
+    }
+
+    /**
      * Enter Account Mode.
      *
      * THIS IS THE ONLY FUNCTION THAT MAY INITIATE AUTHENTICATION.
      *
      * Routes to TMB session restore (if TMB enabled) or PKCE OAuth
      * redirect (if shouldAuthenticate or fromLoginButton).
+     *
+     * enableAccountMode() is called INSIDE each branch — only when auth
+     * is actually dispatched, never speculatively.
      */
     async enter(options: EnterAccountModeOptions): Promise<void> {
         const {
@@ -86,8 +117,10 @@ class AccountModeControllerClass {
         const tmbEnabled = await isTmbEnabled();
 
         if (tmbEnabled) {
+            this.enableAccountMode();
             await onRenderTMBCheck(fromLoginButton, setIsAuthenticating);
         } else if (shouldAuthenticate || fromLoginButton) {
+            this.enableAccountMode();
             if (currency) {
                 sessionStorage.setItem('query_param_currency', currency);
             }

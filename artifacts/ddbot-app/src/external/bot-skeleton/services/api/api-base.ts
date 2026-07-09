@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie';
 import CommonStore from '@/stores/common-store';
 import { TAuthData } from '@/types/api-types';
+import { AccountModeController } from '@/utils/AccountModeController';
 import { clearAuthData } from '@/utils/auth-utils';
 import { EventBus } from '@/utils/EventBus';
 import { WebSocketManager } from '@/utils/WebSocketManager';
@@ -99,21 +100,10 @@ class APIBase {
         await WebSocketManager.connect();
         this.api = WebSocketManager.getApi() as unknown as TApiBaseApi;
 
+        // Active symbols are public market data — always fetch immediately,
+        // regardless of authentication state.
         if (!this.has_active_symbols) {
-            if (!AuthSessionManager.getAuthInfo().accessToken) {
-                // Guest user: no auth needed, fetch symbols immediately.
-                this.active_symbols_promise = this.getActiveSymbols();
-            } else {
-                // Logged-in user: symbols will be fetched AFTER authorizeAndSubscribe.
-                // Create a waiting promise so active-symbols.js correctly awaits instead
-                // of resolving immediately against empty [].
-                this.active_symbols_promise = new Promise<void>(resolve => {
-                    const unsub = EventBus.on('active_symbols:loaded', () => {
-                        unsub();
-                        resolve();
-                    });
-                });
-            }
+            this.active_symbols_promise = this.getActiveSymbols();
         }
 
         this._attachWsEvents();
@@ -121,7 +111,9 @@ class APIBase {
         if (this.time_interval) clearInterval(this.time_interval);
         this.time_interval = null;
 
-        if (AuthSessionManager.getAuthInfo().accessToken) {
+        // Account Mode gate: only authorize when AccountModeController has
+        // explicitly enabled Account Mode. Never triggered by token presence alone.
+        if (AccountModeController.isAccountModeActive()) {
             setIsAuthorizing(true);
             await this.authorizeAndSubscribe();
         }
@@ -134,8 +126,9 @@ class APIBase {
 
         const unsubConnected = EventBus.on('ws:connected', () => {
             setConnectionStatus(CONNECTION_STATUS.OPENED);
-            // Re-authorize on every reconnect
-            if (AuthSessionManager.getAuthInfo().accessToken && !this.is_authorized) {
+            // Re-authorize on reconnect only when Account Mode is active.
+            // Never re-authorize from token presence alone.
+            if (AccountModeController.isAccountModeActive() && !this.is_authorized) {
                 this.api = WebSocketManager.getApi() as unknown as TApiBaseApi;
                 setIsAuthorizing(true);
                 this.authorizeAndSubscribe().catch(() => {});

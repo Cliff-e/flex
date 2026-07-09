@@ -2,6 +2,7 @@
 // @ts-ignore — no type declarations for this module
 import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
 import APIMiddleware from '../external/bot-skeleton/services/api/api-middleware';
+import { AccountModeController } from './AccountModeController';
 import { AuthSessionManager } from './AuthSessionManager';
 import { EventBus, type EventMap } from './EventBus';
 import { PUBLIC_WS_URL } from './derivWs';
@@ -96,15 +97,19 @@ class WebSocketManagerClass {
         let wsUrl = PUBLIC_WS_URL;
         this._pendingOtpToken = null;
 
-        const isAuthed = AuthSessionManager.isAuthenticated();
+        // OTP fetch is gated on AccountModeController, not on stored tokens.
+        // This ensures the public WebSocket connects immediately on startup,
+        // and the authenticated OTP URL is only requested after the user has
+        // explicitly initiated Account Mode via AccountModeController.enter().
+        const accountModeActive = AccountModeController.isAccountModeActive();
         const { accountId: _logAccountId, accessToken: _logToken } = AuthSessionManager.getAuthInfo();
         console.log('[AUTH 11][WSManager._doConnect] Starting connection',
-            '| isAuthenticated:', isAuthed,
+            '| accountModeActive:', accountModeActive,
             '| accountId (ASM):', _logAccountId ?? '(none)',
             '| hasAuthToken (ASM):', !!_logToken,
         );
 
-        if (isAuthed) {
+        if (accountModeActive) {
             try {
                 console.log('[AUTH 12][WSManager._doConnect] → Requesting OTP WS URL…');
                 const { url, token } = await AuthSessionManager.getOtpWsUrl();
@@ -121,7 +126,7 @@ class WebSocketManagerClass {
                 );
             }
         } else {
-            console.log('[AUTH 11][WSManager._doConnect] Not authenticated — connecting with PUBLIC WS URL (no OTP)');
+            console.log('[AUTH 11][WSManager._doConnect] Account Mode not active — connecting with PUBLIC WS URL (no OTP)');
         }
 
         console.log('[AUTH 12b][WSManager._doConnect] Opening WebSocket',
