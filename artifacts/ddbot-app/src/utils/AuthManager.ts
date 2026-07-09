@@ -11,7 +11,6 @@
  * handles data-source transitions transparently.
  */
 
-import { AccountModeController } from './AccountModeController';
 import { AuthSessionManager } from './AuthSessionManager';
 import { EventBus } from './EventBus';
 import { WebSocketManager } from './WebSocketManager';
@@ -24,12 +23,8 @@ class AuthManagerClass {
     private _isRefreshing = false;
 
     init(): void {
-        // Start refresh cycle if credentials already present in session.
-        // Routed through AccountModeController so all refresh-cycle starts
-        // are traceable. This startup trigger will be removed in Checkpoint 3.
-        if (AuthSessionManager.isAuthenticated()) {
-            AccountModeController.startRefreshCycle(() => this._startRefreshCycle());
-        }
+        // CP3: Startup refresh cycle REMOVED. AuthManager.init() is now passive.
+        // The refresh cycle starts ONLY via the auth:success event (after Login).
 
         // Start cycle when user logs in
         EventBus.on('auth:success', () => {

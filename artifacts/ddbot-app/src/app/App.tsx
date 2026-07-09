@@ -117,14 +117,15 @@ function App() {
             const parsed_client_accounts = JSON.parse(client_accounts) as TAuthData['account_list'];
 
             // Handle demo account
+            // Only runs when URL has ?account= param (post-OAuth redirect, not cold start).
             if (account_currency?.toUpperCase() === 'DEMO') {
                 const demo_account = Object.entries(parsed_accounts).find(([key]) => key.startsWith('VR'));
 
                 if (demo_account) {
                     const [loginid, token] = demo_account;
-                    // Routed through AccountModeController — all credential
-                    // writes from restore paths must flow through here.
-                    // This startup trigger will be gated in Checkpoint 3.
+                    // CP3: enable account mode before restoring — this is a post-OAuth
+                    // redirect (user already clicked Login), not a cold startup.
+                    AccountModeController.enableAccountMode();
                     AccountModeController.restoreFromUrl(loginid, String(token));
                     return;
                 }
@@ -140,7 +141,8 @@ function App() {
                 if (real_account) {
                     const [loginid, account] = real_account;
                     if ('token' in account) {
-                        // Routed through AccountModeController — will be gated in Checkpoint 3.
+                        // CP3: enable account mode before restoring — post-OAuth redirect.
+                        AccountModeController.enableAccountMode();
                         AccountModeController.restoreFromUrl(loginid, String(account?.token));
                     }
                     return;

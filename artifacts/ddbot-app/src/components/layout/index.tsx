@@ -8,7 +8,6 @@ import { api_base } from '@/external/bot-skeleton';
 import { useOfflineDetection } from '@/hooks/useOfflineDetection';
 import { useStore } from '@/hooks/useStore';
 import useTMB from '@/hooks/useTMB';
-import { AccountModeController } from '@/utils/AccountModeController';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { useDevice } from '@deriv-com/ui';
 import { crypto_currencies_display_order, fiat_currencies_display_order } from '../shared';
@@ -146,68 +145,20 @@ const Layout = observer(() => {
     }, []);
 
     useEffect(() => {
-        // Always set the currency in session storage, even if the user is not logged in
-        // This ensures the currency is available on the callback page
-        setIsAuthenticating(true);
+        // Store currency from URL so callback page and Login handler can read it.
         if (currency) {
             sessionStorage.setItem('query_param_currency', currency);
         }
 
-        // FIX: Only redirect to OAuth when the user previously logged in (cookie is set)
-        // AND their session data is now missing or incomplete.
-        //
-        // Before: `checkOIDCEnabledWithMissingAccount` fired for ANY user whose
-        // accountsList was empty — including guests who never logged in — because
-        // `clientHasCurrency` defaults to false when localStorage is empty.
-        // This caused guests to be bounced to Deriv OAuth on page load, blocking
-        // charts and market data before they even rendered.
-        //
-        // After: both conditions require `isLoggedInCookie === true`, which means
-        // the user intentionally logged in before. Guests (no cookie) see the full
-        // app immediately with public market data working.
-        const checkOIDCEnabledWithMissingAccount =
-            isLoggedInCookie && !isEndpointPage && !isCallbackPage && !clientHasCurrency;
-        const shouldAuthenticate =
-            (isLoggedInCookie && !isClientAccountsPopulated && !isEndpointPage && !isCallbackPage) ||
-            checkOIDCEnabledWithMissingAccount;
-
-        // Skip authentication when offline
+        // CP3: Layout is now passive at startup — no authentication is initiated here.
+        // The user must explicitly click Login; header.tsx calls
+        // AccountModeController.enter({ fromLoginButton: true }).
         if (!isOnline) {
-            console.log('[Layout] Offline detected, skipping authentication');
-            setIsAuthenticating(false);
-            setClientHasCurrency(true); // Allow access in offline mode
-            return;
+            // Offline: allow access immediately with public data.
+            setClientHasCurrency(true);
         }
-
-        // All authentication is routed through AccountModeController.
-        // Behavior is unchanged (Checkpoint 1). The startup call here
-        // will be REMOVED in Checkpoint 3 — auth will only begin from
-        // the Login button after that point.
-        AccountModeController.enter({
-            fromLoginButton: false,
-            setIsAuthenticating,
-            isTmbEnabled,
-            onRenderTMBCheck,
-            shouldAuthenticate,
-            currency: currency || sessionStorage.getItem('query_param_currency') || 'USD',
-        }).catch(err => {
-            // eslint-disable-next-line no-console
-            console.error('[Layout] Authentication error:', err);
-        }).finally(() => {
-            setIsAuthenticating(false);
-        });
-    }, [
-        isLoggedInCookie,
-        isClientAccountsPopulated,
-        isEndpointPage,
-        isCallbackPage,
-        clientHasCurrency,
-        tmb_enabled_from_hook,
-        onRenderTMBCheck,
-        currency,
-        is_tmb_enabled,
-        isOnline, // Add isOnline to dependencies
-    ]);
+        setIsAuthenticating(false);
+    }, [currency, isOnline]);
 
     // Add offline timeout to prevent infinite authentication
     useEffect(() => {

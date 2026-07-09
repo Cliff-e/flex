@@ -7,23 +7,22 @@
  * RULES:
  *   - No component, hook, or utility may independently call:
  *       authorize(), initiateDerivAuth(), getActiveSessions(),
- *       getOtpWsUrl(), setActiveAccount(), _startRefreshCycle(),
- *       or authorizeAndSubscribe()
+ *       getOtpWsUrl(), setActiveAccount(), or authorizeAndSubscribe()
  *     without routing through this controller.
  *
- *   - `enter()` is the only function that may initiate authentication.
+ *   - `enter({ fromLoginButton: true })` is the ONLY function that may
+ *     initiate authentication. It must be called with fromLoginButton: true.
+ *
+ *   - `enableAccountMode()` is called internally by enter() when auth is
+ *     dispatched, and by App.tsx when restoring a post-OAuth redirect.
  *
  *   - `restoreFromUrl()` is the only function that may write account
- *     credentials from a URL/localStorage restore path.
+ *     credentials from a URL/localStorage restore path (post-OAuth only).
  *
- *   - `startRefreshCycle()` is the only external call site for starting
- *     the proactive token refresh timer.
- *
- * Current callers (Checkpoint 1 — behavior unchanged):
- *   - layout/index.tsx startup useEffect  → will be REMOVED in Checkpoint 3
- *   - header.tsx Login button onClick      → permanent (explicit user action)
- *   - App.tsx URL/localStorage restore     → will be GATED in Checkpoint 3
- *   - AuthManager.init() startup cycle     → will be REMOVED in Checkpoint 3
+ * Callers (Checkpoint 3 — fully architectural):
+ *   - header.tsx Login button onClick      → enter({ fromLoginButton: true })
+ *   - App.tsx post-OAuth URL restore       → enableAccountMode() + restoreFromUrl()
+ *   - AuthManager auth:success listener    → _startRefreshCycle() (via EventBus)
  */
 
 import { AuthSessionManager } from './AuthSessionManager';
@@ -141,21 +140,6 @@ class AccountModeControllerClass {
         AuthSessionManager.setActiveAccount(loginid, token);
     }
 
-    /**
-     * Start the proactive OTP token refresh cycle.
-     *
-     * All refresh-cycle starts MUST go through here.
-     *
-     * Currently called by AuthManager.init() when credentials are found
-     * in localStorage on startup — will be removed in Checkpoint 3.
-     * After that, the refresh cycle starts only via the auth:success
-     * EventBus listener inside AuthManager.
-     *
-     * @param startCycle  The internal AuthManager method to invoke.
-     */
-    startRefreshCycle(startCycle: () => void): void {
-        startCycle();
-    }
 }
 
 export const AccountModeController = new AccountModeControllerClass();

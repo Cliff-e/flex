@@ -281,30 +281,10 @@ const useTMB = (): UseTMBReturn => {
 
         const initializeHook = async () => {
             try {
-                // Pre-fetch active sessions if needed
-                if (!isCallbackPage && window.is_tmb_enabled) {
-                    try {
-                        // This is a critical step - we need to await this
-                        const activeSessions = await getActiveSessions();
-                        activeSessionsRef.current = activeSessions;
-
-                        // Process tokens in advance if available
-                        if (
-                            activeSessions?.active &&
-                            Array.isArray(activeSessions.tokens) &&
-                            activeSessions.tokens.length > 0
-                        ) {
-                            const { accountsList, clientAccounts } = processTokens(activeSessions.tokens);
-                            AuthSessionManager.setAccounts(accountsList, clientAccounts);
-                        }
-                    } catch (error) {
-                        console.error('Failed to pre-fetch active sessions:', error);
-                    } finally {
-                        setIsApiInitialized(true);
-                    }
-                } else {
-                    setIsApiInitialized(true);
-                }
+                // CP3: Startup getActiveSessions() pre-fetch removed.
+                // useTMB is now passive at startup. Sessions are fetched only
+                // inside onRenderTMBCheck(), which runs after the user clicks Login.
+                setIsApiInitialized(true);
 
                 // Only after all operations are complete, mark as initialized
                 setIsInitialized(true);
