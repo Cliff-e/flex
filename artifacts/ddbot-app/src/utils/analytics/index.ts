@@ -4,6 +4,25 @@ import { Analytics } from '@deriv-com/analytics';
 import getCountry from '../getCountry';
 import FIREBASE_INIT_DATA from '../remote_config.json';
 
+// Safely parses the stored language value from localStorage.
+// Handles undefined/null/empty-string/malformed-JSON/legacy-plain-string
+// values without ever throwing, returning `undefined` for anything that
+// cannot be resolved to a usable language string.
+const parseStoredLanguage = (raw: unknown): string | undefined => {
+    if (typeof raw !== 'string' || raw.length === 0) return undefined;
+
+    try {
+        const parsed = JSON.parse(raw);
+        return typeof parsed === 'string' && parsed.length > 0 ? parsed : undefined;
+    } catch {
+        // Not valid JSON — could be a legacy plain string (e.g. "en" without
+        // quotes) or the literal string "undefined"/"null". Treat the raw
+        // value itself as the language when it looks like a plain code.
+        if (raw === 'undefined' || raw === 'null') return undefined;
+        return raw;
+    }
+};
+
 export const AnalyticsInitializer = async () => {
     const account_type = LocalStore?.get('active_loginid')
         ?.match(/[a-zA-Z]+/g)
@@ -36,9 +55,7 @@ export const AnalyticsInitializer = async () => {
                         app_id: String(getAppId()),
                         device_type: window.innerWidth <= MAX_MOBILE_WIDTH ? 'mobile' : 'desktop',
                         device_language: navigator?.language || 'en-EN',
-                        user_language: LocalStore?.get('i18n_language')
-                            ? JSON.parse(LocalStore.get('i18n_language')?.toLowerCase())
-                            : undefined,
+                        user_language: parseStoredLanguage(LocalStore?.get('i18n_language'))?.toLowerCase(),
                         country: await getCountry(),
                         utm_source: ppc_campaign_cookies?.utm_source,
                         utm_medium: ppc_campaign_cookies?.utm_medium,
