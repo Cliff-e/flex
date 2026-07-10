@@ -9,6 +9,7 @@ import { useOfflineDetection } from '@/hooks/useOfflineDetection';
 import { useStore } from '@/hooks/useStore';
 import useTMB from '@/hooks/useTMB';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import { safeJsonParse } from '@/utils/safe-json';
 import { useDevice } from '@deriv-com/ui';
 import { crypto_currencies_display_order, fiat_currencies_display_order } from '../shared';
 import Footer from './footer';
@@ -31,10 +32,10 @@ const Layout = observer(() => {
 
     const isLoggedInCookie = Cookies.get('logged_state') === 'true';
     const isEndpointPage = window.location.pathname.includes('endpoint');
-    const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
+    const checkClientAccount = safeJsonParse<Record<string, any>>(localStorage.getItem('clientAccounts'), {});
     const getQueryParams = new URLSearchParams(window.location.search);
     const currency = getQueryParams.get('account') ?? '';
-    const accountsList = JSON.parse(localStorage.getItem('accountsList') ?? '{}');
+    const accountsList = safeJsonParse<Record<string, string>>(localStorage.getItem('accountsList'), {});
     const isClientAccountsPopulated = Object.keys(accountsList).length > 0;
     const ifClientAccountHasCurrency =
         Object.values(checkClientAccount).some((account: any) => account.currency === currency) ||
@@ -68,11 +69,13 @@ const Layout = observer(() => {
             const activeToken = localStorage.getItem('authToken') ?? '';
 
             // Re-read accountsList freshly (may have been written by callback page after initial render).
-            const freshAccountsList: Record<string, string> = JSON.parse(
-                localStorage.getItem('accountsList') ?? '{}'
+            const freshAccountsList: Record<string, string> = safeJsonParse(
+                localStorage.getItem('accountsList'),
+                {}
             );
-            const freshClientAccounts: Record<string, any> = JSON.parse(
-                localStorage.getItem('clientAccounts') ?? '{}'
+            const freshClientAccounts: Record<string, any> = safeJsonParse(
+                localStorage.getItem('clientAccounts'),
+                {}
             );
 
             // If WS authorize returned accounts that are missing from our stored maps,

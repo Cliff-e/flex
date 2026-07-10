@@ -10,6 +10,7 @@ import {
 import { api_base, ApiHelpers, DBot, runIrreversibleEvents } from '@/external/bot-skeleton';
 import { setCurrency } from '@/external/bot-skeleton/scratch/utils';
 import { TApiHelpersStore } from '@/types/stores.types';
+import { safeJsonParse } from '@/utils/safe-json';
 import { localize } from '@deriv-com/translations';
 import RootStore from './root-store';
 
@@ -93,7 +94,8 @@ export default class AppStore {
             window.location.pathname === '/callback' ||
             (Cookies.get('logged_state') === 'true' &&
                 !is_tmb_enabled &&
-                Object.keys(JSON.parse(localStorage.getItem('accountsList') || '{}')).length === 0);
+                Object.keys(safeJsonParse<Record<string, string>>(localStorage.getItem('accountsList'), {})).length ===
+                    0);
 
         if (isSingleLoggingIn) {
             common.setError(false, {});

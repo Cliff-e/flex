@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite';
 import Checkbox from '@/components/shared_ui/checkbox';
 import Dialog from '@/components/shared_ui/dialog';
 import { useStore } from '@/hooks/useStore';
+import { safeJsonParse } from '@/utils/safe-json';
 import { Localize, localize } from '@deriv-com/translations';
 import useQsSubmitHandler from '../form-wrappers/useQsSubmitHandler';
 import './loss-threshold-warning-dialog.scss';
@@ -28,7 +29,7 @@ const LossThresholdWarningDialog = observer(() => {
 
     const handleDontShowAgain = () => {
         const stored_dont_show_warning_value = localStorage?.getItem('qs-dont-show-loss-threshold-warning');
-        const dont_show_warning = JSON.parse(stored_dont_show_warning_value ?? 'false');
+        const dont_show_warning = safeJsonParse<boolean>(stored_dont_show_warning_value, false);
         localStorage?.setItem('qs-dont-show-loss-threshold-warning', `${!dont_show_warning}`);
     };
 

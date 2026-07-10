@@ -5,6 +5,7 @@ import Button from '@/components/shared_ui/button';
 import { useFirebaseCountriesConfig } from '@/hooks/firebase/useFirebaseCountriesConfig';
 import useStoreWalletAccountsList from '@/hooks/useStoreWalletAccountsList';
 import { getWalletUrl, handleTraderHubRedirect } from '@/utils/traders-hub-redirect';
+import { safeJsonParse } from '@/utils/safe-json';
 import { Localize, localize } from '@deriv-com/translations';
 import { AccountSwitcher as UIAccountSwitcher } from '@deriv-com/ui';
 
@@ -18,7 +19,7 @@ type TAccountSwitcherFooter = {
 import { AccountSwitcherDivider } from './utils';
 
 const AccountSwitcherFooter = ({ loginid, residence, type }: TAccountSwitcherFooter) => {
-    const accountList = JSON.parse(localStorage.getItem('clientAccounts') || '{}');
+    const accountList = safeJsonParse<Record<string, any>>(localStorage.getItem('clientAccounts'), {});
     const account_currency = loginid ? accountList[loginid]?.currency : '';
     // Hide manage button for demo accounts (virtual accounts)
     const show_manage_button = loginid?.includes('CR') || loginid?.includes('MF');

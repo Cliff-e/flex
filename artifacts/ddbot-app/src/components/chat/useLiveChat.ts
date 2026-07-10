@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import Cookies from 'js-cookie';
 import useRemoteConfig from '@/hooks/growthbook/useRemoteConfig';
+import { safeJsonParse } from '@/utils/safe-json';
 import { URLUtils } from '@deriv-com/utils';
 
 type TLiveChatClientInformation = {
@@ -49,7 +50,7 @@ const useLiveChat = (client_information: TLiveChatClientInformation) => {
                 if (data.state.visibility === 'minimized') {
                     window.LiveChatWidget?.call('hide');
                 }
-                const utm_data = JSON.parse(Cookies.get('utm_data') || '{}');
+                const utm_data = safeJsonParse<Record<string, string>>(Cookies.get('utm_data'), {});
                 const { utm_source, utm_medium, utm_campaign } = utm_data;
 
                 const session_variables = {

@@ -1,5 +1,7 @@
+import { safeJsonParse } from './safe-json';
+
 const getSettingsFromLocal = () => {
-    return JSON.parse(localStorage.getItem('dbot_settings'));
+    return safeJsonParse<Record<string, any> | null>(localStorage.getItem('dbot_settings'), null);
 };
 
 export const getSetting = (key: string) => {

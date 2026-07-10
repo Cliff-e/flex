@@ -1,5 +1,6 @@
 import { useFormikContext } from 'formik';
 import { useStore } from '@/hooks/useStore';
+import { safeJsonParse } from '@/utils/safe-json';
 import { TFormData } from '../types';
 
 const useQsSubmitHandler = () => {
@@ -13,7 +14,7 @@ const useQsSubmitHandler = () => {
         const loss_amount = Number(values?.loss ?? 0);
         const profit_threshold = Number(values?.profit ?? 0);
         const stored_dont_show_warning_value = localStorage?.getItem('qs-dont-show-loss-threshold-warning');
-        const dont_show_warning = JSON.parse(stored_dont_show_warning_value ?? 'false');
+        const dont_show_warning = safeJsonParse<boolean>(stored_dont_show_warning_value, false);
         if (
             !loss_threshold_warning_data.already_shown &&
             (loss_amount > 0.5 * Number(balance ?? 0) || loss_amount > 2 * profit_threshold) &&

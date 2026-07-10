@@ -1,6 +1,8 @@
+import { safeJsonParse } from '@/utils/safe-json';
+
 export const getTokenList = () => {
     const tokenList = localStorage.getItem('tokenList');
-    return JSON.parse(tokenList || '{}');
+    return safeJsonParse(tokenList, {});
 };
 
 export const removeAllTokens = () => {
