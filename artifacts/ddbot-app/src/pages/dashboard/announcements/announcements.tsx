@@ -13,6 +13,7 @@ import {
     rudderStackSendAnnouncementActionEvent,
     rudderStackSendAnnouncementClickEvent,
 } from '../../../analytics/rudderstack-dashboard';
+import { safeJsonParse } from '@/utils/safe-json';
 import { guide_content } from '../../tutorials/constants';
 import { performButtonAction } from './utils/accumulator-helper-functions';
 import { MessageAnnounce, TitleAnnounce } from './announcement-components';
@@ -48,7 +49,7 @@ const Announcements = observer(({ is_mobile, is_tablet, handleTabChange }: TAnno
 
     const updateLocalStorage = (announce_id: string) => {
         let data: Record<string, boolean> | null = null;
-        data = JSON.parse(localStorage.getItem('bot-announcements') ?? '{}');
+        data = safeJsonParse(localStorage.getItem('bot-announcements'), {});
         storeDataInLocalStorage({ ...data, [announce_id]: false });
         const temp_notifications = updateNotifications();
         setReadAnnouncementsMap(temp_notifications);
@@ -70,14 +71,14 @@ const Announcements = observer(({ is_mobile, is_tablet, handleTabChange }: TAnno
 
     const updateNotifications = () => {
         let data: Record<string, boolean> | null = null;
-        data = JSON.parse(localStorage.getItem('bot-announcements') ?? '{}');
+        data = safeJsonParse(localStorage.getItem('bot-announcements'), {});
         const tmp_notifications: TNotifications[] = [];
         const temp_localstorage_data: Record<string, boolean> | null = {};
         const loggedInAccountId = localStorage.getItem('active_loginid');
-        let allUserAccounts = localStorage.getItem('client_account_details');
+        const raw_user_accounts = localStorage.getItem('client_account_details');
+        let allUserAccounts = raw_user_accounts ? safeJsonParse<any[] | null>(raw_user_accounts, null) : null;
         let accountDate = null;
         if (allUserAccounts) {
-            allUserAccounts = JSON.parse(allUserAccounts);
             const currentAccount = allUserAccounts?.find(account => account.loginid == loggedInAccountId);
             accountDate = new Date(currentAccount.created_at * 1000);
         }

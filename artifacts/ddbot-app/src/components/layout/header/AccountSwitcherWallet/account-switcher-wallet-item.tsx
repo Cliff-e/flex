@@ -7,6 +7,7 @@ import Text from '@/components/shared_ui/text';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import { safeJsonParse } from '@/utils/safe-json';
 import useStoreWalletAccountsList from '@/hooks/useStoreWalletAccountsList';
 import { Analytics } from '@deriv-com/analytics';
 import { Localize } from '@deriv-com/translations';
@@ -42,7 +43,7 @@ export const AccountSwitcherWalletItem = observer(
         const is_dtrade_active = dtrade_loginid === active_loginid;
 
         const switchAccount = async (loginId: number) => {
-            const account_list = JSON.parse(localStorage.getItem('accountsList') ?? '{}');
+            const account_list = safeJsonParse<Record<string, string>>(localStorage.getItem('accountsList'), {});
             const token = account_list[loginId];
 
             // If token is missing, store the currency in session storage and return
@@ -71,7 +72,7 @@ export const AccountSwitcherWalletItem = observer(
             await api_base?.init(true);
             closeAccountsDialog();
 
-            const client_accounts = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
+            const client_accounts = safeJsonParse<Record<string, any>>(localStorage.getItem('clientAccounts'), {});
             const search_params = new URLSearchParams(window.location.search);
             const selected_account = Object.values(client_accounts)?.find(
                 (acc: any) => acc.loginid === loginId.toString()

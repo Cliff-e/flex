@@ -1,1 +1,0 @@
-- [DDBot project](ddbot-project.md) — Deriv trading bot app; uses rsbuild (not Vite), React 18, MobX, Blockly; lives in artifacts/ddbot-app at preview path /

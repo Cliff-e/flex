@@ -4,6 +4,7 @@ import { SYMBOLS } from './symbols';
 import { analyzeSignals } from './signalEngine';
 import { dcirclesStore } from '../../bot/dcirclesStore';
 import { globalTickEngine } from '../../bot/globalTickEngine';
+import { safeJsonParse } from '../../utils/safe-json';
 
 const DCircles = () => {
     const [symbol, setSymbol] = useState(() => localStorage.getItem('dc_symbol') || 'R_75');
@@ -24,7 +25,7 @@ const DCircles = () => {
     // 📦 load persisted data
     const [digitsMap, setDigitsMap] = useState<Record<string, number[]>>(() => {
         const saved = localStorage.getItem('digitsMap');
-        return saved ? JSON.parse(saved) : {};
+        return safeJsonParse<Record<string, number[]>>(saved, {});
     });
     const [viewLimit, setViewLimit] = useState(() => Number(localStorage.getItem('dc_viewLimit')) || 1000);
 
