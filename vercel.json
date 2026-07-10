@@ -1,9 +1,0 @@
-{
-  "framework": null,
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/ddbot-app run build",
-  "outputDirectory": "artifacts/ddbot-app/dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
