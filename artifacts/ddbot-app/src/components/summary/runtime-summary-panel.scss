@@ -1,0 +1,95 @@
+@use 'components/shared/styles/constants' as *;
+@use 'components/shared/styles/mixins' as *;
+
+.runtime-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: $BORDER_RADIUS;
+    background-color: var(--general-section-1);
+    box-sizing: border-box;
+
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    &__title {
+        font-weight: bold;
+        font-size: 1.4rem;
+    }
+
+    &__status {
+        font-size: 1.2rem;
+        font-weight: bold;
+        padding: 2px 10px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background-color: var(--general-section-2);
+
+        &--running {
+            color: var(--text-profit-success);
+        }
+
+        &--paused {
+            color: var(--text-warning, orange);
+        }
+
+        &--stopped,
+        &--idle {
+            color: var(--text-loss-danger);
+        }
+    }
+
+    &__grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    &__tile {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        flex: 1 1 30%;
+        min-width: 120px;
+        border-radius: $BORDER_RADIUS;
+        background-color: var(--general-section-2);
+        padding: 8px 10px;
+        box-sizing: border-box;
+
+        @media (max-width: 600px) {
+            flex: 1 1 45%;
+        }
+
+        &-label {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-less-prominent);
+        }
+
+        &-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            &--positive {
+                color: var(--text-profit-success);
+            }
+
+            &--negative {
+                color: var(--text-loss-danger);
+            }
+        }
+    }
+}
