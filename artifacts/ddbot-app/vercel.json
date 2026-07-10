@@ -1,0 +1,8 @@
+{
+  "framework": null,
+  "buildCommand": "./node_modules/.bin/rsbuild build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
