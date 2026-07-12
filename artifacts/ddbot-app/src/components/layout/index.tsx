@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import Cookies from 'js-cookie';
 import { observer } from 'mobx-react-lite';
 import { Outlet } from 'react-router-dom';
 import PWAUpdateNotification from '@/components/pwa-update-notification';
@@ -30,7 +29,6 @@ const Layout = observer(() => {
         [tmb_enabled_from_hook]
     );
 
-    const isLoggedInCookie = Cookies.get('logged_state') === 'true';
     const isEndpointPage = window.location.pathname.includes('endpoint');
     const checkClientAccount = safeJsonParse<Record<string, any>>(localStorage.getItem('clientAccounts'), {});
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -65,8 +63,8 @@ const Layout = observer(() => {
             const account_list_filter = account_list.filter((acc: any) => acc.is_disabled === 0);
             api_accounts.push(account_list_filter || []);
 
-            // The active access token — used for PKCE flows where all accounts share one JWT.
-            const activeToken = localStorage.getItem('authToken') ?? '';
+            // The active access token — read through canonical AuthSessionManager.
+            const activeToken = AuthSessionManager.getAuthInfo().accessToken ?? '';
 
             // Re-read accountsList freshly (may have been written by callback page after initial render).
             const freshAccountsList: Record<string, string> = safeJsonParse(

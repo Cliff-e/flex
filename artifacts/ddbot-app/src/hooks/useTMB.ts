@@ -65,7 +65,7 @@ const useTMB = (): UseTMBReturn => {
     const [, setIsApiInitialized] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isTmbCheckComplete, setIsTmbCheckComplete] = useState(false);
-    const authTokenRef = useRef(localStorage.getItem('authToken'));
+    const authTokenRef = useRef(AuthSessionManager.getAuthInfo().accessToken);
     const activeSessionsRef = useRef<TMBWebsocketTokens | undefined>(undefined);
 
     // sessions/active requires cookies that only exist on *.deriv.com domains.
@@ -314,6 +314,10 @@ const useTMB = (): UseTMBReturn => {
 
     const logout = useCallback(async () => {
         try {
+            // Notify all subscribers (header, useApiBase, bot-auth-guard) FIRST
+            // so no consumer observes a window where localStorage is cleared but
+            // in-memory auth state still says "authorized".
+            AuthSessionManager.clearSession();
             localStorage.removeItem('authToken');
             localStorage.removeItem('active_loginid');
             localStorage.removeItem('clientAccounts');
@@ -390,12 +394,12 @@ const useTMB = (): UseTMBReturn => {
                     return;
                 } else if (!activeSessions?.active && !fromLoginButton) {
                     // TMB sessions unavailable (e.g. CORS on non-Deriv host, or user not logged into
-                    // the Deriv website). Fall back to the PKCE OAuth token stored in localStorage
-                    // by the callback page so the WebSocket can still authorize via OTP.
-                    const storedToken = localStorage.getItem('authToken');
-                    const storedLoginId = localStorage.getItem('active_loginid');
-                    if (storedToken && storedLoginId && api_base) {
-                        console.log('[TMB] No active sessions — falling back to localStorage OAuth token');
+                    // the Deriv website). Fall back to the PKCE OAuth token via canonical ASM.
+                    // loginid may be absent in token-only state — api_base.init() will resolve it
+                    // from the WS authorize() response.
+                    const { accessToken: storedToken } = AuthSessionManager.getAuthInfo();
+                    if (storedToken && api_base) {
+                        console.log('[TMB] No active sessions — falling back to ASM OAuth token');
                         authTokenRef.current = storedToken;
                         api_base.init(true).catch((err: unknown) => {
                             console.warn('[TMB] api_base.init fallback error:', err);
