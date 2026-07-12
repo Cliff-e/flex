@@ -257,6 +257,30 @@ class AuthSessionManagerClass {
             localStorage.getItem('token') ||
             null;
 
+        // Ory tokens (ory_at_…) are account-scoped: they can ONLY be used
+        // via an OTP WS URL (POST /accounts/{id}/otp → signed WS URL).
+        // On the public WS, Deriv rejects them with InputValidationFailed —
+        // regardless of whether account_id is present in the authorize payload.
+        //
+        // When accountId is null but an Ory token is in storage, the app is
+        // stuck: OTP fetch refuses (no accountId), authorize on public WS
+        // fails, and the cycle repeats on every page load.
+        //
+        // Fix: evict the orphaned Ory token here so the next call returns
+        // { accountId: null, accessToken: null } → clean logged-out state →
+        // the login button becomes visible and the user can re-authenticate.
+        if (!accountId && accessToken?.startsWith('ory_at_')) {
+            console.warn(
+                '[AUTH-ASM][getAuthInfo] Orphaned Ory token detected — no valid account ID.\n' +
+                'Ory tokens require an OTP WS URL (account-scoped). Removing to prevent\n' +
+                'InputValidationFailed loop on public WS. User must log in again.'
+            );
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_token');
+            localStorage.removeItem('token');
+            return { accountId: null, accessToken: null, appId: APP_ID };
+        }
+
         return { accountId, accessToken, appId: APP_ID };
     }
 
