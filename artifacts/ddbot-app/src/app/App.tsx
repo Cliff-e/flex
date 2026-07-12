@@ -11,6 +11,7 @@ import CallbackPage from '@/pages/callback';
 import Endpoint from '@/pages/endpoint';
 import { TAuthData } from '@/types/api-types';
 import { AccountModeController } from '@/utils/AccountModeController';
+import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
 import CoreStoreProvider from './CoreStoreProvider';
 import { AuthReadyProvider } from '@/utils/AuthReadyContext';
@@ -102,54 +103,82 @@ function App() {
     }, []);
 
     React.useEffect(() => {
+        // ── Phase 1 fix: canonical-auth gate ────────────────────────────────
+        // Enable account mode whenever a valid access token exists in storage.
+        // This replaces the old fragile accountsList + currency-match guard that
+        // silently aborted when the /api/auth/accounts fetch had failed or the
+        // URL currency didn't match a stored account.
+        //
+        // We only need the access token here — the loginid is populated either
+        // from localStorage (when accounts fetch succeeded) or from the WS
+        // authorize() response (when it was missing/pending).
+        const { accessToken } = AuthSessionManager.getAuthInfo();
+        if (!accessToken) {
+            // No credentials at all — stay in public mode.
+            return;
+        }
+
+        console.log('[App] Canonical access token found — enabling account mode');
+        AccountModeController.enableAccountMode();
+
+        // Best-effort: select the right account for the URL currency.
+        // This is optional; api_base will authorize with whatever ASM already
+        // holds if no match is found here.
         const accounts_list = localStorage.getItem('accountsList');
         const client_accounts = localStorage.getItem('clientAccounts');
         const url_params = new URLSearchParams(window.location.search);
         const account_currency = url_params.get('account');
         const validCurrencies = [...fiat_currencies_display_order, ...crypto_currencies_display_order];
-
         const is_valid_currency = account_currency && validCurrencies.includes(account_currency?.toUpperCase());
 
-        if (!accounts_list || !client_accounts) return;
+        if (accounts_list && client_accounts) {
+            try {
+                const parsed_accounts = JSON.parse(accounts_list);
+                const parsed_client_accounts = JSON.parse(client_accounts) as TAuthData['account_list'];
 
-        try {
-            const parsed_accounts = JSON.parse(accounts_list);
-            const parsed_client_accounts = JSON.parse(client_accounts) as TAuthData['account_list'];
-
-            // Handle demo account
-            // Only runs when URL has ?account= param (post-OAuth redirect, not cold start).
-            if (account_currency?.toUpperCase() === 'DEMO') {
-                const demo_account = Object.entries(parsed_accounts).find(([key]) => key.startsWith('VR'));
-
-                if (demo_account) {
-                    const [loginid, token] = demo_account;
-                    // CP3: enable account mode before restoring — this is a post-OAuth
-                    // redirect (user already clicked Login), not a cold startup.
-                    AccountModeController.enableAccountMode();
-                    AccountModeController.restoreFromUrl(loginid, String(token));
-                    return;
-                }
-            }
-
-            // Handle real account with valid currency
-            if (account_currency?.toUpperCase() !== 'DEMO' && is_valid_currency) {
-                const real_account = Object.entries(parsed_client_accounts).find(
-                    ([loginid, account]) =>
-                        !loginid.startsWith('VR') && account.currency.toUpperCase() === account_currency?.toUpperCase()
-                );
-
-                if (real_account) {
-                    const [loginid, account] = real_account;
-                    if ('token' in account) {
-                        // CP3: enable account mode before restoring — post-OAuth redirect.
-                        AccountModeController.enableAccountMode();
-                        AccountModeController.restoreFromUrl(loginid, String(account?.token));
+                // Handle demo account
+                if (account_currency?.toUpperCase() === 'DEMO') {
+                    const demo_account = Object.entries(parsed_accounts).find(([key]) => key.startsWith('VR'));
+                    if (demo_account) {
+                        const [loginid, token] = demo_account;
+                        AccountModeController.restoreFromUrl(loginid, String(token));
+                        return;
                     }
-                    return;
                 }
+
+                // Handle real account with valid currency
+                if (account_currency?.toUpperCase() !== 'DEMO' && is_valid_currency) {
+                    const real_account = Object.entries(parsed_client_accounts).find(
+                        ([loginid, account]) =>
+                            !loginid.startsWith('VR') && account.currency.toUpperCase() === account_currency?.toUpperCase()
+                    );
+
+                    if (real_account) {
+                        const [loginid, account] = real_account;
+                        if ('token' in account) {
+                            AccountModeController.restoreFromUrl(loginid, String(account?.token));
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[App] Account restore parse error:', e);
             }
-        } catch (e) {
-            console.warn('Error', e); // eslint-disable-line no-console
+        }
+
+        // Fallback: restore with whatever AuthSessionManager already holds.
+        // This covers the case where accountsList/clientAccounts were not
+        // written (accounts fetch failed on the callback page) or the URL
+        // currency didn't match any stored account.
+        const { accountId } = AuthSessionManager.getAuthInfo();
+        if (accountId && accountId !== '__pending__') {
+            console.log('[App] Restoring from ASM state — loginid:', accountId);
+            AccountModeController.restoreFromUrl(accountId, accessToken);
+        } else {
+            // We have a token but no confirmed loginid yet.
+            // api_base.init() will authorize via WS and populate the loginid
+            // from the authorize() response.
+            console.log('[App] Token present but loginid pending — WS authorize will resolve it');
         }
     }, []);
 

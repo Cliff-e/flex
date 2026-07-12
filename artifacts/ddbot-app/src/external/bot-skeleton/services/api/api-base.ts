@@ -111,9 +111,21 @@ class APIBase {
         if (this.time_interval) clearInterval(this.time_interval);
         this.time_interval = null;
 
-        // Account Mode gate: only authorize when AccountModeController has
-        // explicitly enabled Account Mode. Never triggered by token presence alone.
-        if (AccountModeController.isAccountModeActive()) {
+        // Phase 2 fix: canonical-auth fallback.
+        // Primary gate is AccountModeController (set by App.tsx or Login button).
+        // Fallback: if canonical auth exists (access token in storage) but account
+        // mode was not explicitly enabled — e.g. the page reloaded before App.tsx's
+        // useEffect ran — self-heal by enabling account mode and authorizing.
+        // This prevents the split-brain state where credentials exist but no WS
+        // auth is ever attempted.
+        const { accessToken: asmFallbackToken } = AuthSessionManager.getAuthInfo();
+        const shouldAuthorize = AccountModeController.isAccountModeActive() || !!asmFallbackToken;
+
+        if (shouldAuthorize) {
+            if (!AccountModeController.isAccountModeActive()) {
+                console.log('[api-base] Canonical access token found but account mode inactive — self-healing');
+                AccountModeController.enableAccountMode();
+            }
             setIsAuthorizing(true);
             await this.authorizeAndSubscribe();
         }
@@ -126,9 +138,14 @@ class APIBase {
 
         const unsubConnected = EventBus.on('ws:connected', () => {
             setConnectionStatus(CONNECTION_STATUS.OPENED);
-            // Re-authorize on reconnect only when Account Mode is active.
-            // Never re-authorize from token presence alone.
-            if (AccountModeController.isAccountModeActive() && !this.is_authorized) {
+            // Re-authorize on reconnect when account mode is active OR when
+            // canonical auth exists (self-heal same as init()).
+            const { accessToken: reconnectToken } = AuthSessionManager.getAuthInfo();
+            const shouldReauth = (AccountModeController.isAccountModeActive() || !!reconnectToken) && !this.is_authorized;
+            if (shouldReauth) {
+                if (!AccountModeController.isAccountModeActive()) {
+                    AccountModeController.enableAccountMode();
+                }
                 this.api = WebSocketManager.getApi() as unknown as TApiBaseApi;
                 setIsAuthorizing(true);
                 this.authorizeAndSubscribe().catch(() => {});
@@ -351,6 +368,17 @@ class APIBase {
             );
 
             this.account_info = authorize;
+
+            // Phase 2 fix: sync loginid from WS response when it was missing or
+            // pending (accounts fetch failed on the callback page).
+            if (authorize.loginid) {
+                const currentId = AuthSessionManager.getAuthInfo().accountId;
+                if (!currentId || currentId === '__pending__') {
+                    console.log('[AUTH 15][api-base] Populating loginid from WS authorize response:', authorize.loginid);
+                    AuthSessionManager.setActiveAccount(authorize.loginid, this.token);
+                }
+            }
+
             setAccountList(authorize?.account_list || []);
             setAuthData(authorize);
             setIsAuthorized(true);

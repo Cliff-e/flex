@@ -31,7 +31,7 @@ type TAppHeaderProps = {
 
 const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
     const { isDesktop } = useDevice();
-    const { isAuthorizing, activeLoginid } = useApiBase();
+    const { isAuthorizing, activeLoginid, isLoggedIn } = useApiBase();
     const { client } = useStore() ?? {};
 
     const { data: activeAccount } = useActiveAccount({ allBalanceData: client?.all_accounts_balance });
@@ -48,18 +48,21 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
     const is_tmb_enabled = isTmbEnabled() || window.is_tmb_enabled === true;
 
     const renderAccountSection = useCallback(() => {
-        // Show loader during authentication processes.
+        // Phase 3 fix: use AuthSessionManager canonical state as the single source
+        // of truth for login/logout visibility. Never show Login/Sign Up when a
+        // valid authenticated session exists — even if WS auth hasn't completed yet.
         //
-        // NOTE: isSingleLoggingIn is Deriv's SSO flag — it fires when the
-        // `logged_state` cookie says "logged in" but localStorage has no accounts
-        // (willEventuallySSO) OR the cookie says "logged out" but accounts are
-        // present (willEventuallySLO).
-        // Guard: if canonical auth is settled, skip the isSingleLoggingIn loader.
-        // RULE: use canonical auth check — no direct localStorage reads.
+        // Rendering priority:
+        //   1. Explicit loading states (initialising, WS authorising, SSO in flight)
+        //   2. WS authorized — show full account section (activeLoginid populated)
+        //   3. Canonical auth exists but WS not yet done — show interim loader
+        //      (prevents the Login/Sign Up flash while authorizeAndSubscribe() runs)
+        //   4. Truly logged-out — show Login + Sign Up buttons
         const hasRestAuth = AuthSessionManager.isAuthenticated();
         if (isAuthenticating || isAuthorizing || (isSingleLoggingIn && !is_tmb_enabled && !hasRestAuth)) {
             return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
         } else if (activeLoginid) {
+            // WS authorize() succeeded — full account switcher
             return (
                 <div className='app-header__logged-in-section'>
                     {/* <CustomNotifications /> */}
@@ -140,6 +143,11 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                         })()}
                 </div>
             );
+        } else if (isLoggedIn) {
+            // Canonical auth exists (token + loginid in storage) but WS authorize()
+            // hasn't completed yet. Show a loading indicator rather than Login/Sign Up —
+            // this prevents the flash of logged-out UI while authorizeAndSubscribe() runs.
+            return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
         } else {
             return (
                 <div className='auth-actions'>
@@ -184,6 +192,7 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
         isSingleLoggingIn,
         isDesktop,
         activeLoginid,
+        isLoggedIn,
         standalone_routes,
         client,
         has_wallet,

@@ -177,12 +177,15 @@ const CallbackPage = () => {
 
             // ── Persist via AuthSessionManager (single source of truth) ───────
             // 1. Primary account credentials via setActiveAccount.
-            //    When primaryLoginid is empty (accounts fetch failed/returned none),
-            //    setActiveAccount stores the token only — loginid will be populated
-            //    by the WS authorize() response.
-            AuthSessionManager.setActiveAccount(primaryLoginid, accessToken);
+            //    Phase 4 fix: when accounts fetch fails, use '__pending__' as a
+            //    sentinel loginid so that AuthSessionManager.getAuthInfo().accessToken
+            //    is still present and App.tsx can enable account mode.
+            //    The real loginid is resolved from the WS authorize() response in
+            //    api-base.ts authorizeAndSubscribe() and written via setActiveAccount().
+            const resolvedLoginid = primaryLoginid || '__pending__';
+            AuthSessionManager.setActiveAccount(resolvedLoginid, accessToken);
             if (!primaryLoginid) {
-                console.warn('[CallbackPage] No primaryLoginid from accounts fetch — token stored without loginid');
+                console.warn('[CallbackPage] No primaryLoginid from accounts fetch — stored __pending__ sentinel; WS authorize will resolve the real loginid');
             }
 
             // 2. Full account list (for account switcher)
