@@ -17,8 +17,13 @@ export const useApiBase = () => {
     const [isAuthorized, setIsAuthorized] = useState<boolean>(
         () => AuthSessionManager.getCanonicalAuthState().isAuthorized
     );
+    // isLoggedIn is true whenever an access token exists in storage, even when
+    // the loginid is not yet known (token-only state after OAuth callback when
+    // the accounts fetch failed). This prevents the Login/Sign Up flash while
+    // WS authorize() is running. isAuthenticated() requires BOTH token + loginid
+    // and would incorrectly return false in the token-only state.
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(
-        () => AuthSessionManager.getCanonicalAuthState().isAuthenticated
+        () => !!AuthSessionManager.getAuthInfo().accessToken
     );
 
     // Operational state — still driven by RxJS observables (not auth decisions).
@@ -47,7 +52,8 @@ export const useApiBase = () => {
         const unsubAuthChange = AuthSessionManager.onAuthChange(() => {
             const canonical = AuthSessionManager.getCanonicalAuthState();
             setIsAuthorized(canonical.isAuthorized);
-            setIsLoggedIn(canonical.isAuthenticated);
+            // isLoggedIn: true whenever a token exists — see comment on initial state above.
+            setIsLoggedIn(!!AuthSessionManager.getAuthInfo().accessToken);
         });
 
         return () => {

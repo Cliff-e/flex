@@ -177,15 +177,15 @@ const CallbackPage = () => {
 
             // ── Persist via AuthSessionManager (single source of truth) ───────
             // 1. Primary account credentials via setActiveAccount.
-            //    Phase 4 fix: when accounts fetch fails, use '__pending__' as a
-            //    sentinel loginid so that AuthSessionManager.getAuthInfo().accessToken
-            //    is still present and App.tsx can enable account mode.
-            //    The real loginid is resolved from the WS authorize() response in
-            //    api-base.ts authorizeAndSubscribe() and written via setActiveAccount().
-            const resolvedLoginid = primaryLoginid || '__pending__';
-            AuthSessionManager.setActiveAccount(resolvedLoginid, accessToken);
+            //    setActiveAccount() already handles empty loginid correctly: it
+            //    writes authToken to localStorage and skips active_loginid when
+            //    loginid is falsy. The real loginid is resolved from the WS
+            //    authorize() response in api-base.ts and written there.
+            //    NEVER pass a sentinel value such as '__pending__' — it will
+            //    escape into the OTP endpoint and the WS authorize() message.
+            AuthSessionManager.setActiveAccount(primaryLoginid, accessToken);
             if (!primaryLoginid) {
-                console.warn('[CallbackPage] No primaryLoginid from accounts fetch — stored __pending__ sentinel; WS authorize will resolve the real loginid');
+                console.log('[CallbackPage] No loginid from accounts fetch — token stored; WS authorize() will resolve the real loginid');
             }
 
             // 2. Full account list (for account switcher)

@@ -369,11 +369,12 @@ class APIBase {
 
             this.account_info = authorize;
 
-            // Phase 2 fix: sync loginid from WS response when it was missing or
-            // pending (accounts fetch failed on the callback page).
+            // Sync loginid from WS authorize() response when it was not yet
+            // stored (accounts fetch failed on the callback page — token-only
+            // state with no active_loginid in localStorage).
             if (authorize.loginid) {
                 const currentId = AuthSessionManager.getAuthInfo().accountId;
-                if (!currentId || currentId === '__pending__') {
+                if (!currentId) {
                     console.log('[AUTH 15][api-base] Populating loginid from WS authorize response:', authorize.loginid);
                     AuthSessionManager.setActiveAccount(authorize.loginid, this.token);
                 }

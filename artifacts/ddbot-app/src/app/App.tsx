@@ -171,14 +171,13 @@ function App() {
         // written (accounts fetch failed on the callback page) or the URL
         // currency didn't match any stored account.
         const { accountId } = AuthSessionManager.getAuthInfo();
-        if (accountId && accountId !== '__pending__') {
+        if (accountId) {
             console.log('[App] Restoring from ASM state — loginid:', accountId);
             AccountModeController.restoreFromUrl(accountId, accessToken);
         } else {
-            // We have a token but no confirmed loginid yet.
-            // api_base.init() will authorize via WS and populate the loginid
-            // from the authorize() response.
-            console.log('[App] Token present but loginid pending — WS authorize will resolve it');
+            // Token present but no loginid yet (accounts fetch failed on the
+            // callback page). WS authorize() will resolve and store the loginid.
+            console.log('[App] Token present, no loginid yet — WS authorize() will resolve it');
         }
     }, []);
 
