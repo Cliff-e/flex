@@ -29,6 +29,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    service: "Deriv Edge API",
+    status: "ok",
+    version: process.env["npm_package_version"] ?? "unknown",
+    health: "/api/healthz",
+  });
+});
+
 app.use("/api", router);
 
 export default app;
