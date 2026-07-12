@@ -14,6 +14,39 @@ function maskToken(t: string | null | undefined): string {
     return `${t.slice(0, 8)}…${t.slice(-4)}`;
 }
 
+/**
+ * Returns true when `id` looks like a legitimate account identifier.
+ *
+ * Strategy: blocklist clearly-invalid values rather than encoding
+ * Deriv-specific naming rules, so future account ID formats are not
+ * unnecessarily rejected.
+ *
+ * Rejects:
+ *   - null / undefined / empty string
+ *   - leading or trailing whitespace
+ *   - double-underscore sentinel pattern  (__pending__, __test__, …)
+ *   - stringified JS primitives           ("null", "undefined", "NaN")
+ *   - pure-whitespace strings
+ *   - values outside a plausible length   (< 3 or > 24 chars)
+ *   - characters outside alphanumeric + hyphen
+ *   - purely-numeric strings              (account IDs always start with letters)
+ *
+ * Note: based on observed Deriv account ID formats as of July 2026
+ * (CR…, VR…, MX…, MLT…, MF…). The pattern requirement (letter prefix +
+ * digits) is kept as a lightweight sanity check, not an external API contract.
+ */
+function isValidDerivLoginid(id: string | null | undefined): id is string {
+    if (!id || typeof id !== 'string') return false;
+    if (id !== id.trim()) return false;                       // whitespace padding
+    if (id.length < 3 || id.length > 24) return false;       // implausible length
+    if (id.includes('__')) return false;                      // sentinel pattern
+    if (/^(null|undefined|nan)$/i.test(id)) return false;    // stringified JS
+    if (!/^[A-Za-z0-9-]+$/.test(id)) return false;           // unexpected chars
+    if (!/[A-Za-z]/.test(id)) return false;                  // must start with a letter prefix
+    if (!/[0-9]/.test(id)) return false;                     // must contain digits
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -97,10 +130,16 @@ class AuthSessionManagerClass {
      * the OAuth callback before the accounts list has been fetched).
      */
     setActiveAccount(loginid: string, token: string): void {
-        console.log('[AUTH-ASM][setActiveAccount] switching to loginid:', loginid || '(pending)',
-            '| token:', maskToken(token));
+        const validLoginid = isValidDerivLoginid(loginid);
+        if (loginid && !validLoginid) {
+            console.warn('[AUTH-ASM][setActiveAccount] REJECTED invalid loginid — will not persist:',
+                loginid, '| token:', maskToken(token));
+        } else {
+            console.log('[AUTH-ASM][setActiveAccount] switching to loginid:', loginid || '(empty — token only)',
+                '| token:', maskToken(token));
+        }
         localStorage.setItem('authToken', token);
-        if (loginid) {
+        if (validLoginid) {
             localStorage.setItem('active_loginid', loginid);
         }
         // Invalidate OTP cache — new account needs a fresh OTP URL
@@ -188,10 +227,30 @@ class AuthSessionManagerClass {
      * AuthSessionManager owns all reads of these keys from localStorage.
      */
     getAuthInfo(): AuthInfo {
-        const accountId =
+        const rawLoginid =
             localStorage.getItem('active_loginid') ||
             localStorage.getItem('active_account_id') ||
             null;
+
+        let accountId: string | null = null;
+        if (rawLoginid !== null) {
+            if (isValidDerivLoginid(rawLoginid)) {
+                accountId = rawLoginid;
+            } else {
+                // Self-heal: stale/sentinel value (e.g. '__pending__') — remove it
+                // so it cannot propagate to OTP or WS authorize().
+                console.warn(
+                    '[AUTH-ASM][getAuthInfo] Invalid persisted loginid detected.\n' +
+                    'Removing stale value from localStorage.\n' +
+                    `value: ${JSON.stringify(rawLoginid)}\n` +
+                    'reason: failed validation'
+                );
+                localStorage.removeItem('active_loginid');
+                localStorage.removeItem('active_account_id');
+                accountId = null;
+            }
+        }
+
         const accessToken =
             localStorage.getItem('authToken') ||
             localStorage.getItem('active_token') ||

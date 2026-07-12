@@ -1,0 +1,114 @@
+Excellent progress. I agree with the direction, but I want one refinement before merging.
+
+The objective is to make AuthSessionManager resilient to corrupted state, not to encode Deriv account naming rules.
+
+## 1. Review the validator
+
+Current implementation:
+
+```ts
+/^[A-Z]{2,4}\d+$/
+```
+
+This works for today's account IDs but assumes all future Deriv login IDs follow the same prefix pattern.
+
+Before finalizing:
+
+* Verify this pattern against Deriv's actual login IDs used by the application.
+* If the pattern is based only on observation, explain that in the code comments.
+* Prefer a validation strategy that rejects clearly invalid values (such as `__pending__`, empty strings, whitespace, `"null"`, `"undefined"`, arbitrary text, etc.) without unnecessarily rejecting future valid account IDs.
+
+The validator should primarily protect against corrupted application state, not enforce undocumented external rules.
+
+---
+
+## 2. Make the cleanup observable
+
+When an invalid login ID is removed, log enough information to diagnose the issue.
+
+For example:
+
+```text
+[AUTH-ASM][getAuthInfo]
+Invalid persisted loginid detected.
+Removing stale value from localStorage.
+
+value: "__pending__"
+reason: failed validation
+```
+
+Do not log tokens.
+
+---
+
+## 3. Verify the self-healing flow
+
+Using my real browser (not the headless preview), demonstrate this sequence:
+
+1. localStorage initially contains:
+
+```
+active_loginid="__pending__"
+```
+
+2. First page load logs:
+
+```
+[AUTH-ASM]
+Invalid persisted loginid detected
+
+Removing stale loginid "__pending__"
+```
+
+3. Browser storage after cleanup:
+
+```
+active_loginid = null
+```
+
+4. No request is made to:
+
+```
+/options/accounts/__pending__/otp
+```
+
+5. No authorize payload contains:
+
+```
+account_id="__pending__"
+```
+
+6. WebSocket authorization succeeds.
+
+7. Deriv returns the real login ID.
+
+8. `setActiveAccount(realLoginId, token)` persists the real login ID.
+
+9. Refresh the page.
+
+10. Confirm the real login ID is restored and no cleanup occurs.
+
+---
+
+## 4. Final sanity check
+
+Search the repository again and verify there are no remaining runtime paths capable of persisting invalid authentication identifiers into:
+
+* active_loginid
+* active_account_id
+
+The only acceptable write path should now be:
+
+```
+Valid login ID
+        ↓
+AuthSessionManager.setActiveAccount()
+        ↓
+localStorage
+```
+
+Any invalid value must be rejected before persistence.
+
+---
+
+If this verification passes, I consider the `__pending__` persistence bug permanently resolved.
