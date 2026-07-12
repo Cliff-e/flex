@@ -109,7 +109,7 @@ function requireAuthConfig(
 
 authRouter.use(requireAuthConfig);
 
-const DERIV_AUTH_URL = "https://oauth.deriv.com/oauth2/authorize";
+const DERIV_AUTH_URL = "https://auth.deriv.com/oauth2/auth";
 const DERIV_TOKEN_URL = "https://auth.deriv.com/oauth2/token";
 const DERIV_ACCOUNTS_URL =
   "https://api.derivws.com/trading/v1/options/accounts";
@@ -257,8 +257,7 @@ authRouter.get("/login", asHandler(loginRateLimiter), (req, res) => {
   const callbackUri = `${API_BASE_URL}/api/auth/callback`;
 
   const params = new URLSearchParams({
-    app_id: APP_ID,
-    l: "EN",
+    client_id: APP_ID,
     response_type: "code",
     redirect_uri: callbackUri,
     code_challenge: challenge,
