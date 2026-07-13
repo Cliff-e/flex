@@ -103,6 +103,45 @@ function App() {
     }, []);
 
     React.useEffect(() => {
+        // ── Handle legacy (non-PKCE) Deriv OAuth redirect ───────────────────
+        // When the Deriv app is in old (non-Ory) OAuth mode, Deriv bypasses
+        // our backend and redirects directly to the frontend root with:
+        //   ?account=USD&token1=a1-…&loginid1=CR…[&token2=…&loginid2=…]
+        //
+        // These are legacy API tokens that work directly with WS authorize()
+        // on the public endpoint — no OTP step required.
+        //
+        // We detect token1/loginid1, persist all accounts via AuthSessionManager,
+        // and strip only the OAuth token params from the URL (leaving ?account=
+        // intact so the account-currency switcher continues to work).
+        {
+            const _p = new URLSearchParams(window.location.search);
+            const _t1 = _p.get('token1');
+            const _l1 = _p.get('loginid1');
+            if (_t1 && _l1) {
+                console.log('[App][legacy-oauth] Old-format Deriv OAuth params detected — ingesting credentials | loginid:', _l1);
+                const _accounts: Record<string, string> = {};
+                for (let _i = 1; ; _i++) {
+                    const _t = _p.get(`token${_i}`);
+                    const _l = _p.get(`loginid${_i}`);
+                    if (!_t || !_l) break;
+                    _accounts[_l] = _t;
+                }
+                // Primary account: token1/loginid1 (Deriv puts the selected
+                // account first).
+                AuthSessionManager.setActiveAccount(_l1, _t1);
+                // Persist the full account→token map for the account switcher.
+                localStorage.setItem('accountsList', JSON.stringify(_accounts));
+                // Strip the OAuth token params so they do not survive a refresh.
+                const _clean = new URL(window.location.href);
+                for (let _i = 1; _i <= Object.keys(_accounts).length; _i++) {
+                    _clean.searchParams.delete(`token${_i}`);
+                    _clean.searchParams.delete(`loginid${_i}`);
+                }
+                window.history.replaceState({}, '', _clean.toString());
+            }
+        }
+
         // ── Phase 1 fix: canonical-auth gate ────────────────────────────────
         // Enable account mode whenever a valid access token exists in storage.
         // This replaces the old fragile accountsList + currency-match guard that
