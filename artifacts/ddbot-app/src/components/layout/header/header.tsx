@@ -149,6 +149,8 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
             // this prevents the flash of logged-out UI while authorizeAndSubscribe() runs.
             return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
         } else {
+            // [HEADER] rendering Login button
+            console.log('[HEADER] rendering Login button');
             return (
                 <div className='auth-actions'>
                     <Button
