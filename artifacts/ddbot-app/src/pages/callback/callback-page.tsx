@@ -9,11 +9,16 @@
  *
  * Responsibilities:
  *   1. Read ?auth_code= from the URL and strip it immediately.
- *   2. Exchange it for the real access_token via POST /api/auth/exchange
- *      (JSON body — the token never appears in a URL).
+ *   2. Exchange it for the complete session via POST /api/auth/exchange
+ *      (JSON body — the token never appears in a URL). The backend fetches
+ *      accounts server-side and returns the full session in one response.
  *   3. Persist credentials via AuthSessionManager (single source of truth).
- *   4. Fetch the account list from the DO backend.
- *   5. Redirect to the main app.
+ *   4. Redirect to the main app.
+ *
+ * /api/auth/accounts is NOT called from the frontend — the backend resolves
+ * accounts during the exchange and includes them in the response. This avoids
+ * the 403 Insufficient scopes error that occurred when the browser called the
+ * accounts endpoint directly after receiving the token.
  *
  * Error path: if ?error= is present, show the error and offer a retry link.
  */
@@ -73,44 +78,11 @@ const CallbackPage = () => {
             window.history.replaceState({}, '', window.location.pathname);
             setStatusMsg('Completing sign-in…');
 
-            // ── Exchange the one-time code for the real access_token ──────────
-            // This keeps the sensitive Deriv token out of the URL entirely —
-            // it only ever travels in this JSON response body.
+            // ── Exchange the one-time code for the complete session ───────────
+            // The backend redeems the code, fetches accounts server-to-server,
+            // and returns everything in one response. The frontend never calls
+            // /api/auth/accounts — that was returning 403 Insufficient scopes.
             let accessToken: string;
-            try {
-                if (!API_BASE_URL) {
-                    throw new Error('VITE_API_BASE_URL is not configured — cannot exchange auth code');
-                }
-
-                const exchangeRes = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: authCode }),
-                });
-                const exchangeData = (await exchangeRes.json().catch(() => null)) as
-                    | { access_token?: string; error_description?: string }
-                    | null;
-
-                if (!exchangeRes.ok || !exchangeData?.access_token) {
-                    throw new Error(
-                        exchangeData?.error_description ?? 'Failed to exchange authorization code'
-                    );
-                }
-                accessToken = exchangeData.access_token;
-            } catch (exchangeErr) {
-                console.error('[CallbackPage] Auth code exchange failed:', exchangeErr);
-                setSignInError(
-                    exchangeErr instanceof Error
-                        ? exchangeErr.message
-                        : 'Failed to complete login. Please try again.'
-                );
-                return;
-            }
-
-            console.log('[CallbackPage] Received access_token:', maskToken(accessToken));
-            setStatusMsg('Token received. Fetching account info…');
-
-            // ── Fetch accounts from DO backend ────────────────────────────────
             let primaryLoginid = '';
             let primaryCurrency = '';
             const accountsList: Record<string, string> = {};
@@ -122,57 +94,67 @@ const CallbackPage = () => {
 
             try {
                 if (!API_BASE_URL) {
-                    throw new Error('VITE_API_BASE_URL is not configured — cannot fetch accounts');
+                    throw new Error('VITE_API_BASE_URL is not configured — cannot exchange auth code');
                 }
 
-                const accountsRes = await fetch(`${API_BASE_URL}/api/auth/accounts`, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        'Deriv-App-ID': AuthSessionManager.getAuthInfo().appId,
-                    },
+                const exchangeRes = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: authCode }),
+                });
+                const exchangeData = (await exchangeRes.json().catch(() => null)) as
+                    | {
+                        access_token?: string;
+                        primary_loginid?: string;
+                        primary_currency?: string;
+                        accounts?: RestAccount[];
+                        error_description?: string;
+                      }
+                    | null;
+
+                if (!exchangeRes.ok || !exchangeData?.access_token) {
+                    throw new Error(
+                        exchangeData?.error_description ?? 'Failed to exchange authorization code'
+                    );
+                }
+
+                accessToken = exchangeData.access_token;
+                setStatusMsg('Session received. Applying account info…');
+                console.log('[CallbackPage] Received access_token:', maskToken(accessToken));
+
+                // ── Apply accounts from the exchange response ──────────────────
+                // The backend already sorted and resolved primary — use its values
+                // directly, and re-derive the local maps for AuthSessionManager.
+                primaryLoginid = exchangeData.primary_loginid ?? '';
+                primaryCurrency = exchangeData.primary_currency ?? '';
+                const rawAccounts = exchangeData.accounts ?? [];
+
+                // Real accounts first, virtual last (mirrors backend sort for safety)
+                const sorted = [...rawAccounts].sort(a => {
+                    const t = (a.account_type ?? a.type ?? '').toLowerCase();
+                    return t === 'demo' || t === 'virtual' ? 1 : -1;
                 });
 
-                const accountsText = await accountsRes.text();
-                setStatusMsg(`Accounts HTTP ${accountsRes.status}`);
-
-                if (accountsRes.ok) {
-                    let accountsData: unknown;
-                    try { accountsData = JSON.parse(accountsText); } catch { /* non-JSON */ }
-
-                    if (accountsData) {
-                        const parsed = accountsData as Record<string, unknown>;
-                        const rawList: RestAccount[] =
-                            (parsed?.data as RestAccount[] | undefined) ??
-                            (parsed?.accounts as RestAccount[] | undefined) ??
-                            (Array.isArray(accountsData) ? (accountsData as RestAccount[]) : []);
-
-                        // Real accounts first, virtual last
-                        const sorted = [...rawList].sort(a => {
-                            const t = (a.account_type ?? a.type ?? '').toLowerCase();
-                            return t === 'demo' || t === 'virtual' ? 1 : -1;
-                        });
-
-                        for (const acct of sorted) {
-                            const id = (acct.account_id ?? acct.id ?? acct.loginid ?? '') as string;
-                            const cur = (acct.currency ?? acct.account_currency ?? '') as string;
-                            const bal = Number(acct.balance ?? 0) || 0;
-                            const atype = acct.account_type ?? acct.type ?? '';
-                            if (!id) continue;
-                            accountsList[id] = accessToken;
-                            clientAccounts[id] = { loginid: id, token: accessToken, currency: cur, account_type: atype, balance: bal };
-                            restBalances[id] = { balance: bal, currency: cur, type: atype };
-                            if (!primaryLoginid) { primaryLoginid = id; primaryCurrency = cur; }
-                        }
-
-                        console.log('[CallbackPage] Accounts:', Object.keys(accountsList).join(', ') || '(none)');
-                    }
-                } else {
-                    console.warn('[CallbackPage] Accounts fetch non-OK:', accountsRes.status, accountsText.slice(0, 200));
-                    setStatusMsg('Could not load account list — proceeding with token only');
+                for (const acct of sorted) {
+                    const id = (acct.account_id ?? acct.id ?? acct.loginid ?? '') as string;
+                    const cur = (acct.currency ?? acct.account_currency ?? '') as string;
+                    const bal = Number(acct.balance ?? 0) || 0;
+                    const atype = acct.account_type ?? acct.type ?? '';
+                    if (!id) continue;
+                    accountsList[id] = accessToken;
+                    clientAccounts[id] = { loginid: id, token: accessToken, currency: cur, account_type: atype, balance: bal };
+                    restBalances[id] = { balance: bal, currency: cur, type: atype };
                 }
-            } catch (acctErr) {
-                console.warn('[CallbackPage] Accounts fetch error:', acctErr);
-                setStatusMsg(`Account fetch error: ${String(acctErr).slice(0, 80)} — proceeding`);
+
+                console.log('[CallbackPage] Accounts from exchange:', Object.keys(accountsList).join(', ') || '(none)');
+            } catch (exchangeErr) {
+                console.error('[CallbackPage] Exchange failed:', exchangeErr);
+                setSignInError(
+                    exchangeErr instanceof Error
+                        ? exchangeErr.message
+                        : 'Failed to complete login. Please try again.'
+                );
+                return;
             }
 
             // ── Persist via AuthSessionManager (single source of truth) ───────

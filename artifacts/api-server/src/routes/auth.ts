@@ -399,12 +399,22 @@ authRouter.get("/callback", async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /api/auth/exchange
 // Redeems a one-time auth_code (issued by /callback) for the real Deriv
-// access_token. The token is only ever transmitted in this JSON response
-// body — never in a URL, so it can't end up in browser history, server
-// access logs, analytics, or Referer headers.
+// access_token AND completes the full login:
+//   1. Redeem the auth_code → access_token.
+//   2. Fetch the user's Deriv accounts server-side (avoids scope issues from
+//      a browser-originated request and keeps the token off the URL).
+//   3. Determine the primary login ID and currency.
+//   4. Return the complete session in one response — the frontend does not
+//      need to make any further authenticated requests to bootstrap the session.
+//
+// Response shape:
+//   { access_token, primary_loginid, primary_currency, accounts[] }
+//
+// If the accounts fetch fails (transient upstream error) we still return the
+// token with empty account fields so the frontend can fall back to WS authorize().
 // ---------------------------------------------------------------------------
 
-authRouter.post("/exchange", asHandler(exchangeRateLimiter), (req, res) => {
+authRouter.post("/exchange", asHandler(exchangeRateLimiter), async (req, res) => {
   const { code } = req.body as { code?: unknown };
   if (typeof code !== "string" || !code) {
     return res.status(400).json({
@@ -421,8 +431,77 @@ authRouter.post("/exchange", asHandler(exchangeRateLimiter), (req, res) => {
     });
   }
 
-  logger.info("[auth/exchange] Auth code redeemed successfully");
-  return res.status(200).json({ access_token: accessToken });
+  logger.info("[auth/exchange] Auth code redeemed — fetching accounts server-side");
+
+  // Fetch accounts server-to-server so the browser never needs to call
+  // /api/auth/accounts separately (which was returning 403 Insufficient scopes).
+  type RawAccount = Record<string, unknown>;
+  let accounts: RawAccount[] = [];
+  let primaryLoginid = "";
+  let primaryCurrency = "";
+
+  try {
+    const accountsRes = await fetch(DERIV_ACCOUNTS_URL, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Deriv-App-ID": APP_ID,
+      },
+    });
+
+    logger.info({ status: accountsRes.status }, "[auth/exchange] Deriv accounts status");
+
+    if (accountsRes.ok) {
+      const accountsData = (await accountsRes.json().catch(() => null)) as Record<string, unknown> | null;
+      if (accountsData) {
+        const rawList: RawAccount[] =
+          (accountsData?.data as RawAccount[] | undefined) ??
+          (accountsData?.accounts as RawAccount[] | undefined) ??
+          (Array.isArray(accountsData) ? (accountsData as RawAccount[]) : []);
+
+        accounts = rawList;
+
+        // Real accounts before virtual/demo — the first one becomes primary.
+        const sorted = [...rawList].sort((a: RawAccount) => {
+          const t = String(a.account_type ?? a.type ?? "").toLowerCase();
+          return t === "demo" || t === "virtual" ? 1 : -1;
+        });
+
+        for (const acct of sorted) {
+          const id = String(acct.account_id ?? acct.id ?? acct.loginid ?? "");
+          const cur = String(acct.currency ?? acct.account_currency ?? "");
+          if (!id) continue;
+          if (!primaryLoginid) {
+            primaryLoginid = id;
+            primaryCurrency = cur;
+          }
+        }
+      }
+    } else {
+      const errText = await accountsRes.text().catch(() => "");
+      logger.warn(
+        { status: accountsRes.status, body: errText.slice(0, 200) },
+        "[auth/exchange] Accounts fetch non-OK — returning token without account data",
+      );
+    }
+  } catch (acctErr) {
+    logger.warn(
+      { err: (acctErr as Error).message },
+      "[auth/exchange] Accounts fetch error — returning token without account data",
+    );
+  }
+
+  logger.info(
+    { primaryLoginid: primaryLoginid || "(none)", accountCount: accounts.length },
+    "[auth/exchange] Session complete",
+  );
+
+  return res.status(200).json({
+    access_token: accessToken,
+    primary_loginid: primaryLoginid,
+    primary_currency: primaryCurrency,
+    accounts,
+  });
 });
 
 // ---------------------------------------------------------------------------
