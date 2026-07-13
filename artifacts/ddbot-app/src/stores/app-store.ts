@@ -87,13 +87,13 @@ export default class AppStore {
         const { client, common } = this.core;
         const { is_landing_company_loaded } = client;
 
-        // Check if we're in the process of logging in
-        // When isSingleLoggingIn is true, we don't want to show the EU error message
-        const is_tmb_enabled = window.is_tmb_enabled === true;
+        // Suppress the EU error when a login is in flight:
+        //   - on the OAuth callback page, or
+        //   - when logged_state cookie is set but accounts haven't loaded yet
+        //     (the callback page sets this cookie; TMB check removed).
         const isSingleLoggingIn =
             window.location.pathname === '/callback' ||
             (Cookies.get('logged_state') === 'true' &&
-                !is_tmb_enabled &&
                 Object.keys(safeJsonParse<Record<string, string>>(localStorage.getItem('accountsList'), {})).length ===
                     0);
 
