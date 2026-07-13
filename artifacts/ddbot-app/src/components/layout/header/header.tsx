@@ -5,14 +5,11 @@ import PWAInstallButton from '@/components/pwa-install-button';
 import { standalone_routes } from '@/components/shared';
 import Button from '@/components/shared_ui/button';
 import useActiveAccount from '@/hooks/api/account/useActiveAccount';
-import { useOauth2 } from '@/hooks/auth/useOauth2';
 import { useFirebaseCountriesConfig } from '@/hooks/firebase/useFirebaseCountriesConfig';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import useTMB from '@/hooks/useTMB';
 import { AccountModeController } from '@/utils/AccountModeController';
 import { clearAuthData } from '@/utils/auth-utils';
-import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { StandaloneCircleUserRegularIcon } from '@deriv/quill-icons/Standalone';
 import { Localize, useTranslations } from '@deriv-com/translations';
 import { Header, useDevice, Wrapper } from '@deriv-com/ui';
@@ -41,25 +38,19 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
     const currency = getCurrency?.();
     const { localize } = useTranslations();
 
-    const { isSingleLoggingIn } = useOauth2();
-
     const { hubEnabledCountryList } = useFirebaseCountriesConfig();
-    const { onRenderTMBCheck, isTmbEnabled } = useTMB();
-    const is_tmb_enabled = isTmbEnabled() || window.is_tmb_enabled === true;
 
     const renderAccountSection = useCallback(() => {
-        // Phase 3 fix: use AuthSessionManager canonical state as the single source
-        // of truth for login/logout visibility. Never show Login/Sign Up when a
-        // valid authenticated session exists — even if WS auth hasn't completed yet.
+        // Auth state comes exclusively from the canonical AuthSessionManager / useApiBase.
+        // OIDC isSingleLoggingIn and TMB have been removed.
         //
         // Rendering priority:
-        //   1. Explicit loading states (initialising, WS authorising, SSO in flight)
+        //   1. Explicit loading states (initialising, WS authorising)
         //   2. WS authorized — show full account section (activeLoginid populated)
         //   3. Canonical auth exists but WS not yet done — show interim loader
         //      (prevents the Login/Sign Up flash while authorizeAndSubscribe() runs)
         //   4. Truly logged-out — show Login + Sign Up buttons
-        const hasRestAuth = AuthSessionManager.isAuthenticated();
-        if (isAuthenticating || isAuthorizing || (isSingleLoggingIn && !is_tmb_enabled && !hasRestAuth)) {
+        if (isAuthenticating || isAuthorizing) {
             return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
         } else if (activeLoginid) {
             // WS authorize() succeeded — full account switcher
@@ -165,8 +156,6 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                                 // fromLoginButton:true marks this as an explicit user action.
                                 await AccountModeController.enter({
                                     fromLoginButton: true,
-                                    isTmbEnabled,
-                                    onRenderTMBCheck,
                                     currency: currency || sessionStorage.getItem('query_param_currency') || 'USD',
                                 });
                             } catch (error) {
@@ -191,7 +180,6 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
     }, [
         isAuthenticating,
         isAuthorizing,
-        isSingleLoggingIn,
         isDesktop,
         activeLoginid,
         isLoggedIn,
@@ -202,8 +190,7 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
         localize,
         activeAccount,
         is_virtual,
-        onRenderTMBCheck,
-        is_tmb_enabled,
+        hubEnabledCountryList,
     ]);
 
     if (client?.should_hide_header) return null;
