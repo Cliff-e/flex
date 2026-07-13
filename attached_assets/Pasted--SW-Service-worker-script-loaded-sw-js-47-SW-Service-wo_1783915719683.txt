@@ -1,0 +1,123 @@
+[SW] Service worker script loaded
+sw.js:47 [SW] Service worker setup complete
+?account=USD:121 [HTML] Online status: true
+index.db600284.js:71 [PublicTickManager] subscribe: R_10 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for R_10 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: R_25 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for R_25 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: R_50 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for R_50 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: R_75 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for R_75 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: R_100 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for R_100 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ10V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ10V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ25V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ25V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ50V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ50V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ75V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ75V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ100V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ100V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ15V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ15V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: 1HZ30V | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for 1HZ30V — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: JD10 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for JD10 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: JD25 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for JD25 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: JD50 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for JD50 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: JD75 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for JD75 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: JD100 | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for JD100 — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: STP | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for STP — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: BEAR | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for BEAR — will retry on public:connected
+index.db600284.js:71 [PublicTickManager] subscribe: BULL | total handlers: 1
+index.db600284.js:71 [PublicTickManager] Public WS not ready yet for BULL — will retry on public:connected
+index.db600284.js:76 [PWA] Registering service worker for Chrome browser offline capabilities
+2index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:68 PWA service worker registered successfully for Chrome
+3index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+?account=USD:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+12index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:68 [AuthReady] Provider mounted — isConnected: false
+5index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:71 [PublicMarketSocket] ✓ Connected (public WS, no auth)
+index.db600284.js:71 [PublicTickManager] public:connected — re-subscribing 0 symbols
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for R_10
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for R_25
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for R_50
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for R_75
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for R_100
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ10V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ25V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ50V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ75V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ100V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ15V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for 1HZ30V
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for JD10
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for JD25
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for JD50
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for JD75
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for JD100
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for STP
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for BEAR
+index.db600284.js:71 [PublicTickManager] sending ticks subscribe for BULL
+2index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:71 [AUTH 11][WSManager._doConnect] Starting connection | accountModeActive: false | accountId (ASM): (none) | hasAuthToken (ASM): false
+index.db600284.js:71 [AUTH 11][WSManager._doConnect] Account Mode not active — connecting with PUBLIC WS URL (no OTP)
+index.db600284.js:71 [AUTH 12b][WSManager._doConnect] Opening WebSocket | isOtpUrl: false | urlHost: api.derivws.com
+index.db600284.js:71 [AUTH 13][WSManager] ✓ WebSocket OPEN | wasOtpUrl: false | pendingOtpToken: (none)
+index.db600284.js:68 [AuthReady] ws:connected
+index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:68 [AuthReady] Guest mode — marking authReady immediately
+index.db600284.js:68 [api-base] active_symbols loaded — count: 78
+9index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:68 Array(78)
+index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+?account=USD:1 Uncaught (in promise) Object
+?account=USD:1 Uncaught (in promise) Object
+index.db600284.js:68 Array(78)
+?account=USD:1 Uncaught (in promise) Object
+?account=USD:1 Uncaught (in promise) Object
+tracking.js:1 [LiveChat] Current domain is not added to the allowed domains. LiveChat has been disabled.
+4index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+index.db600284.js:71 [AUTH-DESYNC][AuthSessionManager] logged_state=true cookie but accessToken is absent from localStorage
+(anonymous) @ index.db600284.js:71
+normalizeAuthState @ index.db600284.js:71
+getCanonicalAuthState @ index.db600284.js:68
+c @ index.db600284.js:68
+_ @ 3501.fd0d0d1d.js:1
+ld @ lib-react.38a0e748.js:2
+od @ lib-react.38a0e748.js:2
+i @ lib-react.38a0e748.js:2
+uI @ lib-react.38a0e748.js:2
+uM @ lib-react.38a0e748.js:2
+uS @ lib-react.38a0e748.js:2
+x @ lib-react.38a0e748.js:2
+R @ lib-react.38a0e748.js:2
+postMessage
+o @ lib-react.38a0e748.js:2
+L @ lib-react.38a0e748.js:2
+(anonymous) @ lib-react.38a0e748.js:2
+uw @ lib-react.38a0e748.js:2
+uk @ lib-react.38a0e748.js:2
+lH @ lib-react.38a0e748.js:2
+(anonymous) @ 3664.48c795b7.js:1
