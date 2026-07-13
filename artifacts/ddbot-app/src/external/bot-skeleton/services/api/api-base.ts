@@ -1,4 +1,3 @@
-import Cookies from 'js-cookie';
 import CommonStore from '@/stores/common-store';
 import { TAuthData } from '@/types/api-types';
 import { AccountModeController } from '@/utils/AccountModeController';
@@ -328,26 +327,18 @@ class APIBase {
                             this.subscribe().catch(() => {});
                         }
                     } else {
-                        const is_tmb_enabled = window.is_tmb_enabled === true;
+                        // Raw token rejected — use canonical AuthSessionManager as source of truth.
+                        // TMB check removed; recovery uses REST account data if available.
                         const asmHasToken = !!AuthSessionManager.getAuthInfo().accessToken;
-                        // [CONFLICT LOG] cross-check raw localStorage vs AuthSessionManager
-                        const rawLsTokenFallback = localStorage.getItem('authToken');
-                        if (!!rawLsTokenFallback !== asmHasToken) {
-                            console.warn('[AUTH-CONFLICT][api-base] InvalidToken handler — hasToken MISMATCH',
-                                '| localStorage.authToken present:', !!rawLsTokenFallback,
-                                '| AuthSessionManager.accessToken present:', asmHasToken,
-                            );
-                        }
-                        console.warn('[AUTH 15][api-base] InvalidToken on raw token',
-                            '| logged_state cookie:', Cookies.get('logged_state'),
-                            '| asmHasToken:', asmHasToken,
-                            '| is_tmb_enabled:', is_tmb_enabled,
-                        );
-                        if (Cookies.get('logged_state') === 'true' && !is_tmb_enabled) {
-                            globalObserver.emit('InvalidToken', { error });
-                        } else if (asmHasToken) {
+                        console.warn('[AUTH 15][api-base] InvalidToken on raw token | asmHasToken:', asmHasToken);
+                        if (asmHasToken) {
                             console.warn('[AUTH 15][api-base] WS authorize() rejected raw token — populating from REST data');
-                            this._populateFromRestAccounts();
+                            const populated = this._populateFromRestAccounts();
+                            if (!populated) {
+                                // REST data unavailable — clear credentials so the user can re-login cleanly.
+                                console.warn('[AUTH 15][api-base] REST fallback failed — clearing auth data');
+                                clearAuthData();
+                            }
                         } else {
                             clearAuthData();
                         }
