@@ -9,7 +9,6 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { useOauth2 } from '@/hooks/auth/useOauth2';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import useTMB from '@/hooks/useTMB';
 import { TLandingCompany, TSocketResponseData } from '@/types/api-types';
 import { useTranslations } from '@deriv-com/translations';
 
@@ -38,15 +37,9 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
 
     const { oAuthLogout } = useOauth2({ handleLogout: async () => client.logout(), client });
 
-    const { is_tmb_enabled: tmb_enabled_from_hook } = useTMB();
-
-    const is_tmb_enabled = useMemo(
-        () => window.is_tmb_enabled === true || tmb_enabled_from_hook,
-        [tmb_enabled_from_hook]
-    );
-
-    // Auth decision read from canonical state — no direct Cookies or localStorage reads.
-    const isLoggedOut = !isLoggedIn && !is_tmb_enabled;
+    // Auth decision read exclusively from canonical AuthSessionManager state.
+    // TMB (Token-Based Mode) has been removed; isLoggedOut is simply !isLoggedIn.
+    const isLoggedOut = !isLoggedIn;
 
     useEffect(() => {
         if (isLoggedOut && client?.is_logged_in) {
@@ -153,7 +146,7 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
                 timeInterval.current = null;
             }
         };
-    }, [client, common, is_tmb_enabled, connectionStatus]);
+    }, [client, common, connectionStatus]);
 
     const handleMessages = useCallback(
         async (res: Record<string, unknown>) => {
