@@ -5,7 +5,6 @@ import ErrorComponent from '@/components/error-component/error-component';
 import AppSplash from '@/components/loader/AppSplash';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
-import useTMB from '@/hooks/useTMB';
 import { localize } from '@deriv-com/translations';
 import './app-root.scss';
 
@@ -38,40 +37,11 @@ const AppRoot = () => {
     const store = useStore();
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
-    const [is_tmb_check_complete, setIsTmbCheckComplete] = useState(false);
-    const [, setIsTmbEnabled] = useState(false);
-    const { isTmbEnabled } = useTMB();
 
-    // Effect to check TMB status - independent of API initialization
-    // NOTE: isTmbEnabled() fetches from Firebase with no timeout — race it against
-    // a hard 3 s deadline so the splash screen never hangs indefinitely.
+    // Initialize WebSocket API directly — no Firebase/TMB gate.
+    // TMB check has been removed; WebSocket startup depends only on the
+    // canonical AuthSessionManager state (token in storage → authorize).
     useEffect(() => {
-        const checkTmbStatus = async () => {
-            try {
-                const tmb_status = await Promise.race([
-                    isTmbEnabled(),
-                    new Promise<boolean>(resolve => setTimeout(() => resolve(false), 3000)),
-                ]);
-                const final_status = tmb_status || window.is_tmb_enabled === true;
-
-                setIsTmbEnabled(final_status);
-
-                setIsTmbCheckComplete(true);
-            } catch (error) {
-                console.error('TMB check failed:', error);
-                setIsTmbCheckComplete(true);
-            }
-        };
-
-        checkTmbStatus();
-    }, []);
-
-    // Initialize API when TMB check is complete with timeout fallback
-    useEffect(() => {
-        if (!is_tmb_check_complete) {
-            return; // Wait until TMB check is complete
-        }
-
         const timeoutId = setTimeout(() => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
@@ -88,14 +58,15 @@ const AppRoot = () => {
                     api_base_initialized.current = false;
                 } finally {
                     setIsApiInitialized(true);
-                    clearTimeout(timeoutId); // Clear timeout if API init completes
+                    clearTimeout(timeoutId);
                 }
             }
         };
 
         initializeApi();
         return () => clearTimeout(timeoutId);
-    }, [is_tmb_check_complete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (!store || !is_api_initialized) return <AppRootLoader />;
 
