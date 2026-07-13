@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { observer } from 'mobx-react-lite';
 import { Outlet } from 'react-router-dom';
@@ -6,7 +6,6 @@ import PWAUpdateNotification from '@/components/pwa-update-notification';
 import { api_base } from '@/external/bot-skeleton';
 import { useOfflineDetection } from '@/hooks/useOfflineDetection';
 import { useStore } from '@/hooks/useStore';
-import useTMB from '@/hooks/useTMB';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { safeJsonParse } from '@/utils/safe-json';
 import { useDevice } from '@deriv-com/ui';
@@ -23,11 +22,6 @@ const Layout = observer(() => {
     const is_quick_strategy_active = store?.quick_strategy?.is_open;
 
     const isCallbackPage = window.location.pathname === '/auth/callback';
-    const { onRenderTMBCheck, is_tmb_enabled: tmb_enabled_from_hook, isTmbEnabled } = useTMB();
-    const is_tmb_enabled = useMemo(
-        () => window.is_tmb_enabled === true || tmb_enabled_from_hook,
-        [tmb_enabled_from_hook]
-    );
 
     const isEndpointPage = window.location.pathname.includes('endpoint');
     const checkClientAccount = safeJsonParse<Record<string, any>>(localStorage.getItem('clientAccounts'), {});
