@@ -6,8 +6,8 @@
  *
  * RULES:
  *   - No component, hook, or utility may independently call:
- *       authorize(), initiateDerivAuth(), getActiveSessions(),
- *       getOtpWsUrl(), setActiveAccount(), or authorizeAndSubscribe()
+ *       authorize(), initiateDerivAuth(), getOtpWsUrl(),
+ *       setActiveAccount(), or authorizeAndSubscribe()
  *     without routing through this controller.
  *
  *   - `enter({ fromLoginButton: true })` is the ONLY function that may
@@ -19,10 +19,10 @@
  *   - `restoreFromUrl()` is the only function that may write account
  *     credentials from a URL/localStorage restore path (post-OAuth only).
  *
- * Callers (Checkpoint 3 — fully architectural):
- *   - header.tsx Login button onClick      → enter({ fromLoginButton: true })
- *   - App.tsx post-OAuth URL restore       → enableAccountMode() + restoreFromUrl()
- *   - AuthManager auth:success listener    → _startRefreshCycle() (via EventBus)
+ * Authentication always uses the canonical DO backend PKCE flow.
+ * TMB (Token-Based Mode) has been removed — isTmbEnabled and onRenderTMBCheck
+ * are kept as optional in the options type for call-site compatibility but
+ * are never invoked.
  */
 
 import { AuthSessionManager } from './AuthSessionManager';
@@ -31,7 +31,7 @@ import { initiateDerivAuth } from './pkce';
 export type EnterAccountModeOptions = {
     /**
      * True when called from the Login / Connect to Deriv button.
-     * False for automatic startup calls (will be removed in Checkpoint 3).
+     * False for automatic startup calls.
      */
     fromLoginButton?: boolean;
 
@@ -39,23 +39,20 @@ export type EnterAccountModeOptions = {
     setIsAuthenticating?: (value: boolean) => void;
 
     /**
-     * Async function from useTMB that resolves TMB (Token-based Mode) status.
-     * The controller calls this itself so the branching logic is owned here.
+     * @deprecated TMB removed. Kept for call-site compatibility only; not invoked.
      */
-    isTmbEnabled: () => Promise<boolean>;
+    isTmbEnabled?: () => Promise<boolean>;
 
     /**
-     * onRenderTMBCheck from useTMB.
-     * Handles session restoration via the Deriv TMB OAuth server.
+     * @deprecated TMB removed. Kept for call-site compatibility only; not invoked.
      */
-    onRenderTMBCheck: (
+    onRenderTMBCheck?: (
         fromLoginButton?: boolean,
         setIsAuthenticating?: (value: boolean) => void
     ) => Promise<void>;
 
     /**
      * Whether the PKCE redirect conditions are met.
-     * Computed by Layout from isLoggedInCookie + missing accounts.
      */
     shouldAuthenticate?: boolean;
 
@@ -97,34 +94,27 @@ class AccountModeControllerClass {
      *
      * THIS IS THE ONLY FUNCTION THAT MAY INITIATE AUTHENTICATION.
      *
-     * Routes to TMB session restore (if TMB enabled) or PKCE OAuth
-     * redirect (if shouldAuthenticate or fromLoginButton).
-     *
-     * enableAccountMode() is called INSIDE each branch — only when auth
-     * is actually dispatched, never speculatively.
+     * Always redirects to the canonical DO backend PKCE flow via initiateDerivAuth().
+     * TMB options (isTmbEnabled, onRenderTMBCheck) are accepted for call-site
+     * compatibility but are never invoked.
      */
-    async enter(options: EnterAccountModeOptions): Promise<void> {
+    async enter(options: EnterAccountModeOptions = {}): Promise<void> {
         const {
             fromLoginButton = false,
             setIsAuthenticating,
-            isTmbEnabled,
-            onRenderTMBCheck,
             shouldAuthenticate = false,
             currency,
         } = options;
 
-        const tmbEnabled = await isTmbEnabled();
-
-        if (tmbEnabled) {
-            this.enableAccountMode();
-            await onRenderTMBCheck(fromLoginButton, setIsAuthenticating);
-        } else if (shouldAuthenticate || fromLoginButton) {
+        if (fromLoginButton || shouldAuthenticate) {
             this.enableAccountMode();
             if (currency) {
                 sessionStorage.setItem('query_param_currency', currency);
             }
             await initiateDerivAuth();
         }
+
+        if (setIsAuthenticating) setIsAuthenticating(false);
     }
 
     /**
@@ -134,12 +124,10 @@ class AccountModeControllerClass {
      * go through this method so they are visible and traceable.
      *
      * Currently called from App.tsx on startup.
-     * Will be gated behind a login-completed flag in Checkpoint 3.
      */
     restoreFromUrl(loginid: string, token: string): void {
         AuthSessionManager.setActiveAccount(loginid, token);
     }
-
 }
 
 export const AccountModeController = new AccountModeControllerClass();
