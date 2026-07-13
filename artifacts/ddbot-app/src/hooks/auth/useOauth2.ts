@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react';
+/**
+ * useOauth2 — canonical authentication utilities.
+ *
+ * Legacy OIDC (OAuth2Logout, isSingleLoggingIn SSO detection) has been removed.
+ * All auth state comes exclusively from AuthSessionManager.
+ *
+ * - `oAuthLogout`          — logs the user out via AuthSessionManager canonical flow.
+ * - `retriggerOAuth2Login` — redirects to the DO backend login endpoint.
+ * - `isSingleLoggingIn`    — always false; SSO detection removed. Kept in return type
+ *                            for compatibility with any callers that destructure it.
+ */
 import Cookies from 'js-cookie';
 import RootStore from '@/stores/root-store';
 import { initiateDerivAuth } from '@/utils/pkce';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import { EventBus } from '@/utils/EventBus';
 import { Analytics } from '@deriv-com/analytics';
-import { OAuth2Logout } from '@deriv-com/auth-client';
 
-/**
- * Provides OAuth2 utility functions for login and logout.
- *
- * - `oAuthLogout`          — logs the user out via the @deriv-com/auth-client flow.
- * - `retriggerOAuth2Login` — redirects to the DO backend login endpoint.
- * - `isSingleLoggingIn`    — true when a silent login or logout transition is pending.
- */
 export const useOauth2 = ({
     handleLogout,
     client,
@@ -20,101 +23,48 @@ export const useOauth2 = ({
     handleLogout?: () => Promise<void>;
     client?: RootStore['client'];
 } = {}) => {
-    const [isSingleLoggingIn, setIsSingleLoggingIn] = useState(false);
+    // isSingleLoggingIn was the OIDC SSO detection flag.
+    // The canonical flow uses AuthSessionManager; this is always false.
+    // The `isLoggedIn && !activeLoginid` branch in header.tsx covers
+    // the "token present but WS not yet authorized" loading state.
+    const isSingleLoggingIn = false;
 
-    // Read auth state through AuthSessionManager — no direct localStorage reads.
-    const canonical = AuthSessionManager.getCanonicalAuthState();
-    const isClientAccountsPopulated = canonical.isAuthenticated;
-    const isSilentLoginExcluded =
-        window.location.pathname.includes('callback') ||
-        window.location.pathname.includes('endpoint');
-
-    const loggedState = Cookies.get('logged_state');
-
-    useEffect(() => {
-        window.addEventListener('unhandledrejection', event => {
-            if (event?.reason?.error?.code === 'InvalidToken') {
-                setIsSingleLoggingIn(false);
-            }
-        });
-    }, []);
-
-    useEffect(() => {
-        const willEventuallySSO = loggedState === 'true' && !isClientAccountsPopulated;
-        const willEventuallySLO = loggedState === 'false' && isClientAccountsPopulated;
-
-        if (!isSilentLoginExcluded && (willEventuallySSO || willEventuallySLO)) {
-            setIsSingleLoggingIn(true);
-        } else {
-            setIsSingleLoggingIn(false);
-        }
-    }, [isClientAccountsPopulated, loggedState, isSilentLoginExcluded]);
-
-    // ── SSO recovery ─────────────────────────────────────────────────────────
-    // When isSingleLoggingIn is true the app shows a loading spinner and waits
-    // for silent session restoration (originally via requestSessionActive()).
-    // That mechanism is no longer available. Without a resolver the spinner
-    // shows forever and the Login button is never rendered.
-    //
-    // This effect is the resolver. It runs whenever isSingleLoggingIn becomes
-    // true and immediately decides the outcome — there is no async waiting:
-    //
-    //   • Valid credentials in storage (token + loginid present) → recovery
-    //     succeeded. Clear the spinner; the WS authorize flow owns the rest.
-    //   • No valid credentials → stale logged_state=true cookie. Clear only
-    //     the stale cookie and exit SSO mode so the Login button appears.
-    //
-    // AuthSessionManager.isAuthenticated() is called inside the effect (not
-    // captured from the render closure) so we always read the latest localStorage
-    // state, even if tokens were written by a concurrent flow since last render.
-    //
-    // This intentionally does NOT touch authToken, active_loginid, accountsList,
-    // or clientAccounts — those may contain valid data from a concurrent auth
-    // flow (e.g. CallbackPage writing in a background tab).
-    useEffect(() => {
-        if (!isSingleLoggingIn) return;
-
-        console.log('[SSO] entered silent login');
-        console.log('[SSO] attempting recovery');
-
-        // Fresh read — bypasses the render-time closure so we pick up any
-        // tokens that were written to localStorage after the last render.
-        const sessionValid = AuthSessionManager.isAuthenticated();
-
-        if (sessionValid) {
-            // Valid credentials present; the WS authorize flow owns the rest.
-            // Clear the SSO spinner so the header proceeds to the auth state.
-            console.log('[SSO] recovery succeeded');
-            setIsSingleLoggingIn(false);
-            return;
-        }
-
-        // logged_state=true but no valid token + loginid → stale browser session.
-        // Clear only the stale cookie. Never delete real credential keys.
-        console.log('[SSO] stale browser session detected');
-        console.log('[SSO] clearing stale browser markers');
-        Cookies.remove('logged_state', { path: '/' });
-        console.log('[SSO] leaving silent login');
-        setIsSingleLoggingIn(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isSingleLoggingIn]);
-
+    /**
+     * Canonical logout:
+     *   1. Clear in-memory auth state immediately (before localStorage) so no
+     *      observer sees a window where storage is cleared but in-memory says "authorized".
+     *   2. Run MobX store logout (resets UI state, unsubscribes WS streams, etc.)
+     *   3. Clear all auth keys from localStorage.
+     *   4. Clear the session cookie.
+     *   5. Reload to reset all runtime state to guest/public mode.
+     */
     const logoutHandler = async () => {
         client?.setIsLoggingOut(true);
         try {
-            await OAuth2Logout({
-                redirectCallbackUri: window.location.origin,
-                WSLogoutAndRedirect: handleLogout ?? (() => Promise.resolve()),
-                postLogoutRedirectUri: window.location.origin,
-            }).catch(err => {
-                console.error(err);
-            });
-            await client?.logout().catch(err => {
-                console.error('Error during logout:', err);
-            });
+            AuthSessionManager.clearSession();
+            EventBus.emit('auth:logout');
+
+            if (handleLogout) {
+                await handleLogout().catch(err => console.error('[useOauth2] logout error:', err));
+            } else if (client) {
+                await client.logout().catch(err => console.error('[useOauth2] logout error:', err));
+            }
+
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
+            localStorage.removeItem('clientAccounts');
+            localStorage.removeItem('accountsList');
+            localStorage.removeItem('restAccounts');
+            localStorage.removeItem('client_account_details');
+
+            Cookies.remove('logged_state', { path: '/' });
+
             Analytics.reset();
+
+            window.location.href = window.location.origin;
         } catch (error) {
-            console.error(error);
+            console.error('[useOauth2] logout failed:', error);
+            window.location.reload();
         }
     };
 
