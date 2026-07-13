@@ -115,12 +115,6 @@ export const MenuItems: MenuItemsConfig[] = [
     },
     {
         as: 'a',
-        href: standalone_routes.manual_trader,
-        icon: <AnalyticsLogo iconSize='xs' />,
-        label: localize('Manual Trader'),
-    },
-    {
-        as: 'a',
         href: standalone_routes.deep_trader,
         icon: <RobotLogo iconSize='xs' />,
         label: localize('Deep Trader'),

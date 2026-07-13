@@ -26,7 +26,6 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
-import AIScanner from '@/pages/ai-scanner';
 import MobileBottomNav from '@/pages/mobile-bottom-nav/MobileBottomNav';
 import './main.scss';
 
@@ -42,7 +41,6 @@ const AnalysisTool = lazy(() => import('../analysis-tool'));
 const AiBots = lazy(() => import('../ai-bots/AiBots'));
 
 const DCircles = lazy(() => import('../d-circles/DCircles'));
-const ManualTraderTab = lazy(() => import('../manual-trader'));
 const DeepTrader = lazy(() => import('../deep-trader/DeepTrader'));
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -83,8 +81,6 @@ const AppWrapper = observer(() => {
   'analysis_tool',
   'ai_bots',
   'd_circles',
-  'manual_trader',
-  'ai_scanner',
   'deep_trader',
 ];
 
@@ -323,17 +319,6 @@ const AppWrapper = observer(() => {
         </Suspense>
     </div>
 
-    <div label={<>Manual Trader</>} id='id-manual-trader'>
-        <Suspense fallback={<ChunkLoader message="Loading Manual Trader..." />}>
-            <ManualTraderTab />
-        </Suspense>
-    </div>
-
-    <div label={<>AI Scanner</>} id='id-ai-scanner'>
-    <Suspense fallback={<ChunkLoader message="Loading AI Scanner..." />}>
-        <AIScanner />
-    </Suspense>
-</div>
 
 <div label={<>Deep Trader</>} id='id-deep-trader'>
     <Suspense fallback={<ChunkLoader message="Loading Deep Trader..." />}>

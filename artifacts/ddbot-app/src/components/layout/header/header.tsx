@@ -219,7 +219,6 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                 <MobileMenu />
                 {isDesktop && <MenuItems.TradershubLink />}
                 {isDesktop && <MenuItems />}
-                {isDesktop && <MenuItems.ManualTraderLink />}
                 {isDesktop && <PlatformSwitcher />}
             </Wrapper>
             <Wrapper variant='right'>

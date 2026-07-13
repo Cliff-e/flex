@@ -23,8 +23,6 @@ const AppRoot = lazy(() => import('./app-root'));
 const FreeBots = lazy(() => import('../pages/free-bots'));
 const AnalysisTool = lazy(() => import('../pages/analysis-tool'));
 const AiBots = lazy(() => import('../pages/ai-bots/AiBots'));
-const ManualTrader = lazy(() => import('../pages/manual-trader'));
-
 // Sync our configured app ID into localStorage so @deriv-com/auth-client
 // picks it up for OIDC (it reads 'config.app_id', not VITE_DERIV_APP_ID).
 if (import.meta.env.VITE_DERIV_APP_ID) {
@@ -74,7 +72,6 @@ const router = createBrowserRouter(
             <Route path='free-bots' element={<FreeBots />} />
             <Route path='analysis-tool' element={<AnalysisTool />} />
             <Route path="/ai-bots" element={<AiBots />} />
-            <Route path='/manual-trader' element={<ManualTrader />} />
         </Route>
     )
 );

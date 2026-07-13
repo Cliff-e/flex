@@ -7,11 +7,10 @@ type Props = {
 };
 
 const NAV_ITEMS = [
-    { label: 'Dashboard',    icon: '🏠', tab: 0 },
-    { label: 'AI Bots',      icon: '🤖', tab: 6 },
-    { label: 'D Circles',    icon: '🔵', tab: 7 },
-    { label: 'Deep Trader',  icon: '📊', tab: 9 },
-    { label: 'AI Scanner',   icon: '🔍', tab: 8 },
+    { label: 'Dashboard',   icon: '🏠', tab: 0 },
+    { label: 'AI Bots',     icon: '🤖', tab: 6 },
+    { label: 'D Circles',   icon: '🔵', tab: 7 },
+    { label: 'Deep Trader', icon: '📊', tab: 8 },
 ];
 
 const MobileBottomNav = ({ active_tab, onTabChange }: Props) => (

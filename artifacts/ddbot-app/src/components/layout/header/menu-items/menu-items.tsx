@@ -149,28 +149,12 @@ export const TradershubLink = observer(() => {
     );
 });
 
-export const ManualTraderLink = () => {
-    const { localize } = useTranslations();
-    const isActive = window.location.pathname === '/manual-trader';
-    return (
-        <MenuItem
-            as='a'
-            className={`app-header__menu${isActive ? ' app-header__menu--active' : ''}`}
-            href={standalone_routes.manual_trader}
-        >
-            <Text>{localize('Manual Trader')}</Text>
-        </MenuItem>
-    );
-};
-
-// Create a namespace for MenuItems to include TradershubLink and ManualTraderLink
+// Create a namespace for MenuItems to include TradershubLink
 type MenuItemsType = typeof MenuItems & {
     TradershubLink: typeof TradershubLink;
-    ManualTraderLink: typeof ManualTraderLink;
 };
 
 // Assign static links to MenuItems namespace
 (MenuItems as MenuItemsType).TradershubLink = TradershubLink;
-(MenuItems as MenuItemsType).ManualTraderLink = ManualTraderLink;
 
 export default MenuItems as MenuItemsType;
