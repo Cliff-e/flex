@@ -217,6 +217,29 @@ const AiBots: React.FC = () => {
     // Cleanup on unmount
     useEffect(() => () => { engineRef.current?.stop(); }, []);
 
+    // ── Auth lifecycle guards ─────────────────────────────────────────────────
+    // The engine is account-specific. Stop it immediately when the session is
+    // invalidated (logout / token expiry) or the active account changes, so the
+    // bot never executes trades against a stale or switched session.
+
+    // Stop on logout / token loss
+    useEffect(() => {
+        if (!token && engineRef.current) {
+            engineRef.current.stop();
+            engineRef.current = null;
+        }
+    }, [token]);
+
+    // Stop on account switch
+    const prevLoginIdRef = useRef(loginId);
+    useEffect(() => {
+        if (prevLoginIdRef.current && prevLoginIdRef.current !== loginId && engineRef.current) {
+            engineRef.current.stop();
+            engineRef.current = null;
+        }
+        prevLoginIdRef.current = loginId;
+    }, [loginId]);
+
     const handleStart = useCallback(async () => {
         if (isRunning || !token) return;
 

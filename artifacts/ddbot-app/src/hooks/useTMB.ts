@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Cookies from 'js-cookie';
 import { removeCookies } from '@/components/shared/utils/storage/storage';
-import { initiateDerivAuth } from '@/utils/pkce';
+import { initiateDerivAuth, API_BASE_URL } from '@/utils/pkce';
 import { api_base } from '@/external/bot-skeleton';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { setAuthData } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
@@ -84,6 +84,13 @@ const useTMB = (): UseTMBReturn => {
     }, []);
 
     const getActiveSessions = useCallback(async (): Promise<TMBWebsocketTokens | undefined> => {
+        // When the PKCE backend is configured (API_BASE_URL is set), Deriv session
+        // cookies only exist on *.deriv.com domains and are inaccessible from a custom
+        // deployment. Making a direct browser-to-Deriv OAuth call here would bypass the
+        // DigitalOcean backend, which is the single authority for all OAuth steps.
+        // Return undefined so onRenderTMBCheck() falls back to the ASM PKCE token.
+        if (API_BASE_URL) return undefined;
+
         try {
             const credentialsMode: RequestCredentials = isDerivHost ? 'include' : 'omit';
             const configServerUrl = localStorage.getItem('config.server_url');
