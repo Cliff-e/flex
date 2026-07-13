@@ -1,0 +1,30 @@
+Our authentication architecture already has a single source of truth. Do **not** redesign or replace it.
+
+Your task is to audit the entire application and ensure that **every component requiring authentication behaves consistently**, with special attention to the AI Trading Bot.
+
+The AI Trading Bot must be treated as a first-class authenticated component of the application—not as an isolated module.
+
+Verify that it receives every authenticated capability available to the rest of the application, including but not limited to:
+
+* Authentication state
+* Authorization lifecycle
+* Active session updates
+* Account information
+* Demo (Virtual) and Real account access
+* Account balances
+* Active account changes
+* WebSocket connectivity
+* WebSocket reconnections
+* Trading permissions
+* Trading/account events
+* Any authenticated data or services used elsewhere in the application
+
+The AI bot should consume these through the existing application architecture and shared services, exactly as other authenticated features do. It must not implement its own authentication flow or maintain its own copy of auth or account state.
+
+Audit the entire authenticated data flow and ensure that anything available to other authenticated modules is equally available to the AI bot through the same shared mechanisms.
+
+When authentication changes, tokens refresh, connections reconnect, balances update, accounts switch, or any authenticated state changes, the AI bot must automatically receive those updates at the same time as every other authenticated component.
+
+The objective is for the AI bot to feel like a native part of the application, with no special-case handling and no gaps in access to authenticated services. It should participate in the same lifecycle, consume the same shared state, and receive the same events as every other authenticated feature.
+
+Do not introduce duplicate authentication managers or parallel authentication systems. Preserve the existing architecture, identify any points where the AI bot is excluded from authenticated services, and resolve those integration gaps so the entire application operates as one cohesive system.
