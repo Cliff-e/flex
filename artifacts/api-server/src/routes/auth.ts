@@ -66,6 +66,36 @@ if (!SESSION_SECRET) {
 /** Narrowed, definitely-set signing secret (the throw above guarantees this). */
 const SIGNING_SECRET: string = SESSION_SECRET;
 
+// ---------------------------------------------------------------------------
+// Startup validation
+// ---------------------------------------------------------------------------
+
+// API_BASE_URL must be an absolute HTTPS URL pointing to THIS server.
+// If it is set to the Vercel frontend URL or any other wrong value, the
+// redirect_uri embedded in the Deriv authorization request will be incorrect:
+// Deriv will redirect the user to that wrong URL instead of /api/auth/callback
+// on this server, bypassing the code exchange entirely.
+//
+// Required values:
+//   API_BASE_URL   = https://seahorse-app-lczcg.ondigitalocean.app   ← this server
+//   FRONTEND_URL   = https://<vercel-frontend-domain>                 ← Vercel SPA
+//   VITE_DERIV_APP_ID = <Deriv registered app ID>
+if (API_BASE_URL && !API_BASE_URL.startsWith("https://")) {
+  logger.error(
+    { API_BASE_URL },
+    "API_BASE_URL must be an absolute HTTPS URL (e.g. https://seahorse-app-lczcg.ondigitalocean.app). " +
+    "A relative or non-HTTPS value will produce a malformed redirect_uri and Deriv will skip this callback.",
+  );
+}
+if (FRONTEND_URL && API_BASE_URL && API_BASE_URL === FRONTEND_URL) {
+  logger.error(
+    { API_BASE_URL, FRONTEND_URL },
+    "API_BASE_URL and FRONTEND_URL are identical — they must be different. " +
+    "API_BASE_URL must be this server's own URL; FRONTEND_URL must be the Vercel frontend. " +
+    "Having them equal means redirect_uri will point to the frontend and Deriv will bypass this callback.",
+  );
+}
+
 // Warn at startup in production but don't crash the process — the server
 // must start so /healthz responds while env vars are being provisioned.
 // Auth routes return 503 if vars are still absent when a request arrives.

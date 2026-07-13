@@ -1,4 +1,7 @@
-import { LocalStorageConstants, LocalStorageUtils, URLUtils } from '@deriv-com/utils';
+// URLUtils, LocalStorageUtils, LocalStorageConstants were only used by
+// generateOAuthURL() — removed because it constructed a direct Deriv
+// authorization URL from the frontend, bypassing the DO backend.
+// All OAuth initiation goes through initiateDerivAuth() → DO backend.
 import { isStaging } from '../url/helpers';
 
 const _APP_ID = process.env.VITE_DERIV_APP_ID as string;
@@ -149,60 +152,14 @@ export const getDebugServiceWorker = () => {
     return false;
 };
 
-export const generateOAuthURL = () => {
-    const { getOauthURL } = URLUtils;
-    const oauth_url = getOauthURL();
-    const original_url = new URL(oauth_url);
-    const hostname = window.location.hostname;
-
-    const isDerivDomain =
-        hostname.endsWith('.deriv.com') ||
-        hostname.endsWith('.deriv.me') ||
-        hostname.endsWith('.deriv.be') ||
-        hostname === 'deriv.com';
-
-    // For non-Deriv deployments (e.g. DigitalOcean, custom domains) the
-    // library derives the OAuth server from the page TLD which produces a wrong
-    // URL. Force the correct Deriv OAuth server and override the app_id with
-    // whatever getAppId() resolves to.
-    // The OAuth flow itself is server-side (DO backend); this URL is only used
-    // by legacy paths that build the URL client-side (should not be reached).
-    if (!isDerivDomain) {
-        const app_id = getAppId();
-        const lang = original_url.searchParams.get('l') || 'EN';
-        // DO backend callback URI — configured via VITE_API_BASE_URL env var.
-        const api_base = (process.env.VITE_API_BASE_URL as string) ?? '';
-        const redirect_uri = encodeURIComponent(`${api_base}/api/auth/callback`);
-        return `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&l=${lang}&brand=deriv&redirect_uri=${redirect_uri}`;
-    }
-
-    // First priority: Check for configured server URLs (for QA/testing environments)
-    const configured_server_url = (LocalStorageUtils.getValue(LocalStorageConstants.configServerURL) ||
-        localStorage.getItem('config.server_url')) as string;
-
-    const valid_server_urls = ['green.derivws.com', 'red.derivws.com', 'blue.derivws.com', 'canary.derivws.com'];
-
-    if (
-        configured_server_url &&
-        (typeof configured_server_url === 'string'
-            ? !valid_server_urls.includes(configured_server_url)
-            : !valid_server_urls.includes(JSON.stringify(configured_server_url)))
-    ) {
-        original_url.hostname = configured_server_url;
-    } else if (original_url.hostname.includes('oauth.deriv.')) {
-        // Second priority: Domain-based OAuth URL setting for .me and .be domains
-        if (hostname.includes('.deriv.me')) {
-            original_url.hostname = 'oauth.deriv.me';
-        } else if (hostname.includes('.deriv.be')) {
-            original_url.hostname = 'oauth.deriv.be';
-        } else {
-            // Fallback to original logic for other domains
-            const current_domain = getCurrentProductionDomain();
-            if (current_domain) {
-                const domain_suffix = current_domain.replace(/^[^.]+\./, '');
-                original_url.hostname = `oauth.${domain_suffix}`;
-            }
-        }
-    }
-    return original_url.toString() || oauth_url;
-};
+// generateOAuthURL() has been removed.
+//
+// It constructed a direct https://oauth.deriv.com/oauth2/authorize URL from
+// the frontend — bypassing the DigitalOcean backend entirely. All OAuth
+// initiation now goes through initiateDerivAuth() → DO backend /api/auth/login,
+// which generates the PKCE challenge server-side and sets redirect_uri to the
+// DO backend callback URL. No frontend code may construct a Deriv authorization
+// URL directly.
+//
+// If you need to inspect the OAuth URL shape for debugging, check auth.ts in
+// the api-server artifact — that is the single source of truth.
