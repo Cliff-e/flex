@@ -23,8 +23,8 @@ const AppRoot = lazy(() => import('./app-root'));
 const FreeBots = lazy(() => import('../pages/free-bots'));
 const AnalysisTool = lazy(() => import('../pages/analysis-tool'));
 const AiBots = lazy(() => import('../pages/ai-bots/AiBots'));
-// Sync our configured app ID into localStorage so @deriv-com/auth-client
-// picks it up for OIDC (it reads 'config.app_id', not VITE_DERIV_APP_ID).
+// Sync our configured app ID into localStorage for downstream consumers
+// that read 'config.app_id' rather than VITE_DERIV_APP_ID directly.
 if (import.meta.env.VITE_DERIV_APP_ID) {
     localStorage.setItem('config.app_id', import.meta.env.VITE_DERIV_APP_ID);
 }

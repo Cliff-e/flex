@@ -193,7 +193,7 @@ importers:
         version: 8.5.2(express@5.2.1)
       helmet:
         specifier: ^8.2.0
-        version: 8.2.0
+        version: 8.3.0
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -237,9 +237,6 @@ importers:
       '@deriv-com/analytics':
         specifier: ^1.31.5
         version: 1.42.1
-      '@deriv-com/auth-client':
-        specifier: ^1.5.1
-        version: 1.5.8
       '@deriv-com/quill-ui':
         specifier: 1.18.1
         version: 1.18.1(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1836,9 +1833,6 @@ packages:
     resolution: {integrity: sha512-+6/f4GHccr1d6tzc1OnVh8nAwmVjFoppobOdAHU6tyYkxXXsspYG2WNjPOU91jWrwOWZWbTEK25JWIiYKRoydw==}
     engines: {node: '>=24.13.0', npm: '>=11.7.0'}
 
-  '@deriv-com/auth-client@1.5.8':
-    resolution: {integrity: sha512-rdHR/fZ0b+WnJfuRyElFqHOYgHeCZjL+6IylkcErWeNn8POXMEFXojhWtLy8xgfmKMYPG6Vmm7hdINsdpFlV3A==}
-
   '@deriv-com/quill-tokens@2.0.31':
     resolution: {integrity: sha512-9N/sVMkZQrT4Zmu3C2rYdbfBocnaF6RDg1FesmAxS5029MO1nIZPJcnDeHWNnrgN2XG0FxS0hLxJts+RaCVROw==}
 
@@ -1866,15 +1860,11 @@ packages:
   '@deriv-com/ui@1.37.2':
     resolution: {integrity: sha512-+9Gg5/nk4pOkewoXnJ4zseLgM5QYyOGJN3Nbz9hdTEWMLG1PQ9ZaTPyYHNb+U8SJATcvmBaToUB/akKjufT6+A==}
 
-  '@deriv-com/utils@0.0.42':
-    resolution: {integrity: sha512-4JhTpg0sQWCq94RSMGpuT/09bYSV8yO3WdunM2R84qxWNitRH/i4k/xfdleRVzX+xLSmMmJWlkbD6NAlP8U5eg==}
-
   '@deriv-com/utils@0.0.59':
     resolution: {integrity: sha512-Rw1ZEk5QoKc3VhOGK2TiFeuYP0bruwI8qz7PRnJCrdl/h6MFWB6n4FM+m2rrPBfnTmI6NLzP4rV5xqSj3JrKYQ==}
 
   '@deriv/api-types@1.0.4830':
     resolution: {integrity: sha512-A2LomXPUA/eSTTPqfnxpnoTSZmiVPYnjvk3g3PlPzoplUyhUALNGfGmCQI0sNUgNObYM/Tt/5MkTyE8fqLDBRg==}
-    bundledDependencies: []
 
   '@deriv/deriv-api@1.0.15':
     resolution: {integrity: sha512-kqNDjUqK37Ch1zS24G7ahYgN2gyF//CFR3e2kdxX/enLD/zHvkiIKDw045J2ZiAvab9gc4H94qB0weDDfe6WXg==}
@@ -5455,8 +5445,8 @@ packages:
     resolution: {integrity: sha512-c/A0P0oxkACDc+cKWw8evLXK83oBKgn0qPOqCYT4x9uolpCIJAcYvJC9QYKNDRPsTeGyCrQ326jrvgZWdCdK5Q==}
     engines: {node: '>= 0.4'}
 
-  es-module-lexer@2.3.0:
-    resolution: {integrity: sha512-KLdwQm2NvGLDkQDCGvmiQrhkd0JbMzXthwQAUgWjQuQdBLFa3eiBP5arXZyA+f8x+x7OXgud6bq2rxjGtHV2tw==}
+  es-module-lexer@2.3.1:
+    resolution: {integrity: sha512-shc1dbU90Yl/xq1QrC7QRtfcwURZuVRfPhZbDoldJ1cn1gzDvBaBWlv0eFolj5+0znnPJz5TXLxsN77X/12KTA==}
 
   es-object-atoms@1.1.2:
     resolution: {integrity: sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==}
@@ -6081,8 +6071,8 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
-  helmet@8.2.0:
-    resolution: {integrity: sha512-DRgTIUgnWcJ62KyarxxziuqYxKGnR6Rgg19BlbucN/dpmJbl1XOit6qvoOX0ZT+HhWe5OUVhU/a1zpGyc1xA0Q==}
+  helmet@8.3.0:
+    resolution: {integrity: sha512-Qgpiaws3Sm30Av8Eah6sjMCZZwjlBu+E68rhpCWBshY1lb09HtLwj5GviX0OyQIn+ulUS0iX0AxN5n3tLZzz1w==}
     engines: {node: '>=18.0.0'}
 
   help-me@5.0.0:
@@ -6807,10 +6797,6 @@ packages:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
 
-  js-cookie@3.0.5:
-    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
-    engines: {node: '>=14'}
-
   js-cookie@3.0.8:
     resolution: {integrity: sha512-yeJd4aNAdYZQjaon2bpD/Gb0B/omw7HQOsynXXcOiWVCacbBcPlgn8S/d1X6blFSaHao7ozqtW7NZW19xpCtIw==}
 
@@ -6896,10 +6882,6 @@ packages:
   jsx-ast-utils@3.3.5:
     resolution: {integrity: sha512-ZZow9HBI5O6EPgSJLUb8n2NKgmVWTwCvHGwFuJlMjvLFqlGG6pjirPhtdsseaLZjSibD8eegzmYpUZwoIlj2cQ==}
     engines: {node: '>=4.0'}
-
-  jwt-decode@4.0.0:
-    resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
-    engines: {node: '>=18'}
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
@@ -7679,10 +7661,6 @@ packages:
 
   obuf@1.1.2:
     resolution: {integrity: sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==}
-
-  oidc-client-ts@3.5.0:
-    resolution: {integrity: sha512-l2q8l9CTCTOlbX+AnK4p3M+4CEpKpyQhle6blQkdFhm0IsBqsxm15bYaSa11G7pWdsYr6epdsRZxJpCyCRbT8A==}
-    engines: {node: '>=18'}
 
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
@@ -11399,14 +11377,6 @@ snapshots:
     transitivePeerDependencies:
       - preact-render-to-string
 
-  '@deriv-com/auth-client@1.5.8':
-    dependencies:
-      '@deriv-com/utils': 0.0.42
-      js-cookie: 3.0.5
-      oidc-client-ts: 3.5.0
-    optionalDependencies:
-      '@rollup/rollup-linux-x64-gnu': 4.62.2
-
   '@deriv-com/quill-tokens@2.0.31':
     dependencies:
       '@semantic-release/changelog': 6.0.3
@@ -11503,8 +11473,6 @@ snapshots:
     transitivePeerDependencies:
       - react
       - react-dom
-
-  '@deriv-com/utils@0.0.42': {}
 
   '@deriv-com/utils@0.0.59':
     dependencies:
@@ -15549,7 +15517,7 @@ snapshots:
       iterator.prototype: 1.1.5
       math-intrinsics: 1.1.0
 
-  es-module-lexer@2.3.0: {}
+  es-module-lexer@2.3.1: {}
 
   es-object-atoms@1.1.2:
     dependencies:
@@ -16357,7 +16325,7 @@ snapshots:
 
   he@1.2.0: {}
 
-  helmet@8.2.0: {}
+  helmet@8.3.0: {}
 
   help-me@5.0.0: {}
 
@@ -17277,8 +17245,6 @@ snapshots:
 
   joycon@3.1.1: {}
 
-  js-cookie@3.0.5: {}
-
   js-cookie@3.0.8: {}
 
   js-tokens@4.0.0: {}
@@ -17401,8 +17367,6 @@ snapshots:
       array.prototype.flat: 1.3.3
       object.assign: 4.1.7
       object.values: 1.2.1
-
-  jwt-decode@4.0.0: {}
 
   keyv@4.5.4:
     dependencies:
@@ -18188,10 +18152,6 @@ snapshots:
       es-object-atoms: 1.1.2
 
   obuf@1.1.2: {}
-
-  oidc-client-ts@3.5.0:
-    dependencies:
-      jwt-decode: 4.0.0
 
   on-exit-leak-free@2.1.2: {}
 
@@ -20847,7 +20807,7 @@ snapshots:
       browserslist: 4.28.4
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.24.2
-      es-module-lexer: 2.3.0
+      es-module-lexer: 2.3.1
       eslint-scope: 5.1.1
       events: 3.3.0
       graceful-fs: 4.2.11

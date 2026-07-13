@@ -20,9 +20,6 @@
  *     credentials from a URL/localStorage restore path (post-OAuth only).
  *
  * Authentication always uses the canonical DO backend PKCE flow.
- * TMB (Token-Based Mode) has been removed — isTmbEnabled and onRenderTMBCheck
- * are kept as optional in the options type for call-site compatibility but
- * are never invoked.
  */
 
 import { AuthSessionManager } from './AuthSessionManager';
@@ -37,19 +34,6 @@ export type EnterAccountModeOptions = {
 
     /** Optional callback to update an authenticating spinner in the UI. */
     setIsAuthenticating?: (value: boolean) => void;
-
-    /**
-     * @deprecated TMB removed. Kept for call-site compatibility only; not invoked.
-     */
-    isTmbEnabled?: () => Promise<boolean>;
-
-    /**
-     * @deprecated TMB removed. Kept for call-site compatibility only; not invoked.
-     */
-    onRenderTMBCheck?: (
-        fromLoginButton?: boolean,
-        setIsAuthenticating?: (value: boolean) => void
-    ) => Promise<void>;
 
     /**
      * Whether the PKCE redirect conditions are met.
@@ -95,8 +79,6 @@ class AccountModeControllerClass {
      * THIS IS THE ONLY FUNCTION THAT MAY INITIATE AUTHENTICATION.
      *
      * Always redirects to the canonical DO backend PKCE flow via initiateDerivAuth().
-     * TMB options (isTmbEnabled, onRenderTMBCheck) are accepted for call-site
-     * compatibility but are never invoked.
      */
     async enter(options: EnterAccountModeOptions = {}): Promise<void> {
         const {

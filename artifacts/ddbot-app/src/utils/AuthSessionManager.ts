@@ -60,12 +60,11 @@ export type AuthInfo = {
 /**
  * Which system established the current auth session.
  * Priority (highest → lowest):
- *   ws-authorized > oauth-callback > tmb-session > none
+ *   ws-authorized > oauth-callback > none
  */
 export type AuthSource =
     | 'ws-authorized'   // WS authorize() succeeded — highest authority
     | 'oauth-callback'  // CallbackPage wrote token after DO backend exchange
-    | 'tmb-session'     // useTMB wrote token (Firebase flag active)
     | 'none';           // No credentials found
 
 export type CanonicalAuthState = {
@@ -358,8 +357,6 @@ class AuthSessionManagerClass {
     private detectAuthSource(): AuthSource {
         const { accessToken } = this.getAuthInfo();
         if (!accessToken) return 'none';
-        const isTmb = (window as Record<string, unknown>).is_tmb_enabled === true;
-        if (isTmb) return 'tmb-session';
         if (Cookies.get('logged_state') === 'true') return 'oauth-callback';
         return 'none';
     }

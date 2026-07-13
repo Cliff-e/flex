@@ -1,7 +1,7 @@
 /**
  * AuthLoadingWrapper
  *
- * Legacy OIDC SSO detection (isSingleLoggingIn + useTMB) has been removed.
+ * Legacy OIDC SSO detection (isSingleLoggingIn + TMB) has been removed.
  * The header's `isLoggedIn && !activeLoginid` branch handles the "token present
  * but WS not yet authorized" loading state correctly.
  *
