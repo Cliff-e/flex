@@ -14,10 +14,8 @@ import { api_base, updateWorkspaceName } from '@/external/bot-skeleton';
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
 
-import { useOauth2 } from '@/hooks/auth/useOauth2';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import useTMB from '@/hooks/useTMB';
 
 import { LegacyGuide1pxIcon } from '@deriv/quill-icons/Legacy';
 import { Localize, localize } from '@deriv-com/translations';
@@ -97,8 +95,6 @@ const AppWrapper = observer(() => {
         return Number(hash.indexOf(String(tab_value)));
     };
     const active_hash_tab = GetHashedValue(active_tab);
-
-    const { onRenderTMBCheck, isTmbEnabled } = useTMB();
 
     React.useEffect(() => {
         const el_dashboard = document.getElementById('id-dbot-dashboard');
@@ -252,12 +248,7 @@ const AppWrapper = observer(() => {
             sessionStorage.setItem('query_param_currency', query_param_currency);
         }
         try {
-            const tmbEnabled = await isTmbEnabled();
-            if (tmbEnabled) {
-                await onRenderTMBCheck();
-            } else {
-                await initiateDerivAuth();
-            }
+            await initiateDerivAuth();
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error(error);
