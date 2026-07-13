@@ -1,0 +1,160 @@
+You are debugging my OAuth 2.1 PKCE implementation.
+
+**Do not audit the entire project.**
+
+We now have evidence.
+
+### Confirmed facts
+
+* OAuth authorization succeeds.
+* `/api/auth/exchange` returns HTTP 200.
+* The backend returns an `ory_at_...` access token.
+* The frontend then calls `/api/auth/accounts`.
+* `/api/auth/accounts` returns **403 Insufficient scopes**.
+* No `active_loginid` is written.
+* `AuthSessionManager.getAuthInfo()` removes the token because there is no account ID.
+* The app returns to the Login screen.
+
+---
+
+## Our intended architecture
+
+The OAuth flow was intentionally designed like this:
+
+```
+Browser
+    │
+    ▼
+Deriv OAuth
+    │
+    ▼
+DigitalOcean Backend
+    │
+    ├── Exchange authorization code + PKCE verifier
+    ├── Obtain authenticated access token
+    ├── Complete all required Deriv authentication
+    ├── Fetch the authenticated account information
+    ├── Create the authenticated session
+    └── Return the completed authenticated session
+    │
+    ▼
+Frontend
+    │
+    └── Restore the already-created session
+```
+
+The frontend should **not** be responsible for completing authentication after the exchange.
+
+The backend should complete authentication before the frontend resumes.
+
+---
+
+## Your task
+
+Determine whether the implementation matches the architecture.
+
+Answer these questions with evidence.
+
+### Question 1
+
+Is `/api/auth/exchange` acting as a complete login endpoint?
+
+or
+
+Is it only exchanging the authorization code and immediately returning the raw access token?
+
+Show the code path.
+
+---
+
+### Question 2
+
+Immediately after the exchange, does the backend already possess everything required to fetch the user's accounts?
+
+If yes:
+
+Why is the frontend calling `/api/auth/accounts`?
+
+---
+
+### Question 3
+
+Find the exact reason the frontend still needs to perform authentication work after the exchange.
+
+Trace every call.
+
+Do not guess.
+
+---
+
+### Question 4
+
+If the backend is incomplete, finish it.
+
+The backend should:
+
+1. Exchange the authorization code.
+2. Validate PKCE.
+3. Obtain the access token.
+4. Fetch the authenticated account(s).
+5. Determine the primary login ID.
+6. Create the authenticated session.
+7. Return everything required by the frontend in one response.
+
+The frontend should not need to perform another authenticated bootstrap request just to discover its account.
+
+---
+
+### Question 5
+
+If the frontend is incorrectly calling `/api/auth/accounts`, remove that dependency.
+
+Replace it with the completed backend response.
+
+---
+
+## Requirements
+
+Do not redesign the architecture.
+
+Do not introduce another authentication flow.
+
+Do not rewrite OAuth.
+
+Do not remove PKCE.
+
+Do not remove security checks.
+
+Implement only the minimum changes necessary to make the backend complete the login before redirecting back to the frontend.
+
+---
+
+## Verification
+
+After the implementation, verify this exact sequence:
+
+* OAuth redirect succeeds.
+* Backend exchanges the code.
+* Backend fetches account information.
+* Backend creates the authenticated session.
+* Backend returns the completed session.
+* Frontend restores the session.
+* `active_loginid` exists.
+* `authToken` remains stored.
+* `AuthSessionManager` does not evict the token.
+* `/api/auth/accounts` is no longer required during frontend startup.
+* User remains logged in after redirect.
+* WebSocket authorizes correctly.
+
+---
+
+## Deliverables
+
+Provide:
+
+1. The exact root cause.
+2. Whether the backend was incomplete or the frontend was performing work it should not perform.
+3. Files changed.
+4. Unified diff.
+5. Verification logs.
+6. Confirmation that the backend now completes OAuth before control returns to the frontend.
