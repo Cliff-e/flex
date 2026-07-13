@@ -56,13 +56,17 @@ export const useOauth2 = ({
     // That mechanism is no longer available. Without a resolver the spinner
     // shows forever and the Login button is never rendered.
     //
-    // This effect is the resolver:
-    //   • If auth state is already populated (valid token + loginid) → recovery
-    //     succeeded; the main SSO effect will clear isSingleLoggingIn naturally
-    //     when isClientAccountsPopulated flips to true on the next render.
-    //   • Otherwise → the browser has a stale logged_state=true cookie with no
-    //     backing token. Clear only that cookie and exit SSO mode so the header
-    //     falls through to the Login button.
+    // This effect is the resolver. It runs whenever isSingleLoggingIn becomes
+    // true and immediately decides the outcome — there is no async waiting:
+    //
+    //   • Valid credentials in storage (token + loginid present) → recovery
+    //     succeeded. Clear the spinner; the WS authorize flow owns the rest.
+    //   • No valid credentials → stale logged_state=true cookie. Clear only
+    //     the stale cookie and exit SSO mode so the Login button appears.
+    //
+    // AuthSessionManager.isAuthenticated() is called inside the effect (not
+    // captured from the render closure) so we always read the latest localStorage
+    // state, even if tokens were written by a concurrent flow since last render.
     //
     // This intentionally does NOT touch authToken, active_loginid, accountsList,
     // or clientAccounts — those may contain valid data from a concurrent auth
@@ -73,22 +77,27 @@ export const useOauth2 = ({
         console.log('[SSO] entered silent login');
         console.log('[SSO] attempting recovery');
 
-        // A valid session already exists — nothing to recover.
-        // The main SSO effect will flip isSingleLoggingIn back to false once
-        // isClientAccountsPopulated becomes true.
-        if (isClientAccountsPopulated) {
+        // Fresh read — bypasses the render-time closure so we pick up any
+        // tokens that were written to localStorage after the last render.
+        const sessionValid = AuthSessionManager.isAuthenticated();
+
+        if (sessionValid) {
+            // Valid credentials present; the WS authorize flow owns the rest.
+            // Clear the SSO spinner so the header proceeds to the auth state.
             console.log('[SSO] recovery succeeded');
+            setIsSingleLoggingIn(false);
             return;
         }
 
-        // logged_state=true but no token and no loginid → stale browser session.
-        // Clear only the stale marker; never delete real credential keys.
+        // logged_state=true but no valid token + loginid → stale browser session.
+        // Clear only the stale cookie. Never delete real credential keys.
         console.log('[SSO] stale browser session detected');
         console.log('[SSO] clearing stale browser markers');
         Cookies.remove('logged_state', { path: '/' });
         console.log('[SSO] leaving silent login');
         setIsSingleLoggingIn(false);
-    }, [isSingleLoggingIn, isClientAccountsPopulated]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSingleLoggingIn]);
 
     const logoutHandler = async () => {
         client?.setIsLoggingOut(true);
