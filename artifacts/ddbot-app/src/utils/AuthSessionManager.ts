@@ -385,6 +385,24 @@ class AuthSessionManagerClass {
 
         if (Cookies.get('logged_state') === 'true' && !accessToken) {
             desyncReasons.push('logged_state=true cookie but accessToken is absent from localStorage');
+
+            // Self-heal: a `logged_state=true` cookie with no access token is
+            // never a valid session — the cookie is only ever set alongside a
+            // token write (see callback-page.tsx) and every legitimate clear
+            // path is supposed to remove both together. If they're out of
+            // sync, the token is gone and the cookie is simply stale — clear
+            // it and force every subscriber back to a clean guest state
+            // instead of leaving a half-authenticated UI hanging around.
+            Cookies.remove('logged_state', { path: '/' });
+            console.warn(
+                '[AUTH-DESYNC][AuthSessionManager] Self-healed stale logged_state cookie',
+                '(no accessToken present) — resetting to guest state.'
+            );
+            if (this._wsAuthorized) {
+                this._wsAuthorized = false;
+                this._wsAuthData = null;
+            }
+            this.notifyAuthChange(false);
         }
 
         if (desyncReasons.length > 0) {

@@ -405,6 +405,12 @@ export default class ClientStore {
         localStorage.removeItem('authToken');
         localStorage.removeItem('clientAccounts');
         removeCookies('client_information');
+        // Defense in depth: some callers invoke client.logout() directly
+        // (e.g. self-exclusion-store) without going through useOauth2's
+        // logout handler, which is the only other place that clears this
+        // cookie. Clear it here too so `logged_state` never outlives the
+        // token it describes, regardless of the logout call site.
+        removeCookies('logged_state');
 
         const resolveNavigation = () => {
             if (window.history.length > 1) {
