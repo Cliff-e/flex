@@ -325,12 +325,15 @@ authRouter.get("/login", asHandler(loginRateLimiter), (req, res) => {
     client_id: APP_ID,
     response_type: "code",
     redirect_uri: callbackUri,
+    scope: "trade account_manage",
     code_challenge: challenge,
     code_challenge_method: "S256",
     state,
   });
 
-  const authUrl = `${DERIV_AUTH_URL}?${params.toString()}`;
+  // URLSearchParams encodes spaces as '+' (form-encoding); OAuth requires '%20'.
+  const authUrl = `${DERIV_AUTH_URL}?${params.toString().replace(/\+/g, "%20")}`;
+  logger.info({ authUrl, scope: "trade account_manage", redirect_uri: callbackUri }, "[OAuth] Authorization URL");
   logger.info("[auth/login] Redirecting to Deriv auth");
   logger.info({ rid }, "[TRACE][auth/login] EXIT — redirecting to Deriv");
   res.redirect(authUrl);
@@ -590,6 +593,24 @@ authRouter.post("/exchange", asHandler(exchangeRateLimiter), async (req, res) =>
     logger.warn(
       { err: (acctErr as Error).message },
       "[auth/exchange] Accounts fetch error — returning token without account data",
+    );
+  }
+
+  // Scope regression guard: if accounts is empty the most likely cause is a
+  // missing or incorrect scope on the authorization request.  Log a clear,
+  // actionable message so the problem is visible in server logs immediately.
+  if (accounts.length === 0 || !primaryLoginid) {
+    logger.warn(
+      {
+        rid,
+        accountCount: accounts.length,
+        primaryLoginid: primaryLoginid || "(none)",
+        hint: "If accounts is empty, verify /api/auth/login sends scope=trade%20account_manage. " +
+              "Without account_manage the Deriv accounts endpoint returns an empty list, " +
+              "which causes the frontend orphan-token guard to evict the session.",
+      },
+      "[auth/exchange] WARNING: empty accounts or missing primary_loginid after exchange — " +
+      "likely scope misconfiguration",
     );
   }
 
