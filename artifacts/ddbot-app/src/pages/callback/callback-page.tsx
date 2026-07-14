@@ -169,9 +169,33 @@ const CallbackPage = () => {
                 return;
             }
 
+            // ── Guard: ory_at_ tokens require an account ID ───────────────────
+            // ory_at_ (Ory Hydra) tokens are account-scoped. They can only be used
+            // via an OTP WebSocket URL (POST /accounts/{id}/otp), not on the
+            // public WS. If the exchange returned no accounts AND the token is an
+            // ory_at_ token, we cannot complete login — the public WS will reject
+            // the token with InputValidationFailed regardless.
+            //
+            // Root cause when this fires: /api/auth/login did not send
+            // scope=trade%20account_manage, so the Deriv accounts endpoint
+            // returned an empty list. Fix: ensure VITE_DERIV_APP_ID is registered
+            // with account_manage scope in Deriv Developer Hub and that the API
+            // server sends scope=trade%20account_manage in the authorization URL.
+            if (!primaryLoginid && accessToken.startsWith('ory_at_')) {
+                console.error(
+                    `[TRACE][rid=${rid}] CallbackPage EXIT — ory_at_ token with no accounts: cannot complete login`,
+                    { hint: 'Verify /api/auth/login sends scope=trade%20account_manage' }
+                );
+                setSignInError(
+                    'Authentication failed: your account list could not be fetched. ' +
+                    'This is usually a temporary server issue. Please try again.'
+                );
+                return;
+            }
+
             // ── Persist via AuthSessionManager (single source of truth) ───────
             // 1. Primary account credentials via setActiveAccount.
-            //    setActiveAccount() already handles empty loginid correctly: it
+            //    setActiveAccount() handles empty loginid for non-ory tokens: it
             //    writes authToken to localStorage and skips active_loginid when
             //    loginid is falsy. The real loginid is resolved from the WS
             //    authorize() response in api-base.ts and written there.
@@ -180,9 +204,6 @@ const CallbackPage = () => {
             console.log(`[TRACE][rid=${rid}] CallbackPage calling AuthSessionManager.setActiveAccount`);
             AuthSessionManager.setActiveAccount(primaryLoginid, accessToken);
             console.log(`[TRACE][rid=${rid}] CallbackPage AuthSessionManager.setActiveAccount executed`);
-            if (!primaryLoginid) {
-                console.log('[CallbackPage] No loginid from accounts fetch — token stored; WS authorize() will resolve the real loginid');
-            }
 
             // 2. Full account list (for account switcher)
             if (Object.keys(accountsList).length) {
