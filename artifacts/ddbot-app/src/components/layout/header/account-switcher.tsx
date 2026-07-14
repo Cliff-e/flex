@@ -125,12 +125,22 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
         client.website_status?.currencies_config,
         activeAccount?.loginid,
     ]);
-    const modifiedCRAccountList = useMemo(() => {
-        return modifiedAccountList?.filter(account => account?.loginid?.includes('CR')) ?? [];
+    // Split real (non-virtual) accounts by landing company rather than
+    // matching substrings in loginid. The new Deriv trading API can assign
+    // real-account loginids that don't contain the legacy "CR"/"MF" prefixes,
+    // which made these lists (and therefore the Real tab's switch targets)
+    // silently drop accounts — the same prefix-matching bug already fixed for
+    // the Demo tab's isVirtual-based list below.
+    const modifiedMFAccountList = useMemo(() => {
+        return modifiedAccountList?.filter(account => !account?.isVirtual && account?.landing_company_name === 'maltainvest') ?? [];
     }, [modifiedAccountList]);
 
-    const modifiedMFAccountList = useMemo(() => {
-        return modifiedAccountList?.filter(account => account?.loginid?.includes('MF')) ?? [];
+    const modifiedCRAccountList = useMemo(() => {
+        return (
+            modifiedAccountList?.filter(
+                account => !account?.isVirtual && account?.landing_company_name !== 'maltainvest'
+            ) ?? []
+        );
     }, [modifiedAccountList]);
 
     const modifiedVRTCRAccountList = useMemo(() => {

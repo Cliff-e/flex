@@ -4,6 +4,22 @@ import { localize } from '@deriv-com/translations';
 import { observer as globalObserver } from '../../../utils/observer';
 import { error as logError } from './broadcast';
 
+// Deriv's API rejects requests with "Input validation failed: parameters" when
+// the payload contains keys whose value is undefined or null — even though the
+// key is structurally present, the API treats an explicitly-undefined/null value
+// as an invalid value for that parameter rather than treating it as absent.
+// Several fields above (multiplier, duration, duration_unit, growth_rate, ...)
+// are only meaningful for specific contract types and are left `undefined` for
+// every other contract type, so every request must be scrubbed before it is sent.
+const stripNullish = obj => {
+    Object.keys(obj).forEach(key => {
+        if (obj[key] === undefined || obj[key] === null) {
+            delete obj[key];
+        }
+    });
+    return obj;
+};
+
 export const tradeOptionToProposal = (trade_option, purchase_reference) =>
     trade_option.contractTypes.map(type => {
         const proposal = {
@@ -39,7 +55,7 @@ export const tradeOptionToProposal = (trade_option, purchase_reference) =>
         if (!isEmptyObject(trade_option.limit_order)) {
             proposal.limit_order = trade_option.limit_order;
         }
-        return proposal;
+        return stripNullish(proposal);
     });
 
 export const tradeOptionToBuy = (contract_type, trade_option) => {
@@ -103,6 +119,11 @@ export const tradeOptionToBuy = (contract_type, trade_option) => {
         buy.parameters.duration_unit = undefined;
         buy.parameters.growth_rate = trade_option.growth_rate;
     }
+    // Strip undefined/null keys — Deriv's API returns
+    // "Input validation failed: parameters" when a key is present with a
+    // nullish value (e.g. `multiplier: undefined` on a non-multiplier
+    // contract), even though the key is only conditionally meaningful.
+    buy.parameters = stripNullish(buy.parameters);
     return buy;
 };
 
