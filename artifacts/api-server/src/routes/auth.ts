@@ -618,7 +618,6 @@ authRouter.post("/exchange", asHandler(exchangeRateLimiter), async (req, res) =>
     { primaryLoginid: primaryLoginid || "(none)", accountCount: accounts.length },
     "[auth/exchange] Session complete",
   );
-  console.log("[Exchange] accounts returned to frontend:", JSON.stringify(accounts, null, 2));
   logger.info(
     { rid, exchangeSucceeded: true, primaryLoginid: primaryLoginid || "(none)", accountCount: accounts.length },
     "[TRACE][auth/exchange] EXIT — session response sent to frontend",

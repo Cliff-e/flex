@@ -134,15 +134,11 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     }, [modifiedAccountList]);
 
     const modifiedVRTCRAccountList = useMemo(() => {
-        return modifiedAccountList?.filter(account => account?.loginid?.includes('VRT')) ?? [];
+        // Use the explicit isVirtual flag (derived from is_virtual metadata) rather than
+        // inferring account type from the loginid prefix. The loginid prefix approach
+        // fails when the demo account ID does not start with "VRT" (e.g. newer Deriv formats).
+        return modifiedAccountList?.filter(account => account?.isVirtual) ?? [];
     }, [modifiedAccountList]);
-
-    // Debug: trace which accounts reach each tab
-    console.log('[AccountSwitcher]', {
-        totalAccountList: accountList?.map(a => ({ loginid: a.loginid, is_virtual: a.is_virtual })),
-        realAccounts: modifiedCRAccountList?.map(a => a.loginid),
-        demoAccounts: modifiedVRTCRAccountList?.map(a => a.loginid),
-    });
 
     const switchAccount = async (loginId: number) => {
         if (loginId.toString() === activeAccount?.loginid) return;

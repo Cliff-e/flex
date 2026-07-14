@@ -213,8 +213,6 @@ class AuthSessionManagerClass {
         accountsList: Record<string, string>,
         clientAccounts: Record<string, unknown>,
     ): void {
-        console.log('[AuthSessionManager] setAccounts — loginids:', Object.keys(accountsList),
-            '| clientAccounts:', JSON.stringify(clientAccounts));
         localStorage.setItem('accountsList', JSON.stringify(accountsList));
         localStorage.setItem('clientAccounts', JSON.stringify(clientAccounts));
         this.notifyAuthChange(this._wsAuthorized);
