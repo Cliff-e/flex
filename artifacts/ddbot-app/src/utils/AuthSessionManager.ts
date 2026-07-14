@@ -98,6 +98,22 @@ class AuthSessionManagerClass {
     private _wsAuthData: TAuthData | null = null;
 
     // ---------------------------------------------------------------------------
+    // Login-in-flight guard
+    //
+    // When setActiveAccount() is called with a token but no loginid (e.g. the
+    // accounts API returned empty), we store the token and wait for the WS
+    // authorize() to resolve the real loginid. During this window the orphan
+    // guard in getAuthInfo() must NOT fire — the token was just stored and is
+    // still valid, it simply doesn't have an account ID yet.
+    //
+    // _loginInFlight is set to true for up to LOGIN_IN_FLIGHT_TTL_MS. It is
+    // cleared early by setWsAuthorized() once the WS resolves (success or fail).
+    // ---------------------------------------------------------------------------
+    private _loginInFlight = false;
+    private _loginInFlightTimer: ReturnType<typeof setTimeout> | null = null;
+    private static readonly LOGIN_IN_FLIGHT_TTL_MS = 30_000;
+
+    // ---------------------------------------------------------------------------
     // WRITE API — all auth state changes flow through here
     // ---------------------------------------------------------------------------
 
@@ -109,6 +125,15 @@ class AuthSessionManagerClass {
         const prev = this._wsAuthorized;
         this._wsAuthorized = authorized;
         this._wsAuthData = authData;
+        // WS resolved (success or failure) — login is no longer in-flight.
+        if (this._loginInFlight) {
+            this._loginInFlight = false;
+            if (this._loginInFlightTimer) {
+                clearTimeout(this._loginInFlightTimer);
+                this._loginInFlightTimer = null;
+            }
+            console.log('[AUTH-ASM][setWsAuthorized] cleared _loginInFlight');
+        }
         console.log('[AUTH-ASM][setWsAuthorized]',
             `${prev} → ${authorized}`,
             '| loginid:', authData?.loginid ?? '(none)',
@@ -144,6 +169,34 @@ class AuthSessionManagerClass {
         // Invalidate OTP cache — new account needs a fresh OTP URL
         this._otpCache = null;
         this._pendingOtpFetch = null;
+
+        // Suppress the orphan guard while we're waiting for the WS to authorize.
+        // When the exchange succeeds but returns no accounts (e.g. empty list from
+        // Deriv), the callback page stores the token without a loginid. The orphan
+        // guard in getAuthInfo() would immediately evict that token when
+        // notifyAuthChange() triggers a synchronous React re-render. Setting
+        // _loginInFlight prevents eviction for up to LOGIN_IN_FLIGHT_TTL_MS;
+        // setWsAuthorized() clears it as soon as the WS resolves.
+        if (!validLoginid && token.startsWith('ory_at_')) {
+            this._loginInFlight = true;
+            if (this._loginInFlightTimer) clearTimeout(this._loginInFlightTimer);
+            this._loginInFlightTimer = setTimeout(() => {
+                this._loginInFlight = false;
+                this._loginInFlightTimer = null;
+                console.warn('[AUTH-ASM] _loginInFlight TTL expired — orphan guard re-armed');
+            }, AuthSessionManagerClass.LOGIN_IN_FLIGHT_TTL_MS);
+            console.log('[AUTH-ASM][setActiveAccount] _loginInFlight=true (ory_at_ token, no loginid yet)');
+        } else {
+            // Full credentials stored — cancel any in-flight window
+            if (this._loginInFlight) {
+                this._loginInFlight = false;
+                if (this._loginInFlightTimer) {
+                    clearTimeout(this._loginInFlightTimer);
+                    this._loginInFlightTimer = null;
+                }
+            }
+        }
+
         // Notify all subscribers that auth state changed
         this.notifyAuthChange(this._wsAuthorized);
     }
@@ -265,19 +318,28 @@ class AuthSessionManagerClass {
         // stuck: OTP fetch refuses (no accountId), authorize on public WS
         // fails, and the cycle repeats on every page load.
         //
-        // Fix: evict the orphaned Ory token here so the next call returns
-        // { accountId: null, accessToken: null } → clean logged-out state →
-        // the login button becomes visible and the user can re-authenticate.
+        // Exception: _loginInFlight is true immediately after setActiveAccount()
+        // is called with a fresh ory_at_ token but no loginid (accounts API
+        // returned empty). The callback page is about to redirect — evicting the
+        // token here would undo the just-completed exchange. The guard is
+        // suppressed until setWsAuthorized() resolves or the 30 s TTL expires.
         if (!accountId && accessToken?.startsWith('ory_at_')) {
-            console.warn(
-                '[AUTH-ASM][getAuthInfo] Orphaned Ory token detected — no valid account ID.\n' +
-                'Ory tokens require an OTP WS URL (account-scoped). Removing to prevent\n' +
-                'InputValidationFailed loop on public WS. User must log in again.'
-            );
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_token');
-            localStorage.removeItem('token');
-            return { accountId: null, accessToken: null, appId: APP_ID };
+            if (this._loginInFlight) {
+                console.log(
+                    '[AUTH-ASM][getAuthInfo] Orphaned Ory token detected BUT _loginInFlight=true — ' +
+                    'suppressing eviction; WS authorize() is pending.'
+                );
+            } else {
+                console.warn(
+                    '[AUTH-ASM][getAuthInfo] Orphaned Ory token detected — no valid account ID.\n' +
+                    'Ory tokens require an OTP WS URL (account-scoped). Removing to prevent\n' +
+                    'InputValidationFailed loop on public WS. User must log in again.'
+                );
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('active_token');
+                localStorage.removeItem('token');
+                return { accountId: null, accessToken: null, appId: APP_ID };
+            }
         }
 
         return { accountId, accessToken, appId: APP_ID };
