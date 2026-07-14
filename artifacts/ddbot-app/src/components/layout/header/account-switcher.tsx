@@ -137,6 +137,13 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
         return modifiedAccountList?.filter(account => account?.loginid?.includes('VRT')) ?? [];
     }, [modifiedAccountList]);
 
+    // Debug: trace which accounts reach each tab
+    console.log('[AccountSwitcher]', {
+        totalAccountList: accountList?.map(a => ({ loginid: a.loginid, is_virtual: a.is_virtual })),
+        realAccounts: modifiedCRAccountList?.map(a => a.loginid),
+        demoAccounts: modifiedVRTCRAccountList?.map(a => a.loginid),
+    });
+
     const switchAccount = async (loginId: number) => {
         if (loginId.toString() === activeAccount?.loginid) return;
         // Look up the token for the selected account via AuthSessionManager.

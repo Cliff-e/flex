@@ -41,6 +41,9 @@ export const useApiBase = () => {
             setIsAuthorizing(authorizing);
         });
         const accountListSubscription = account_list$.subscribe(list => {
+            console.log('[Client Store] account_list$ update — count:', list?.length,
+                '| loginids:', list?.map(a => a.loginid),
+                '| is_virtual flags:', list?.map(a => ({ id: a.loginid, is_virtual: a.is_virtual })));
             setAccountList(list);
         });
         const authDataSubscription = authData$.subscribe(data => {
