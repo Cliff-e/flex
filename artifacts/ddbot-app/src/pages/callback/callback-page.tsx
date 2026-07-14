@@ -57,10 +57,17 @@ const CallbackPage = () => {
             const authCode = params.get('auth_code');
             const errorParam = params.get('error');
             const errorDesc = params.get('error_description');
+            // TEMPORARY DIAGNOSTIC LOGGING — request ID assigned by /api/auth/login,
+            // threaded through /callback's redirect so this login attempt can be
+            // correlated across backend and frontend logs. REMOVE with the rest
+            // of the "[TRACE]" logging once the investigation is complete.
+            const rid = params.get('rid') ?? '(unknown)';
+            console.log(`[TRACE][rid=${rid}] CallbackPage ENTER — hasAuthCode=${!!authCode} hasError=${!!errorParam}`);
 
             // ── Error from backend ────────────────────────────────────────────
             if (errorParam) {
                 console.error('[CallbackPage] OAuth error:', errorParam, errorDesc);
+                console.log(`[TRACE][rid=${rid}] CallbackPage EXIT — backend redirected with error=${errorParam}`);
                 setSignInError(errorDesc ?? errorParam);
                 return;
             }
@@ -68,6 +75,7 @@ const CallbackPage = () => {
             // ── No auth code — unexpected ──────────────────────────────────────
             if (!authCode) {
                 console.error('[CallbackPage] No auth_code in callback URL');
+                console.log(`[TRACE][rid=${rid}] CallbackPage EXIT — no auth_code present`);
                 setSignInError('No authorization code received. Please try logging in again.');
                 return;
             }
@@ -97,10 +105,11 @@ const CallbackPage = () => {
                     throw new Error('VITE_API_BASE_URL is not configured — cannot exchange auth code');
                 }
 
+                console.log(`[TRACE][rid=${rid}] CallbackPage calling POST /api/auth/exchange`);
                 const exchangeRes = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: authCode }),
+                    body: JSON.stringify({ code: authCode, rid }),
                 });
                 const exchangeData = (await exchangeRes.json().catch(() => null)) as
                     | {
@@ -111,6 +120,7 @@ const CallbackPage = () => {
                         error_description?: string;
                       }
                     | null;
+                console.log(`[TRACE][rid=${rid}] CallbackPage /api/auth/exchange responded — ok=${exchangeRes.ok} status=${exchangeRes.status} hasAccessToken=${!!exchangeData?.access_token}`);
 
                 if (!exchangeRes.ok || !exchangeData?.access_token) {
                     throw new Error(
@@ -147,8 +157,10 @@ const CallbackPage = () => {
                 }
 
                 console.log('[CallbackPage] Accounts from exchange:', Object.keys(accountsList).join(', ') || '(none)');
+                console.log(`[TRACE][rid=${rid}] CallbackPage exchange succeeded — primaryLoginid=${primaryLoginid || '(none)'} accountCount=${Object.keys(accountsList).length}`);
             } catch (exchangeErr) {
                 console.error('[CallbackPage] Exchange failed:', exchangeErr);
+                console.log(`[TRACE][rid=${rid}] CallbackPage EXIT — /api/auth/exchange failed: ${exchangeErr instanceof Error ? exchangeErr.message : String(exchangeErr)}`);
                 setSignInError(
                     exchangeErr instanceof Error
                         ? exchangeErr.message
@@ -165,7 +177,9 @@ const CallbackPage = () => {
             //    authorize() response in api-base.ts and written there.
             //    NEVER pass a sentinel value such as '__pending__' — it will
             //    escape into the OTP endpoint and the WS authorize() message.
+            console.log(`[TRACE][rid=${rid}] CallbackPage calling AuthSessionManager.setActiveAccount`);
             AuthSessionManager.setActiveAccount(primaryLoginid, accessToken);
+            console.log(`[TRACE][rid=${rid}] CallbackPage AuthSessionManager.setActiveAccount executed`);
             if (!primaryLoginid) {
                 console.log('[CallbackPage] No loginid from accounts fetch — token stored; WS authorize() will resolve the real loginid');
             }
@@ -185,12 +199,14 @@ const CallbackPage = () => {
             const account = primaryCurrency || 'USD';
             const redirectUrl = `${window.location.origin}/?account=${account}`;
             console.log('[CallbackPage] Auth complete — redirecting to:', redirectUrl);
+            console.log(`[TRACE][rid=${rid}] CallbackPage EXIT — login complete, redirecting to app`);
             setStatusMsg(`Redirecting with account=${account}…`);
             window.location.replace(redirectUrl);
         };
 
         run().catch(err => {
             console.error('[CallbackPage] Unexpected error:', err);
+            console.log(`[TRACE] CallbackPage EXIT — unexpected exception: ${err instanceof Error ? err.message : String(err)}`);
             clearAuthData(false);
             Cookies.set('logged_state', 'false', { expires: 30, path: '/', secure: true, sameSite: 'strict' });
             setSignInError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');

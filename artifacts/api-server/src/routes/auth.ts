@@ -159,25 +159,53 @@ const STATE_TTL_SECONDS = 600;
 
 /** Auth code is redeemed within seconds of being issued (one redirect + one fetch). */
 const AUTH_CODE_TTL_MS = 60_000;
-const authCodeStore = new Map<string, { accessToken: string; expiresAt: number }>();
+const authCodeStore = new Map<string, { accessToken: string; expiresAt: number; rid?: string }>();
 
-function issueAuthCode(accessToken: string): string {
+function issueAuthCode(accessToken: string, rid?: string): string {
   const now = Date.now();
   // Opportunistic cleanup so the map doesn't grow unbounded with abandoned logins.
   for (const [code, entry] of authCodeStore) {
     if (entry.expiresAt <= now) authCodeStore.delete(code);
   }
   const code = randomBytes(32).toString("base64url");
-  authCodeStore.set(code, { accessToken, expiresAt: now + AUTH_CODE_TTL_MS });
+  authCodeStore.set(code, { accessToken, expiresAt: now + AUTH_CODE_TTL_MS, rid });
   return code;
 }
 
 /** Single-use: the code is deleted whether or not it was valid. */
-function redeemAuthCode(code: string): string | null {
+function redeemAuthCode(code: string): { accessToken: string; rid?: string } | null {
   const entry = authCodeStore.get(code);
   authCodeStore.delete(code);
   if (!entry || entry.expiresAt <= Date.now()) return null;
-  return entry.accessToken;
+  return { accessToken: entry.accessToken, rid: entry.rid };
+}
+
+// ---------------------------------------------------------------------------
+// TEMPORARY DIAGNOSTIC LOGGING — login-flow tracing
+// Assigns each login attempt a short request ID (rid) that is threaded
+// through /login → /callback → /exchange → CallbackPage so a single login
+// attempt can be reconstructed chronologically from the logs.
+// REMOVE THIS BLOCK AND ALL "[TRACE]" LOG CALLS ONCE THE INVESTIGATION
+// IS COMPLETE.
+// ---------------------------------------------------------------------------
+
+function generateRid(): string {
+  return randomBytes(6).toString("hex");
+}
+
+/** Best-effort, unverified peek at the rid embedded in `state`, for logging
+ * only when the callback arrives with an error before signature verification
+ * runs. Never used for anything security-relevant. */
+function peekRidFromState(state: string | undefined): string | undefined {
+  if (!state) return undefined;
+  try {
+    const dotIdx = state.lastIndexOf(".");
+    const encoded = dotIdx >= 0 ? state.slice(0, dotIdx) : state;
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString());
+    return typeof payload?.rid === "string" ? payload.rid : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -277,13 +305,20 @@ function checkConfig(res: import("express").Response): boolean {
 // ---------------------------------------------------------------------------
 
 authRouter.get("/login", asHandler(loginRateLimiter), (req, res) => {
-  if (!checkConfig(res)) return;
+  const rid = generateRid();
+  logger.info({ rid }, "[TRACE][auth/login] ENTER");
+
+  if (!checkConfig(res)) {
+    logger.info({ rid }, "[TRACE][auth/login] EXIT — config check failed (503)");
+    return;
+  }
 
   const verifier = generateVerifier();
   const challenge = generateChallenge(verifier);
+  logger.info({ rid, verifierCreated: !!verifier }, "[TRACE][auth/login] PKCE verifier created");
 
   // HMAC-sign the state — verifier stays server-side only
-  const state = signState({ verifier });
+  const state = signState({ verifier, rid });
   const callbackUri = `${API_BASE_URL}/api/auth/callback`;
 
   const params = new URLSearchParams({
@@ -297,6 +332,7 @@ authRouter.get("/login", asHandler(loginRateLimiter), (req, res) => {
 
   const authUrl = `${DERIV_AUTH_URL}?${params.toString()}`;
   logger.info("[auth/login] Redirecting to Deriv auth");
+  logger.info({ rid }, "[TRACE][auth/login] EXIT — redirecting to Deriv");
   res.redirect(authUrl);
 });
 
@@ -309,10 +345,21 @@ authRouter.get("/login", asHandler(loginRateLimiter), (req, res) => {
 authRouter.get("/callback", async (req, res) => {
   const { code, state, error, error_description } = req.query as Record<string, string>;
 
-  if (!checkConfig(res)) return;
+  // Best-effort rid recovery for logging before signature verification runs.
+  const ridPeek = peekRidFromState(state);
+  logger.info(
+    { rid: ridPeek ?? "(unknown)", hasCode: !!code, hasState: !!state, hasError: !!error },
+    "[TRACE][auth/callback] ENTER",
+  );
+
+  if (!checkConfig(res)) {
+    logger.info({ rid: ridPeek ?? "(unknown)" }, "[TRACE][auth/callback] EXIT — config check failed (503)");
+    return;
+  }
 
   if (error) {
     logger.error({ error }, "[auth/callback] Deriv OAuth error");
+    logger.info({ rid: ridPeek ?? "(unknown)" }, "[TRACE][auth/callback] EXIT — Deriv returned an error");
     const p = new URLSearchParams({
       error,
       error_description: error_description ?? error,
@@ -321,6 +368,7 @@ authRouter.get("/callback", async (req, res) => {
   }
 
   if (!code || !state) {
+    logger.info({ rid: ridPeek ?? "(unknown)" }, "[TRACE][auth/callback] EXIT — missing code or state");
     const p = new URLSearchParams({
       error: "missing_params",
       error_description: "No authorization code or state received from Deriv",
@@ -330,8 +378,10 @@ authRouter.get("/callback", async (req, res) => {
 
   // Verify HMAC-signed state and extract verifier
   const payload = verifyState(state);
+  logger.info({ rid: ridPeek ?? "(unknown)", stateVerified: !!payload }, "[TRACE][auth/callback] state verification result");
   if (!payload) {
     logger.error("[auth/callback] Invalid or expired state — possible CSRF/replay");
+    logger.info({ rid: ridPeek ?? "(unknown)" }, "[TRACE][auth/callback] EXIT — state verification failed");
     const p = new URLSearchParams({
       error: "invalid_state",
       error_description: "OAuth state is invalid or has expired. Please try logging in again.",
@@ -339,8 +389,10 @@ authRouter.get("/callback", async (req, res) => {
     return res.redirect(`${FRONTEND_URL}/auth/callback?${p.toString()}`);
   }
 
+  const rid = typeof payload.rid === "string" ? payload.rid : (ridPeek ?? "(unknown)");
   const verifier = typeof payload.verifier === "string" ? payload.verifier : "";
   if (!verifier) {
+    logger.info({ rid }, "[TRACE][auth/callback] EXIT — state missing verifier");
     const p = new URLSearchParams({
       error: "invalid_state",
       error_description: "OAuth state is missing the code verifier.",
@@ -370,6 +422,10 @@ authRouter.get("/callback", async (req, res) => {
 
     // Log status only — never log raw response body (may contain access_token)
     logger.info({ status: upstream.status }, "[auth/callback] Deriv token exchange status");
+    logger.info(
+      { rid, codeExchangeSucceeded: upstream.ok, status: upstream.status },
+      "[TRACE][auth/callback] Deriv code exchange result",
+    );
 
     if (!upstream.ok) {
       // Read error body for diagnostics but never log token-bearing success payloads
@@ -380,6 +436,7 @@ authRouter.get("/callback", async (req, res) => {
         { status: upstream.status, body: safeErr.slice(0, 200) },
         "[auth/callback] Token exchange failed",
       );
+      logger.info({ rid }, "[TRACE][auth/callback] EXIT — Deriv token exchange failed");
       const p = new URLSearchParams({
         error: "token_exchange_failed",
         error_description: `Deriv returned ${upstream.status}`,
@@ -392,6 +449,7 @@ authRouter.get("/callback", async (req, res) => {
       data = (await upstream.json()) as Record<string, string>;
     } catch {
       logger.error("[auth/callback] Token response is not valid JSON");
+      logger.info({ rid }, "[TRACE][auth/callback] EXIT — token response not valid JSON");
       const p = new URLSearchParams({
         error: "upstream_non_json",
         error_description: "Token endpoint returned non-JSON response",
@@ -402,6 +460,7 @@ authRouter.get("/callback", async (req, res) => {
     const accessToken = data.access_token;
     if (!accessToken) {
       logger.error("[auth/callback] Token exchange succeeded but response missing access_token");
+      logger.info({ rid }, "[TRACE][auth/callback] EXIT — response missing access_token");
       const p = new URLSearchParams({
         error: "no_access_token",
         error_description: "Token exchange succeeded but no access_token returned",
@@ -412,12 +471,15 @@ authRouter.get("/callback", async (req, res) => {
     // Issue a short-lived, single-use auth_code instead of putting the real
     // access_token in the URL — the token is only ever handed back via the
     // JSON body of POST /api/auth/exchange (see below).
-    const authCode = issueAuthCode(accessToken);
-    const success = new URLSearchParams({ auth_code: authCode });
+    const authCode = issueAuthCode(accessToken, rid);
+    logger.info({ rid, authCodeStored: true }, "[TRACE][auth/callback] one-time auth_code stored");
+    const success = new URLSearchParams({ auth_code: authCode, rid });
     logger.info("[auth/callback] Token exchange successful — redirecting to frontend with one-time auth code");
+    logger.info({ rid }, "[TRACE][auth/callback] EXIT — redirecting to frontend with auth_code");
     return res.redirect(`${FRONTEND_URL}/auth/callback?${success.toString()}`);
   } catch (err) {
     logger.error({ err: (err as Error).message }, "[auth/callback] Token exchange error");
+    logger.info({ rid, err: (err as Error).message }, "[TRACE][auth/callback] EXIT — exception during token exchange");
     const p = new URLSearchParams({
       error: "server_error",
       error_description: "An internal error occurred during token exchange",
@@ -445,21 +507,31 @@ authRouter.get("/callback", async (req, res) => {
 // ---------------------------------------------------------------------------
 
 authRouter.post("/exchange", asHandler(exchangeRateLimiter), async (req, res) => {
-  const { code } = req.body as { code?: unknown };
+  const { code, rid: clientRid } = req.body as { code?: unknown; rid?: unknown };
+  logger.info(
+    { ridFromClient: typeof clientRid === "string" ? clientRid : "(none)", hasCode: typeof code === "string" && !!code },
+    "[TRACE][auth/exchange] ENTER",
+  );
+
   if (typeof code !== "string" || !code) {
+    logger.info({ ridFromClient: clientRid ?? "(none)" }, "[TRACE][auth/exchange] EXIT — missing code");
     return res.status(400).json({
       error: "missing_params",
       error_description: "code is required",
     });
   }
 
-  const accessToken = redeemAuthCode(code);
-  if (!accessToken) {
+  const redeemed = redeemAuthCode(code);
+  const rid = redeemed?.rid ?? (typeof clientRid === "string" ? clientRid : "(unknown)");
+  logger.info({ rid, authCodeRedeemed: !!redeemed }, "[TRACE][auth/exchange] one-time auth_code redemption result");
+  if (!redeemed) {
+    logger.info({ rid }, "[TRACE][auth/exchange] EXIT — auth_code invalid, already used, or expired");
     return res.status(400).json({
       error: "invalid_or_expired_code",
       error_description: "Auth code is invalid, already used, or expired. Please log in again.",
     });
   }
+  const accessToken = redeemed.accessToken;
 
   logger.info("[auth/exchange] Auth code redeemed — fetching accounts server-side");
 
@@ -524,6 +596,10 @@ authRouter.post("/exchange", asHandler(exchangeRateLimiter), async (req, res) =>
   logger.info(
     { primaryLoginid: primaryLoginid || "(none)", accountCount: accounts.length },
     "[auth/exchange] Session complete",
+  );
+  logger.info(
+    { rid, exchangeSucceeded: true, primaryLoginid: primaryLoginid || "(none)", accountCount: accounts.length },
+    "[TRACE][auth/exchange] EXIT — session response sent to frontend",
   );
 
   return res.status(200).json({
