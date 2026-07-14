@@ -371,12 +371,67 @@ class APIBase {
                 }
             }
 
-            setAccountList(authorize?.account_list || []);
-            setAuthData(authorize);
+            // The new Deriv trading API at api.derivws.com sometimes returns an
+            // empty account_list in the authorize response (unlike the legacy
+            // WebSocket API v3 which always included it).  When that happens the
+            // account-switcher becomes invisible because useActiveAccount can't
+            // match any entry against activeLoginid.
+            //
+            // Recovery order:
+            //   1. Use the WS account_list when it has entries (normal case).
+            //   2. Reconstruct from the clientAccounts map written by callback-page.tsx.
+            //   3. Last resort: build a minimal single-entry list from the top-level
+            //      authorize fields (loginid / currency / is_virtual / etc.).
+            let resolvedAccountList: TAuthData['account_list'] = authorize?.account_list || [];
+
+            if (resolvedAccountList.length === 0 && authorize.loginid) {
+                console.log('[api-base] authorize returned empty account_list — attempting REST reconstruction');
+                try {
+                    const raw = localStorage.getItem('clientAccounts');
+                    if (raw) {
+                        const parsed = JSON.parse(raw) as Record<string, {
+                            loginid: string; token: string; currency: string;
+                            account_type?: string; balance?: number;
+                        }>;
+                        const arr = Object.values(parsed).map(acc => ({
+                            loginid: acc.loginid,
+                            currency: acc.currency || 'USD',
+                            account_type: acc.account_type || 'real',
+                            is_virtual: (acc.account_type === 'demo' || acc.account_type === 'virtual') ? 1 : 0,
+                            is_disabled: 0,
+                            landing_company_name: /^VRT/i.test(acc.loginid) ? 'virtual' : 'svg',
+                        }));
+                        if (arr.length) {
+                            resolvedAccountList = arr as unknown as TAuthData['account_list'];
+                            console.log('[api-base] account_list reconstructed from REST data, count:', arr.length);
+                        }
+                    }
+                } catch (_) { /* ignore parse errors */ }
+
+                if (resolvedAccountList.length === 0) {
+                    // Minimal entry built from authorize response top-level fields
+                    resolvedAccountList = [{
+                        loginid: authorize.loginid,
+                        currency: authorize.currency || 'USD',
+                        account_type: authorize.is_virtual ? 'demo' : 'real',
+                        is_virtual: authorize.is_virtual || 0,
+                        is_disabled: 0,
+                        landing_company_name: authorize.landing_company_name || 'svg',
+                    }] as unknown as TAuthData['account_list'];
+                    console.log('[api-base] account_list built from authorize response fields for loginid:', authorize.loginid);
+                }
+            }
+
+            const authorizeWithList = resolvedAccountList !== (authorize?.account_list || [])
+                ? { ...authorize, account_list: resolvedAccountList }
+                : authorize;
+
+            setAccountList(resolvedAccountList);
+            setAuthData(authorizeWithList);
             setIsAuthorized(true);
-            AuthSessionManager.setWsAuthorized(true, authorize);
+            AuthSessionManager.setWsAuthorized(true, authorizeWithList);
             this.is_authorized = true;
-            localStorage.setItem('client_account_details', JSON.stringify(authorize?.account_list));
+            localStorage.setItem('client_account_details', JSON.stringify(resolvedAccountList));
             localStorage.setItem('client.country', authorize?.country);
 
             if (this.has_active_symbols) {
