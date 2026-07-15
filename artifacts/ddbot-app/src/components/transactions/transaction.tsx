@@ -154,6 +154,36 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
                     <div className='transactions__popover-value'>{contract.exit_tick}</div>
                 </PopoverItem>
             ))}
+        {contract.buy_price !== undefined && (
+            <PopoverItem title={localize('Buy price')}>
+                <div className='transactions__popover-value'>
+                    <Money amount={contract.buy_price} currency={contract.currency} show_currency />
+                </div>
+            </PopoverItem>
+        )}
+        {contract.is_completed && (
+            <PopoverItem title={localize('Sell price')}>
+                <div className='transactions__popover-value'>
+                    <Money
+                        amount={contract.sell_price ?? contract.bid_price ?? 0}
+                        currency={contract.currency}
+                        show_currency
+                    />
+                </div>
+            </PopoverItem>
+        )}
+        {contract.is_completed && (
+            <PopoverItem title={localize('Result')}>
+                <div
+                    className={classNames('transactions__popover-value', {
+                        'transactions__profit--win': contract.profit && contract.profit >= 0,
+                        'transactions__profit--loss': contract.profit && contract.profit < 0,
+                    })}
+                >
+                    {(contract.profit ?? 0) >= 0 ? localize('Won') : localize('Lost')}
+                </div>
+            </PopoverItem>
+        )}
     </div>
 );
 
