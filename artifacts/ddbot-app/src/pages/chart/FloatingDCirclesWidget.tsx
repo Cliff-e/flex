@@ -34,7 +34,7 @@ import { globalTickEngine } from '../../bot/globalTickEngine';
 const posKeyFor  = (isMobile: boolean) => (isMobile ? 'dcircles_float_pos_mobile' : 'dcircles_float_pos');
 const sizeKeyFor = (isMobile: boolean) => (isMobile ? 'dcircles_float_size_mobile' : 'dcircles_float_size');
 
-const DISPLAY_COUNT_MAX = 1000;
+const DISPLAY_COUNT_MAX = 5000;
 
 // ── design canvas ─────────────────────────────────────────────────────────────
 // This is the "natural" unscaled size of the panel's content. The resizable
@@ -113,15 +113,12 @@ const FloatingDCirclesWidget = memo(({ symbol, isMobile }: Props) => {
         return [];
     });
 
-    const [displayCount, setDisplayCount] = useState<number>(() => {
-        const saved = localStorage.getItem('digits_display_count');
-        return saved
-            ? Math.min(DISPLAY_COUNT_MAX, Math.max(10, Number(saved)))
-            : 100;
-    });
+    const [displayCount, setDisplayCount] = useState<number>(() =>
+        globalTickEngine.getLimit()
+    );
 
     const [inputValue, setInputValue] = useState<string>(() =>
-        localStorage.getItem('digits_display_count') ?? '100'
+        String(globalTickEngine.getLimit())
     );
     const [isEditing, setIsEditing] = useState(false);
 
@@ -136,15 +133,19 @@ const FloatingDCirclesWidget = memo(({ symbol, isMobile }: Props) => {
         return unsub;
     }, [symbol]);
 
+    // Keep displayCount in sync when another consumer changes the engine limit
+    useEffect(() => {
+        const unsub = globalTickEngine.onLimitChange(n => {
+            setDisplayCount(n);
+            if (!isEditing) setInputValue(String(n));
+        });
+        return unsub;
+    }, [isEditing]);
+
     // sync input display when not editing
     useEffect(() => {
         if (!isEditing) setInputValue(String(displayCount));
     }, [displayCount, isEditing]);
-
-    // persist display count
-    useEffect(() => {
-        localStorage.setItem('digits_display_count', String(displayCount));
-    }, [displayCount]);
 
     // ── compute default position (bottom-centre) once parent is known ─────────
     useLayoutEffect(() => {
@@ -377,7 +378,7 @@ const FloatingDCirclesWidget = memo(({ symbol, isMobile }: Props) => {
                                         marginBottom: 4,
                                     }}
                                 >
-                                    Digits to show
+                                    Last Ticks
                                 </div>
                                 <input
                                     type='number'
@@ -388,28 +389,30 @@ const FloatingDCirclesWidget = memo(({ symbol, isMobile }: Props) => {
                                         if (val === '') { setInputValue(''); return; }
                                         if (!/^\d+$/.test(val)) return;
                                         setInputValue(val);
-                                        setDisplayCount(
-                                            Math.min(1000, Math.max(10, Number(val)))
-                                        );
+                                        const clamped = Math.min(DISPLAY_COUNT_MAX, Math.max(100, Number(val)));
+                                        setDisplayCount(clamped);
+                                        globalTickEngine.setLimit(clamped);
                                     }}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') {
                                             let val = Number(inputValue);
-                                            if (isNaN(val)) val = 100;
-                                            val = Math.min(1000, Math.max(10, val));
+                                            if (isNaN(val)) val = 1000;
+                                            val = Math.min(DISPLAY_COUNT_MAX, Math.max(100, val));
                                             setDisplayCount(val);
                                             setInputValue(String(val));
                                             setIsEditing(false);
+                                            globalTickEngine.setLimit(val);
                                             (e.target as HTMLInputElement).blur();
                                         }
                                     }}
                                     onBlur={() => {
                                         let val = Number(inputValue);
-                                        if (isNaN(val)) val = 100;
-                                        val = Math.min(1000, Math.max(10, val));
+                                        if (isNaN(val)) val = 1000;
+                                        val = Math.min(DISPLAY_COUNT_MAX, Math.max(100, val));
                                         setDisplayCount(val);
                                         setInputValue(String(val));
                                         setIsEditing(false);
+                                        globalTickEngine.setLimit(val);
                                     }}
                                     style={{
                                         padding: '6px 10px',
