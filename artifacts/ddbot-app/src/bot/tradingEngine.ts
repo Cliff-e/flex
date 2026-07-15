@@ -615,8 +615,11 @@ export class TradingEngine {
             proposalReqId
         );
 
-        const proposalId = (proposalMsg as any).proposal?.id;
-        if (!proposalId) throw new Error('No proposal ID returned');
+        const proposalId = (proposalMsg as any).proposal?.id ?? (proposalMsg as any).proposal?.proposalId;
+        if (!proposalId) {
+            console.error('[AI-BOT][TradingEngine] proposal response had no id field:', proposalMsg);
+            throw new Error('No proposal ID returned');
+        }
 
         const buyReqId = ++this._reqId;
         const buyMsg = await this._sendAndAwait(
@@ -625,8 +628,9 @@ export class TradingEngine {
             buyReqId
         );
 
-        const contractId = (buyMsg as any).buy?.contract_id;
+        const contractId = (buyMsg as any).buy?.contract_id ?? (buyMsg as any).buy?.contractId;
         if (!contractId) {
+            console.error('[AI-BOT][TradingEngine] buy response had no contract_id field:', buyMsg);
             throw new Error(
                 `Buy failed: ${(buyMsg as any).error?.message ?? 'no contract_id'}`
             );
@@ -657,9 +661,21 @@ export class TradingEngine {
             }, TRADE_TIMEOUT_MS);
 
             const unsub = EventBus.on(eventType, msg => {
-                if ((msg as any).req_id !== reqId) return;
+                // The new trading API (api.derivws.com) does not always echo
+                // `req_id` at the top level of the response — same class of
+                // issue already worked around for `passthrough` in
+                // Proposal.js (bot-skeleton). Fall back to `echo_req.req_id`
+                // so matching still works on both endpoint generations.
+                const msgReqId = (msg as any).req_id ?? (msg as any).echo_req?.req_id;
+                if (msgReqId !== reqId) {
+                    this.log(
+                        `↩️ ${eventType} response ignored — req_id ${msgReqId ?? '(none)'} ≠ expected ${reqId}`
+                    );
+                    return;
+                }
                 unsub();
                 clearTimeout(timer);
+                console.log(`[AI-BOT][TradingEngine] ${eventType} response matched req_id ${reqId}:`, msg);
                 if ((msg as any).error) {
                     reject(new Error((msg as any).error.message || 'API error'));
                 } else {
@@ -667,6 +683,7 @@ export class TradingEngine {
                 }
             });
 
+            console.log(`[AI-BOT][TradingEngine] sending ${eventType} req_id ${reqId}:`, payload);
             WebSocketManager.send({ ...payload, req_id: reqId });
         });
     }
