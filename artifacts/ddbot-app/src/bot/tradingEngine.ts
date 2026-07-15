@@ -13,8 +13,8 @@
 // AI Bot trades via the same bus they already listen on.
 // =============================================================
 
-import { getCurrentDCirclesState } from './dcirclesStore';
 import { PublicTickManager } from '../utils/PublicTickManager';
+import { globalTickEngine } from './globalTickEngine';
 import { WebSocketManager } from '../utils/WebSocketManager';
 import { EventBus, EventMap } from '../utils/EventBus';
 import { RuntimeLogger } from '../runtime/RuntimeLogger';
@@ -126,7 +126,9 @@ export class TradingEngine {
     private currentStake = 0;
 
     // Digit streams
-    private tickDigits: number[] = [];
+    // tickDigits removed — TradingEngine reads digit history directly from
+    // globalTickEngine (the single shared source of truth) instead of
+    // maintaining its own private buffer.
     private decimals: number | null = null;
     private virtualDigits: number[] = [];
     private realDigits: number[] = [];
@@ -184,7 +186,6 @@ export class TradingEngine {
         this.tradeCount = 0;
         this.tradeIdCounter = 0;
         this.currentStake = this.config.stake;
-        this.tickDigits = [];
         this.virtualDigits = [];
         this.realDigits = [];
         this.exitDigitLog = [];
@@ -282,9 +283,6 @@ export class TradingEngine {
 
         const digit = this.extractDigit(String(tick.quote));
 
-        this.tickDigits.push(digit);
-        if (this.tickDigits.length > 1000) this.tickDigits.shift();
-
         if (this.state === 'monitoring' && !this.executionLock) {
             this.addVirtualExitDigit(digit);
         }
@@ -346,21 +344,16 @@ export class TradingEngine {
 
     private checkDCirclesConfirmation(): boolean {
         const { strategy } = this.config;
-        const storeState = getCurrentDCirclesState();
-        const useStore =
-            storeState.symbol === this.config.symbol && storeState.total >= MIN_FREQ_TICKS;
 
-        const total = useStore ? storeState.total : this.tickDigits.length;
+        // Read directly from the shared global engine — always current,
+        // no dependency on any UI component being mounted or visible.
+        const digits = globalTickEngine.getDigits(this.config.symbol);
+        const total = digits.length;
         if (total < MIN_FREQ_TICKS) return false;
 
         const freq: Record<number, number> = {};
         for (let i = 0; i < 10; i++) freq[i] = 0;
-
-        if (useStore) {
-            Object.assign(freq, storeState.freq);
-        } else {
-            this.tickDigits.forEach(d => (freq[d] = (freq[d] ?? 0) + 1));
-        }
+        digits.forEach(d => { freq[d] = (freq[d] ?? 0) + 1; });
 
         const pct = (d: number) => ((freq[d] ?? 0) / total) * 100;
         const hasRedBar = (d: number) => pct(d) > 12;
