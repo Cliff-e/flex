@@ -609,7 +609,11 @@ export class TradingEngine {
                 currency: 'USD',
                 duration: 1,
                 duration_unit: 't',
-                symbol: this.config.symbol,
+                // api.derivws.com rejects `symbol` on proposal requests with
+                // InputValidationFailed: "Properties not allowed: symbol" — it
+                // requires `underlying_symbol` instead. Same fix already
+                // applied in bot-skeleton's tradeOptionToProposal (helpers.js).
+                underlying_symbol: this.config.symbol,
                 barrier,
             },
             proposalReqId
