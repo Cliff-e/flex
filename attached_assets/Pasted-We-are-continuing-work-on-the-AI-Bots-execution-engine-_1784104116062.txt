@@ -1,0 +1,197 @@
+We are continuing work on the AI Bots execution engine in artifacts/ddbot-app.
+
+Current status
+
+The previous blocking issue has already been fixed.
+
+The execution path now successfully reaches:
+
+Strategy
+→ Proposal
+→ Proposal matched
+→ BUY sent
+→ Buy response received
+→ contract_id received
+→ proposal_open_contract subscribed
+
+A real trade is successfully placed.
+
+However, execution stops immediately afterwards.
+
+The confirmed cause is that on the new Deriv endpoint, fields such as proposal_open_contract.profit are returned as strings, while the TradingEngine expects numbers.
+
+Example:
+
+poc.profit = "0.35"
+
+The engine later performs:
+
+this.profit += result.profit;
+...
+this.profit.toFixed(2)
+
+which eventually throws:
+
+TypeError:
+this.profit.toFixed is not a function
+
+This crashes executeBatch, stops the AI Bot sequence and closes the execution pipeline after only one trade.
+
+TASK
+
+Perform a complete execution audit of the AI Bots trading engine.
+
+Do not patch only profit.
+
+Inspect every place where data enters the engine from Deriv.
+
+1. Normalize ALL numeric fields
+
+Audit every handler for:
+
+proposal
+buy
+proposal_open_contract
+transaction
+balance
+account updates
+
+Convert every numeric value immediately after receipt.
+
+Examples include:
+
+profit
+payout
+buy_price
+sell_price
+commission
+balance_after
+amount
+ask_price
+bid_price
+spot
+stake
+duration
+barrier
+contract_value
+entry_tick
+exit_tick
+
+Ensure the TradingEngine never performs arithmetic on strings.
+
+Use proper numeric conversion with validation.
+
+2. Prevent engine crashes
+
+No malformed API value should ever terminate trading.
+
+Wrap execution so one bad response cannot kill:
+
+executeBatch()
+strategy loop
+websocket listeners
+monitoring loop
+
+Log the error but continue safely where appropriate.
+
+3. Verify complete trading lifecycle
+
+Trace and verify the entire execution path:
+
+Run
+↓
+Strategy
+↓
+Proposal
+↓
+Proposal response
+↓
+BUY
+↓
+Buy response
+↓
+proposal_open_contract
+↓
+Contract closed
+↓
+Transaction event
+↓
+Summary updated
+↓
+Journal updated
+↓
+Transactions updated
+↓
+Next trade
+
+Confirm every stage works.
+
+4. Reuse existing Blockly infrastructure
+
+The AI Bots MUST NOT maintain separate trade history.
+
+Use the existing shared infrastructure already used by Bot Builder / Blockly for:
+
+Summary
+Transactions
+Journal
+Trade history
+P/L tracking
+Statistics
+Recovery updates
+
+If AI Bots currently maintain duplicate versions of any of these, remove the duplication and route everything through the existing shared services/stores.
+
+There should be one source of truth.
+
+5. Compare against Blockly Bot Builder
+
+Compare the AI Bot execution path with the working Blockly execution path.
+
+Identify every difference.
+
+If Blockly already has reusable execution services, use them instead of duplicating functionality where practical.
+
+Do not change AI strategy logic.
+
+Only unify execution, monitoring and reporting.
+
+6. Verify Auto Sequence
+
+Confirm Auto Sequence correctly:
+
+places every scheduled trade
+waits for contract completion
+updates running profit
+respects TP/SL
+continues until completion
+does not stop after the first trade
+7. Logging
+
+Temporarily add concise diagnostic logs for:
+
+proposal matched
+buy sent
+buy response
+contract opened
+contract closed
+transaction received
+summary updated
+journal updated
+next sequence entry
+
+These logs should make it easy to verify the full execution lifecycle.
+
+8. Final deliverables
+
+Provide:
+
+Root cause(s) found.
+Files modified.
+Why execution stopped after one trade.
+Confirmation that AI Bots now complete full trading cycles.
+Confirmation that AI Bots use the existing Summary, Transactions and Journal infrastructure shared with Blockly/Bot Builder.
+Git commit hash.
+Push all changes to GitHub.
+
+Do not stop after fixing one runtime error. Continue auditing until AI Bots can execute complete trading sessions exactly like the existing Blockly Bot Builder while keeping the AI strategy layer separate from the shared execution and reporting infrastructure.
