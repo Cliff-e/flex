@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { dcirclesStore } from '../../bot/dcirclesStore';
 import { analyzeSignals } from '../../pages/d-circles/signalEngine';
 import { globalTickEngine } from '../../bot/globalTickEngine';
@@ -7,6 +7,10 @@ type Props = { symbol: string; isDark?: boolean };
 
 const LiveDCirclesPanel: React.FC<Props> = ({ symbol, isDark = false }) => {
     const [digits, setDigits] = useState<number[]>(() => globalTickEngine.getDigits(symbol));
+    const [tickLimit, setTickLimit] = useState(() => globalTickEngine.getLimit());
+    const [limitInput, setLimitInput] = useState(() => String(globalTickEngine.getLimit()));
+    const [isEditingLimit, setIsEditingLimit] = useState(false);
+    const limitInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setDigits(globalTickEngine.getDigits(symbol));
@@ -16,6 +20,20 @@ const LiveDCirclesPanel: React.FC<Props> = ({ symbol, isDark = false }) => {
         });
         return unsub;
     }, [symbol]);
+
+    // Keep input display in sync when limit is changed from another consumer
+    useEffect(() => {
+        const unsub = globalTickEngine.onLimitChange(n => {
+            setTickLimit(n);
+            if (!isEditingLimit) setLimitInput(String(n));
+        });
+        return unsub;
+    }, [isEditingLimit]);
+
+    // Sync input string when not editing
+    useEffect(() => {
+        if (!isEditingLimit) setLimitInput(String(tickLimit));
+    }, [tickLimit, isEditingLimit]);
 
     // Publish to dcirclesStore so the bot engine can read it
     useEffect(() => {
@@ -87,11 +105,52 @@ const LiveDCirclesPanel: React.FC<Props> = ({ symbol, isDark = false }) => {
     const ticksCol  = isDark ? '#333' : '#aaa';
     const textCol   = isDark ? '#aaa' : '#555';
 
+    const applyLimit = (raw: string) => {
+        let n = Number(raw);
+        if (isNaN(n) || raw === '') n = tickLimit;
+        const clamped = Math.max(100, Math.min(5000, Math.round(n)));
+        setLimitInput(String(clamped));
+        setIsEditingLimit(false);
+        if (clamped !== tickLimit) globalTickEngine.setLimit(clamped);
+    };
+
     return (
         <div style={{ ...S.wrap, background: bg, border: `1px solid ${borderCol}` }}>
             <div style={S.header}>
                 <span style={{ ...S.title, color: titleCol }}>Live DCircles</span>
-                <span style={{ ...S.ticks, color: ticksCol }}>{digits.length} ticks</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ ...S.ticks, color: ticksCol }}>Last</span>
+                    <input
+                        ref={limitInputRef}
+                        type='text'
+                        value={limitInput}
+                        onFocus={() => setIsEditingLimit(true)}
+                        onChange={e => {
+                            const v = e.target.value;
+                            if (v === '' || /^\d+$/.test(v)) setLimitInput(v);
+                        }}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                applyLimit(limitInput);
+                                limitInputRef.current?.blur();
+                            }
+                        }}
+                        onBlur={() => applyLimit(limitInput)}
+                        style={{
+                            width: 52,
+                            padding: '2px 5px',
+                            borderRadius: 5,
+                            border: `1px solid ${isEditingLimit ? '#00bfff' : borderCol}`,
+                            background: isDark ? '#1a1d26' : '#f0f2f5',
+                            color: isDark ? '#00bfff' : '#0077cc',
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            textAlign: 'center',
+                            outline: 'none',
+                        }}
+                    />
+                    <span style={{ ...S.ticks, color: ticksCol }}>ticks</span>
+                </div>
             </div>
 
             {/* ── Circles grid: row 0-4, row 5-9 ── */}
