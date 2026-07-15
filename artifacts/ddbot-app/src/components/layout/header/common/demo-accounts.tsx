@@ -13,13 +13,52 @@ import { AccountSwitcherDivider, convertCommaValue } from './utils';
  * the request and forgetting about it — the previous fire-and-forget call
  * gave no feedback on failure and never nudged the UI to refresh, so the
  * button appeared to do nothing even when the request actually failed.
+ *
+ * `topup_virtual` is applied to whichever account the WS connection is
+ * currently *authorized as* (api_base.account_id) — it is not scoped by the
+ * `loginid` argument. If the account switch to this demo account hasn't
+ * finished re-authorizing the WS connection yet (or the switch silently
+ * failed), the request lands on the wrong/previous account and Deriv
+ * rejects it (e.g. `PermissionDenied` on a real account, or a mismatched
+ * loginid). We guard against that instead of sending blind and only
+ * discovering the mismatch via a cryptic error.
  */
 const resetDemoBalance = async (loginid: string) => {
+    const request = { topup_virtual: 1 };
     try {
-        const response = (await api_base?.api?.send({ topup_virtual: 1 })) as
-            | { error?: { message?: string }; topup_virtual?: unknown }
+        const currentAuthorizedLoginid = api_base?.account_id;
+        if (currentAuthorizedLoginid && currentAuthorizedLoginid !== loginid) {
+            console.error('[demo-accounts] resetDemoBalance account-context mismatch', {
+                requestedLoginid: loginid,
+                wsAuthorizedLoginid: currentAuthorizedLoginid,
+            });
+            throw new Error(
+                'Your session is still switching accounts. Please wait a moment and try resetting the balance again.'
+            );
+        }
+
+        console.log('[demo-accounts] resetDemoBalance request:', {
+            request,
+            targetLoginid: loginid,
+            wsAuthorizedLoginid: currentAuthorizedLoginid,
+        });
+
+        const response = (await api_base?.api?.send(request)) as
+            | { error?: { code?: string; message?: string; details?: unknown }; topup_virtual?: unknown }
             | undefined;
+
+        console.log('[demo-accounts] resetDemoBalance response:', response);
+
         if (response?.error) {
+            console.error('[demo-accounts] resetDemoBalance failed', {
+                request,
+                response,
+                errorCode: response.error.code,
+                errorMessage: response.error.message,
+                errorDetails: response.error.details,
+                targetLoginid: loginid,
+                wsAuthorizedLoginid: currentAuthorizedLoginid,
+            });
             throw new Error(response.error.message || 'Failed to reset demo balance');
         }
         // The WS balance subscription (see api-base.subscribe, `account: 'all'`)
@@ -32,7 +71,14 @@ const resetDemoBalance = async (loginid: string) => {
         }
         toast.success(localize('Your demo balance has been reset.'));
     } catch (error) {
-        console.error('[demo-accounts] resetDemoBalance failed:', error);
+        console.error('[demo-accounts] resetDemoBalance threw', {
+            request,
+            targetLoginid: loginid,
+            error,
+            errorCode: (error as { error?: { code?: string } })?.error?.code,
+            errorMessage: (error as Error)?.message,
+            errorDetails: (error as { error?: { details?: unknown } })?.error?.details,
+        });
         toast.error(
             (error as Error)?.message ? localize((error as Error).message) : localize('Failed to reset demo balance.')
         );

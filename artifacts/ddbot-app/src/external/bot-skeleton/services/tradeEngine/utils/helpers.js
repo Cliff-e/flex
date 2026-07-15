@@ -11,7 +11,7 @@ import { error as logError } from './broadcast';
 // Several fields above (multiplier, duration, duration_unit, growth_rate, ...)
 // are only meaningful for specific contract types and are left `undefined` for
 // every other contract type, so every request must be scrubbed before it is sent.
-const stripNullish = obj => {
+export const stripNullish = obj => {
     Object.keys(obj).forEach(key => {
         if (obj[key] === undefined || obj[key] === null) {
             delete obj[key];

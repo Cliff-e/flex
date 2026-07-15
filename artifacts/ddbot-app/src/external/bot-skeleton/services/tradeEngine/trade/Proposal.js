@@ -67,26 +67,42 @@ export default Engine =>
 
             Promise.all(
                 this.proposal_templates.map(proposal => {
-                    doUntilDone(() => api_base.api.send(proposal)).catch(error => {
-                        // We intercept ContractBuyValidationError as user may have specified
-                        // e.g. a DIGITUNDER 0 or DIGITOVER 9, while one proposal may be invalid
-                        // the other is valid. We will error on Purchase rather than here.
-
-                        if (error?.error?.code === 'ContractBuyValidationError') {
-                            this.data.proposals.push({
-                                ...error.error.echo_req,
-                                ...error.echo_req.passthrough,
-                                error,
+                    // eslint-disable-next-line no-console
+                    console.log('[TRADE][Proposal] Sending proposal request:', proposal);
+                    return doUntilDone(() => api_base.api.send(proposal))
+                        .then(response => {
+                            // eslint-disable-next-line no-console
+                            console.log('[TRADE][Proposal] Proposal response:', response);
+                            return response;
+                        })
+                        .catch(error => {
+                            console.error('[TRADE][Proposal] Proposal request failed', {
+                                request: proposal,
+                                response: error,
+                                errorCode: error?.error?.code,
+                                errorMessage: error?.error?.message,
+                                errorDetails: error?.error?.details,
                             });
 
+                            // We intercept ContractBuyValidationError as user may have specified
+                            // e.g. a DIGITUNDER 0 or DIGITOVER 9, while one proposal may be invalid
+                            // the other is valid. We will error on Purchase rather than here.
+
+                            if (error?.error?.code === 'ContractBuyValidationError') {
+                                this.data.proposals.push({
+                                    ...error.error.echo_req,
+                                    ...error.echo_req.passthrough,
+                                    error,
+                                });
+
+                                return null;
+                            }
+                            if (!has_informed_error) {
+                                has_informed_error = true;
+                                this.$scope.observer.emit('Error', error.error);
+                            }
                             return null;
-                        }
-                        if (!has_informed_error) {
-                            has_informed_error = true;
-                            this.$scope.observer.emit('Error', error.error);
-                        }
-                        return null;
-                    });
+                        });
                 })
             );
         }

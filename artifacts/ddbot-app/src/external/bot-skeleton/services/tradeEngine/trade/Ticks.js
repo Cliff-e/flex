@@ -4,7 +4,7 @@ import { localize } from '@deriv-com/translations';
 import { getLast } from '../../../utils/binary-utils';
 import { observer as globalObserver } from '../../../utils/observer';
 import { api_base } from '../../api/api-base';
-import { getDirection, getLastDigit } from '../utils/helpers';
+import { getDirection, getLastDigit, stripNullish } from '../utils/helpers';
 import { expectPositiveInteger } from '../utils/sanitize';
 import * as constants from './state/constants';
 
@@ -121,7 +121,11 @@ export default Engine =>
         async requestAccumulatorStats() {
             const subscription_id = this.subscription_id_for_accumulators;
             const is_proposal_requested = this.is_proposal_requested_for_accumulators;
-            const proposal_request = {
+            // This proposal payload is built independently from tradeOptionToProposal()
+            // (helpers.js), so it must go through the same nullish-stripping — otherwise
+            // it can carry `amount`/`growth_rate`/etc. as explicit `undefined` keys and
+            // get rejected by Deriv with "Input validation failed: parameters".
+            const proposal_request = stripNullish({
                 ...window.Blockly.accumulators_request,
                 amount: this?.tradeOptions?.amount,
                 basis: this?.tradeOptions?.basis,
@@ -131,11 +135,24 @@ export default Engine =>
                 proposal: 1,
                 subscribe: 1,
                 symbol: this?.tradeOptions?.symbol,
-            };
+            });
             if (!subscription_id && !is_proposal_requested) {
                 this.is_proposal_requested_for_accumulators = true;
                 if (proposal_request) {
-                    await api_base?.api?.send(proposal_request);
+                    console.log('[TRADE][AccumulatorProposal] Sending proposal request:', proposal_request);
+                    try {
+                        const response = await api_base?.api?.send(proposal_request);
+                        console.log('[TRADE][AccumulatorProposal] Proposal response:', response);
+                    } catch (error) {
+                        console.error('[TRADE][AccumulatorProposal] Proposal request failed', {
+                            request: proposal_request,
+                            response: error,
+                            errorCode: error?.error?.code,
+                            errorMessage: error?.error?.message,
+                            errorDetails: error?.error?.details,
+                        });
+                        throw error;
+                    }
                 }
             }
         }

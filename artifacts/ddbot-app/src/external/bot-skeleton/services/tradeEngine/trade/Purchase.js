@@ -47,7 +47,28 @@ export default Engine =>
             if (this.is_proposal_subscription_required) {
                 const { id, askPrice } = this.selectProposal(contract_type);
 
-                const action = () => api_base.api.send({ buy: id, price: askPrice });
+                const action = () => {
+                    const buy_request = { buy: id, price: askPrice };
+                    // eslint-disable-next-line no-console
+                    console.log('[TRADE][Purchase] Sending buy request:', buy_request);
+                    return api_base.api
+                        .send(buy_request)
+                        .then(response => {
+                            // eslint-disable-next-line no-console
+                            console.log('[TRADE][Purchase] Buy response:', response);
+                            return response;
+                        })
+                        .catch(error => {
+                            console.error('[TRADE][Purchase] Buy request failed', {
+                                request: buy_request,
+                                response: error,
+                                errorCode: error?.error?.code,
+                                errorMessage: error?.error?.message,
+                                errorDetails: error?.error?.details,
+                            });
+                            throw error;
+                        });
+                };
 
                 this.isSold = false;
 
@@ -83,7 +104,27 @@ export default Engine =>
                 ).then(onSuccess);
             }
             const trade_option = tradeOptionToBuy(contract_type, this.tradeOptions);
-            const action = () => api_base.api.send(trade_option);
+            const action = () => {
+                // eslint-disable-next-line no-console
+                console.log('[TRADE][Purchase] Sending direct buy request:', trade_option);
+                return api_base.api
+                    .send(trade_option)
+                    .then(response => {
+                        // eslint-disable-next-line no-console
+                        console.log('[TRADE][Purchase] Direct buy response:', response);
+                        return response;
+                    })
+                    .catch(error => {
+                        console.error('[TRADE][Purchase] Direct buy request failed', {
+                            request: trade_option,
+                            response: error,
+                            errorCode: error?.error?.code,
+                            errorMessage: error?.error?.message,
+                            errorDetails: error?.error?.details,
+                        });
+                        throw error;
+                    });
+            };
 
             this.isSold = false;
 
