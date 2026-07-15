@@ -30,6 +30,10 @@ import { normalizeContractSpots } from '../external/bot-skeleton/services/tradeE
 
 const AI_BOT_RUNTIME_ID = 'ai-bot';
 
+// Set to true to re-enable verbose per-request / per-POC console tracing.
+// Leave false in production — trades, errors and TP/SL are always logged.
+const DEBUG_AI_BOT = false;
+
 const TRADES_PER_BATCH = 3;
 const MIN_FREQ_TICKS = 50;
 const ENTRY_DEBOUNCE_MS = 2500;
@@ -294,7 +298,7 @@ export class TradingEngine {
             if (!triggered) return;
 
             this.log(`🎯 Entry detected — digit ${digit} | Confirmation ✅`);
-            console.log('[AI-BOT][LIFECYCLE] Proposal matched — entry digit', digit, '| strategy', this.config.strategy);
+            if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Proposal matched — entry digit', digit, '| strategy', this.config.strategy);
             RuntimeLogger.updateSignal(AI_BOT_RUNTIME_ID, `Entry on digit ${digit}`);
             this.lastEntryTs = now;
             this.currentEntryDigit = entryDigit;
@@ -391,7 +395,7 @@ export class TradingEngine {
                 this.log(
                     `📡 Entry ${i + 1}/10 — DIFFER @ ${barrier}, stake $${this.config.stake.toFixed(2)}`
                 );
-                console.log(`[AI-BOT][LIFECYCLE] Auto-sequence entry ${i + 1}/10 — DIFFER barrier:${barrier}`);
+                if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Auto-sequence entry ${i + 1}/10 — DIFFER barrier:${barrier}`);
 
                 try {
                     const result = await this.placeOneTrade('DIGITDIFF', barrier, this.config.stake);
@@ -414,7 +418,7 @@ export class TradingEngine {
 
                     this.publishStatus();
                     this.checkTPSL();
-                    console.log(`[AI-BOT][LIFECYCLE] Next sequence entry — seq index ${i + 2}/10`);
+                    if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next sequence entry — seq index ${i + 2}/10`);
                 } catch (err) {
                     // A single trade error must NOT kill the entire sequence.
                     this.log(`❌ Entry ${i + 1}/10 error: ${(err as Error).message}`);
@@ -527,7 +531,7 @@ export class TradingEngine {
                 this.checkTPSL();
                 if (this._isStopped()) break;
 
-                console.log(`[AI-BOT][LIFECYCLE] Next trade — batch index ${i + 2}/${TRADES_PER_BATCH}`);
+                if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next trade — batch index ${i + 2}/${TRADES_PER_BATCH}`);
             } catch (err) {
                 // A single trade error must NOT kill the entire batch. Log and
                 // continue to the next iteration so the session stays alive.
@@ -541,7 +545,7 @@ export class TradingEngine {
         this.log(
             `📦 Batch complete | session P&L: ${this.profit >= 0 ? '+' : ''}${this.profit.toFixed(2)}`
         );
-        console.log('[AI-BOT][LIFECYCLE] Batch complete | P&L:', this.profit.toFixed(2));
+        if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Batch complete | P&L:', this.profit.toFixed(2));
 
         if (!this._isStopped()) {
             if (hadLoss) {
@@ -666,7 +670,8 @@ export class TradingEngine {
             id: 'contract.purchase_sent',
             data: stake,
         });
-        console.log('[AI-BOT][LIFECYCLE] BUY sent — contractType:', contractType, 'barrier:', barrier, 'stake:', stake);
+        console.log(`[AI-BOT] Trade opened — ${contractType} barrier:${barrier} stake:${stake}`);
+        if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] BUY sent — contractType:', contractType, 'barrier:', barrier, 'stake:', stake);
 
         const proposalMsg = await this._sendAndAwait(
             'proposal',
@@ -688,7 +693,7 @@ export class TradingEngine {
             proposalReqId
         );
 
-        console.log('[AI-BOT][LIFECYCLE] Proposal response received — req_id:', proposalReqId);
+        if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Proposal response received — req_id:', proposalReqId);
 
         const proposalId = (proposalMsg as any).proposal?.id ?? (proposalMsg as any).proposal?.proposalId;
         if (!proposalId) {
@@ -712,7 +717,7 @@ export class TradingEngine {
             );
         }
 
-        console.log('[AI-BOT][LIFECYCLE] Buy response received — contract_id:', contractId);
+        if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Buy response received — contract_id:', contractId);
 
         // ── STAGE: purchase_received ──────────────────────────────────────────
         // The buy was acknowledged by the API. Notify RunPanelStore and feed
@@ -740,7 +745,7 @@ export class TradingEngine {
             buy_price: normalizedBuy.buy_price,
         });
 
-        console.log('[AI-BOT][LIFECYCLE] Contract opened — contract_id:', contractId);
+        if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Contract opened — contract_id:', contractId);
 
         WebSocketManager.send({
             proposal_open_contract: 1,
@@ -781,7 +786,7 @@ export class TradingEngine {
                 }
                 unsub();
                 clearTimeout(timer);
-                console.log(`[AI-BOT][TradingEngine] ${eventType} response matched req_id ${reqId}:`, msg);
+                if (DEBUG_AI_BOT) console.log(`[AI-BOT][TradingEngine] ${eventType} response matched req_id ${reqId}:`, msg);
                 if ((msg as any).error) {
                     reject(new Error((msg as any).error.message || 'API error'));
                 } else {
@@ -789,7 +794,7 @@ export class TradingEngine {
                 }
             });
 
-            console.log(`[AI-BOT][TradingEngine] sending ${eventType} req_id ${reqId}:`, payload);
+            if (DEBUG_AI_BOT) console.log(`[AI-BOT][TradingEngine] sending ${eventType} req_id ${reqId}:`, payload);
             WebSocketManager.send({ ...payload, req_id: reqId });
         });
     }
@@ -850,7 +855,8 @@ export class TradingEngine {
 
                     const profit = poc.profit;   // already a number after safeNum above
 
-                    console.log('[AI-BOT][LIFECYCLE] Contract closed', {
+                    console.log(`[AI-BOT] Trade closed — ${profit >= 0 ? 'Profit' : 'Loss'}: ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}`);
+                    if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Contract closed', {
                         contractId,
                         profit,
                         buy_price: poc.buy_price,
@@ -874,9 +880,11 @@ export class TradingEngine {
                         extra: { currency: poc.currency || 'USD', profit },
                     });
 
-                    console.log('[AI-BOT][LIFECYCLE] Summary updated — profit:', profit);
-                    console.log('[AI-BOT][LIFECYCLE] Journal updated — type:', profit > 0 ? 'PROFIT' : 'LOST');
-                    console.log('[AI-BOT][LIFECYCLE] Transactions updated — contract_id:', contractId);
+                    if (DEBUG_AI_BOT) {
+                        console.log('[AI-BOT][LIFECYCLE] Summary updated — profit:', profit);
+                        console.log('[AI-BOT][LIFECYCLE] Journal updated — type:', profit > 0 ? 'PROFIT' : 'LOST');
+                        console.log('[AI-BOT][LIFECYCLE] Transactions updated — contract_id:', contractId);
+                    }
 
                     RuntimeLogger.recordTrade(AI_BOT_RUNTIME_ID, poc);
                     RuntimeLogger.updatePosition(AI_BOT_RUNTIME_ID, '--');
