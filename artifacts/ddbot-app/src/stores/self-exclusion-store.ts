@@ -79,6 +79,13 @@ export default class SelfExclusionStore {
                     this.core.client.logout();
                     return;
                 }
+                // get_self_exclusion is not available on api.derivws.com — suppress
+                // the noisy console.error so it doesn't alarm users; the restriction
+                // check simply returns without setting any limit.
+                if (error_code === 'UnrecognisedRequest') {
+                    console.warn('[SelfExclusion] get_self_exclusion not supported on this endpoint (non-critical)');
+                    return;
+                }
                 console.error('Error fetching self-exclusion data:', error);
             }
         }

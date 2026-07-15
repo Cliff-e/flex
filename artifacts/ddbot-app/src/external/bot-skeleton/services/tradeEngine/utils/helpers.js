@@ -35,7 +35,9 @@ export const tradeOptionToProposal = (trade_option, purchase_reference) =>
                 purchase_reference,
             },
             proposal: 1,
-            symbol: trade_option.symbol,
+            // api.derivws.com uses `underlying_symbol` — `symbol` is rejected
+            // with InputValidationFailed: "Properties not allowed: symbol"
+            underlying_symbol: trade_option.symbol,
         };
         if (trade_option.prediction !== undefined) {
             proposal.selected_tick = trade_option.prediction;
