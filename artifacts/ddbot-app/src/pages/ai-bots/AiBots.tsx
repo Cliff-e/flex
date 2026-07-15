@@ -10,6 +10,7 @@ import LiveDCirclesPanel from '../../components/live-dcircles-panel/LiveDCircles
 import PerformanceDashboard from '../../components/performance-dashboard/PerformanceDashboard';
 import DigitHeatmap from '../../components/digit-heatmap/DigitHeatmap';
 import { AuthSessionManager } from '../../utils/AuthSessionManager';
+import { useStore } from '@/hooks/useStore';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -217,6 +218,15 @@ const AiBots: React.FC = () => {
     // Cleanup on unmount
     useEffect(() => () => { engineRef.current?.stop(); }, []);
 
+    // ── Shared Blockly infrastructure ─────────────────────────────────────────
+    // useStore() provides access to the same MobX stores used by the Blockly
+    // Bot Builder: run_panel, transactions, summary_card, journal.
+    // When the AI bot starts we call run_panel.registerBotListeners() so that
+    // the observer events emitted by TradingEngine (bot.contract,
+    // contract.status, ui.log.success) are routed to the same stores that
+    // power the Summary / Transactions / Journal run-panel tabs.
+    const store = useStore();
+
     // ── Auth lifecycle guards ─────────────────────────────────────────────────
     // The engine is account-specific. Stop it immediately when the session is
     // invalidated (logout / token expiry) or the active account changes, so the
@@ -226,19 +236,21 @@ const AiBots: React.FC = () => {
     useEffect(() => {
         if (!token && engineRef.current) {
             engineRef.current.stop();
+            store?.run_panel?.unregisterBotListeners();
             engineRef.current = null;
         }
-    }, [token]);
+    }, [token, store]);
 
     // Stop on account switch
     const prevLoginIdRef = useRef(loginId);
     useEffect(() => {
         if (prevLoginIdRef.current && prevLoginIdRef.current !== loginId && engineRef.current) {
             engineRef.current.stop();
+            store?.run_panel?.unregisterBotListeners();
             engineRef.current = null;
         }
         prevLoginIdRef.current = loginId;
-    }, [loginId]);
+    }, [loginId, store]);
 
     const handleStart = useCallback(async () => {
         if (isRunning || !token) return;
@@ -256,6 +268,12 @@ const AiBots: React.FC = () => {
             ...(strategy === 'DIFFER' && differSubStrat === 'MANUAL' ? { differDigits } : {}),
         };
 
+        // Register the shared observer listeners (TransactionsStore,
+        // SummaryCardStore, RunPanelStore) before starting the engine so
+        // they are in place to receive the very first bot.contract event.
+        // This is the same call the Blockly Bot Builder makes on Run.
+        store?.run_panel?.registerBotListeners();
+
         const engine = new TradingEngine(config);
         engine.setStatusCallback(s => setStatus(s));
         engineRef.current = engine;
@@ -266,12 +284,15 @@ const AiBots: React.FC = () => {
         } catch {
             // errors surface via logs
         }
-    }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss]);
+    }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss, store]);
 
     const handleStop = useCallback(() => {
         engineRef.current?.stop();
+        // Unregister the shared bot listeners after the engine stops so
+        // they do not interfere with a subsequent Blockly bot session.
+        store?.run_panel?.unregisterBotListeners();
         engineRef.current = null;
-    }, []);
+    }, [store]);
 
     const profitColor = status.profit > 0 ? '#00ff66' : status.profit < 0 ? '#ff4444' : '#888';
 

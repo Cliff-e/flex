@@ -6,6 +6,11 @@
 // Architecture: uses WebSocketManager (ONE authenticated WS) +
 // EventBus for trade request/response, PublicTickManager for tick
 // monitoring. No private WebSocket — no duplicate connections.
+//
+// Shared infrastructure: emits the same observer events as the
+// Blockly Bot Builder engine so that TransactionsStore,
+// SummaryCardStore, JournalStore and RunPanelStore all receive
+// AI Bot trades via the same bus they already listen on.
 // =============================================================
 
 import { getCurrentDCirclesState } from './dcirclesStore';
@@ -13,6 +18,15 @@ import { PublicTickManager } from '../utils/PublicTickManager';
 import { WebSocketManager } from '../utils/WebSocketManager';
 import { EventBus, EventMap } from '../utils/EventBus';
 import { RuntimeLogger } from '../runtime/RuntimeLogger';
+import { LogTypes } from '../external/bot-skeleton';
+// observer is the Blockly-compatible global event bus shared with
+// RunPanelStore, TransactionsStore, SummaryCardStore, and JournalStore.
+import { observer } from '../external/bot-skeleton/utils/observer';
+// normalizeContractSpots/normalizeContractFinancials ensure that
+// camelCase / renamed fields from the new trading API are normalised
+// to the legacy snake_case field names expected by every downstream
+// consumer (Transactions table, Summary card, Journal, CSV export).
+import { normalizeContractSpots } from '../external/bot-skeleton/services/tradeEngine/utils/normalize-contract';
 
 const AI_BOT_RUNTIME_ID = 'ai-bot';
 
@@ -21,6 +35,26 @@ const MIN_FREQ_TICKS = 50;
 const ENTRY_DEBOUNCE_MS = 2500;
 const TRADE_TIMEOUT_MS = 30_000;
 const EXIT_DIGIT_LOG_LIMIT = 20;
+
+// ─────────────────────────────────────────────
+// Safe numeric coercion
+// ─────────────────────────────────────────────
+
+/**
+ * Converts any value to a finite number.
+ * The new Deriv trading API (api.derivws.com) returns many numeric
+ * fields — profit, buy_price, sell_price, payout, bid_price, etc. —
+ * as *strings* rather than numbers. Performing `+=` on a string
+ * silently degrades to string concatenation (e.g. `0 + "0.35"` →
+ * `"00.35"`), which then causes `TypeError: this.profit.toFixed is
+ * not a function` when we later call `.toFixed(2)`. Using this helper
+ * on every field coming out of the API prevents that class of crash
+ * across the entire engine.
+ */
+function safeNum(v: unknown, fallback = 0): number {
+    const n = Number(v);
+    return isFinite(n) ? n : fallback;
+}
 
 // ─────────────────────────────────────────────
 // Public types
@@ -96,7 +130,10 @@ export class TradingEngine {
     // Exit digit log (last 20, mixed virtual+real)
     private exitDigitLog: ExitDigitEntry[] = [];
 
-    // Full trade history
+    // Full trade history — kept locally for PerformanceDashboard/DigitHeatmap.
+    // AI Bot trades are also forwarded to the shared TransactionsStore via
+    // the observer bus, so there is ONE persistent source of truth for the
+    // run-panel Summary / Transactions / Journal panels.
     private tradeHistory: TradeRecord[] = [];
 
     // Execution guards
@@ -164,6 +201,10 @@ export class TradingEngine {
         if (mult > 1) this.log(`📈 Martingale ×${mult} active`);
         this.setState('monitoring');
 
+        // Notify the shared run-panel that a bot is now running so that
+        // has_open_contract is set to true and the UI reacts accordingly.
+        observer.emit('bot.running', undefined);
+
         try {
             await this._connectToManagers();
             if (this.config.strategy === 'DIFFER_SEQUENCE') {
@@ -183,6 +224,8 @@ export class TradingEngine {
             this._currentTradeReject(new Error('Bot stopped'));
             this._currentTradeReject = null;
         }
+        // Notify shared run-panel that the bot has stopped.
+        observer.emit('bot.stop', undefined);
         RuntimeLogger.stop(AI_BOT_RUNTIME_ID);
     }
 
@@ -214,7 +257,7 @@ export class TradingEngine {
     private handleTick(tick: any): void {
         if (this.state === 'stopped' || this.state === 'idle') return;
 
-        const epoch: number = tick.epoch;
+        const epoch: number = safeNum(tick.epoch);
         if (this.lastTickEpoch === epoch) return;
         this.lastTickEpoch = epoch;
 
@@ -251,6 +294,7 @@ export class TradingEngine {
             if (!triggered) return;
 
             this.log(`🎯 Entry detected — digit ${digit} | Confirmation ✅`);
+            console.log('[AI-BOT][LIFECYCLE] Proposal matched — entry digit', digit, '| strategy', this.config.strategy);
             RuntimeLogger.updateSignal(AI_BOT_RUNTIME_ID, `Entry on digit ${digit}`);
             this.lastEntryTs = now;
             this.currentEntryDigit = entryDigit;
@@ -347,28 +391,34 @@ export class TradingEngine {
                 this.log(
                     `📡 Entry ${i + 1}/10 — DIFFER @ ${barrier}, stake $${this.config.stake.toFixed(2)}`
                 );
+                console.log(`[AI-BOT][LIFECYCLE] Auto-sequence entry ${i + 1}/10 — DIFFER barrier:${barrier}`);
 
                 try {
                     const result = await this.placeOneTrade('DIGITDIFF', barrier, this.config.stake);
                     this.addRealExitDigit(result.exitDigit, result.won);
                     this.recordTrade('DIGITDIFF', barrier, this.config.stake, result);
                     this.tradeCount++;
-                    this.profit += result.profit;
+                    // Use safe addition: result.profit is already a number after _awaitSettlement
+                    // normalises it, but guard again for defence-in-depth.
+                    this.profit += safeNum(result.profit);
 
                     if (result.won) {
                         this.log(
-                            `✅ Entry ${i + 1}/10 WON | exit:${result.exitDigit} | P&L: +${result.profit.toFixed(2)}`
+                            `✅ Entry ${i + 1}/10 WON | exit:${result.exitDigit} | P&L: +${this.profit.toFixed(2)}`
                         );
                     } else {
                         this.log(
-                            `❌ Entry ${i + 1}/10 LOST | exit:${result.exitDigit} | P&L: ${result.profit.toFixed(2)}`
+                            `❌ Entry ${i + 1}/10 LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)}`
                         );
                     }
 
                     this.publishStatus();
                     this.checkTPSL();
+                    console.log(`[AI-BOT][LIFECYCLE] Next sequence entry — seq index ${i + 2}/10`);
                 } catch (err) {
+                    // A single trade error must NOT kill the entire sequence.
                     this.log(`❌ Entry ${i + 1}/10 error: ${(err as Error).message}`);
+                    console.error('[AI-BOT][LIFECYCLE] Sequence entry error (continuing):', (err as Error).message);
                 }
 
                 if (this._isStopped()) break;
@@ -457,16 +507,18 @@ export class TradingEngine {
                 this.addRealExitDigit(result.exitDigit, result.won);
                 this.recordTrade(contractType, barrier, stakeForThisTrade, result);
                 this.tradeCount++;
-                this.profit += result.profit;
+                // safeNum guard: result.profit is already normalised inside
+                // _awaitSettlement, but this is a defence-in-depth measure.
+                this.profit += safeNum(result.profit);
                 this.applyMartingale(result.won);
 
                 if (result.won) {
                     this.log(
-                        `✅ ${label} WON | exit:${result.exitDigit} | P&L: +${result.profit.toFixed(2)}`
+                        `✅ ${label} WON | exit:${result.exitDigit} | P&L: +${this.profit.toFixed(2)}`
                     );
                 } else {
                     this.log(
-                        `❌ ${label} LOST | exit:${result.exitDigit} | P&L: ${result.profit.toFixed(2)} | next stake: $${this.currentStake.toFixed(2)}`
+                        `❌ ${label} LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)} | next stake: $${this.currentStake.toFixed(2)}`
                     );
                     hadLoss = true;
                 }
@@ -474,8 +526,14 @@ export class TradingEngine {
                 this.publishStatus();
                 this.checkTPSL();
                 if (this._isStopped()) break;
+
+                console.log(`[AI-BOT][LIFECYCLE] Next trade — batch index ${i + 2}/${TRADES_PER_BATCH}`);
             } catch (err) {
-                this.log(`❌ ${label} error: ${(err as Error).message}`);
+                // A single trade error must NOT kill the entire batch. Log and
+                // continue to the next iteration so the session stays alive.
+                const msg = (err as Error).message ?? String(err);
+                this.log(`❌ ${label} error: ${msg}`);
+                console.error('[AI-BOT][LIFECYCLE] Trade error in executeBatch (continuing):', msg);
                 hadLoss = true;
             }
         }
@@ -483,6 +541,7 @@ export class TradingEngine {
         this.log(
             `📦 Batch complete | session P&L: ${this.profit >= 0 ? '+' : ''}${this.profit.toFixed(2)}`
         );
+        console.log('[AI-BOT][LIFECYCLE] Batch complete | P&L:', this.profit.toFixed(2));
 
         if (!this._isStopped()) {
             if (hadLoss) {
@@ -517,23 +576,25 @@ export class TradingEngine {
             this.addRealExitDigit(result.exitDigit, result.won);
             this.recordTrade(contractType, barrier, stakeForRecovery, result);
             this.tradeCount++;
-            this.profit += result.profit;
+            this.profit += safeNum(result.profit);
             this.applyMartingale(result.won);
 
             if (result.won) {
                 this.log(
-                    `✅ Recovery WON | exit:${result.exitDigit} | P&L: +${result.profit.toFixed(2)}`
+                    `✅ Recovery WON | exit:${result.exitDigit} | P&L: +${this.profit.toFixed(2)}`
                 );
             } else {
                 this.log(
-                    `❌ Recovery LOST | exit:${result.exitDigit} | P&L: ${result.profit.toFixed(2)}`
+                    `❌ Recovery LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)}`
                 );
             }
 
             this.publishStatus();
             this.checkTPSL();
         } catch (err) {
-            this.log(`❌ Recovery error: ${(err as Error).message}`);
+            const msg = (err as Error).message ?? String(err);
+            this.log(`❌ Recovery error: ${msg}`);
+            console.error('[AI-BOT][LIFECYCLE] Recovery trade error:', msg);
         }
 
         if (!this._isStopped()) {
@@ -599,6 +660,14 @@ export class TradingEngine {
     ): Promise<TradeResult> {
         const proposalReqId = ++this._reqId;
 
+        // ── STAGE: purchase_sent ──────────────────────────────────────────────
+        // Notify shared RunPanelStore so the contract-stage indicator updates.
+        observer.emit('contract.status', {
+            id: 'contract.purchase_sent',
+            data: stake,
+        });
+        console.log('[AI-BOT][LIFECYCLE] BUY sent — contractType:', contractType, 'barrier:', barrier, 'stake:', stake);
+
         const proposalMsg = await this._sendAndAwait(
             'proposal',
             {
@@ -619,6 +688,8 @@ export class TradingEngine {
             proposalReqId
         );
 
+        console.log('[AI-BOT][LIFECYCLE] Proposal response received — req_id:', proposalReqId);
+
         const proposalId = (proposalMsg as any).proposal?.id ?? (proposalMsg as any).proposal?.proposalId;
         if (!proposalId) {
             console.error('[AI-BOT][TradingEngine] proposal response had no id field:', proposalMsg);
@@ -632,7 +703,8 @@ export class TradingEngine {
             buyReqId
         );
 
-        const contractId = (buyMsg as any).buy?.contract_id ?? (buyMsg as any).buy?.contractId;
+        const rawBuy = (buyMsg as any).buy;
+        const contractId = rawBuy?.contract_id ?? rawBuy?.contractId;
         if (!contractId) {
             console.error('[AI-BOT][TradingEngine] buy response had no contract_id field:', buyMsg);
             throw new Error(
@@ -640,13 +712,43 @@ export class TradingEngine {
             );
         }
 
+        console.log('[AI-BOT][LIFECYCLE] Buy response received — contract_id:', contractId);
+
+        // ── STAGE: purchase_received ──────────────────────────────────────────
+        // The buy was acknowledged by the API. Notify RunPanelStore and feed
+        // bot.info to the shared statistics (mirrors what Purchase.js does).
+        const normalizedBuy = {
+            contract_id: contractId,
+            transaction_id: safeNum(rawBuy?.transaction_id ?? rawBuy?.transactionId),
+            buy_price: safeNum(rawBuy?.buy_price ?? rawBuy?.buyPrice),
+            payout: safeNum(rawBuy?.payout ?? rawBuy?.payoutAmount),
+            longcode: rawBuy?.longcode ?? '',
+            shortcode: rawBuy?.shortcode ?? '',
+            start_time: safeNum(rawBuy?.start_time ?? rawBuy?.startTime),
+        };
+
+        observer.emit('contract.status', {
+            id: 'contract.purchase_received',
+            data: normalizedBuy.transaction_id,
+            buy: normalizedBuy,
+        });
+
+        observer.emit('bot.info', {
+            totalRuns: this.tradeCount + 1,
+            transaction_ids: { buy: normalizedBuy.transaction_id },
+            contract_type: contractType,
+            buy_price: normalizedBuy.buy_price,
+        });
+
+        console.log('[AI-BOT][LIFECYCLE] Contract opened — contract_id:', contractId);
+
         WebSocketManager.send({
             proposal_open_contract: 1,
             contract_id: contractId,
             subscribe: 1,
         });
 
-        return this._awaitSettlement(contractId);
+        return this._awaitSettlement(contractId, stake);
     }
 
     /**
@@ -695,8 +797,17 @@ export class TradingEngine {
     /**
      * Await settlement of a specific contract via EventBus.
      * Resolves when `is_sold` becomes truthy for this contract_id.
+     *
+     * All numeric fields received from the Deriv API are coerced to
+     * numbers via safeNum() immediately after normalizeContractSpots().
+     * This prevents the class of crash where `.toFixed()` is called on
+     * a string value returned by the new trading API endpoint.
+     *
+     * Also emits the same observer events as the Blockly engine so that
+     * TransactionsStore, SummaryCardStore, JournalStore, and RunPanelStore
+     * all receive live updates for AI Bot contracts.
      */
-    private _awaitSettlement(contractId: number): Promise<TradeResult> {
+    private _awaitSettlement(contractId: number, _stake: number): Promise<TradeResult> {
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 unsub();
@@ -704,20 +815,81 @@ export class TradingEngine {
             }, TRADE_TIMEOUT_MS);
 
             const unsub = EventBus.on('proposal_open_contract', msg => {
-                const poc = (msg as any).proposal_open_contract;
-                if (!poc || poc.contract_id !== contractId) return;
+                const raw_poc = (msg as any).proposal_open_contract;
+                if (!raw_poc || raw_poc.contract_id !== contractId) return;
+
+                // ── NORMALISE: field names + numeric types ────────────────────
+                // normalizeContractSpots handles field-name aliases
+                // (camelCase ↔ snake_case). Then we explicitly coerce every
+                // financial field to a number with safeNum() so arithmetic
+                // operations never silently operate on strings.
+                const poc = normalizeContractSpots(raw_poc) as any;
+
+                poc.profit       = safeNum(poc.profit);
+                poc.buy_price    = safeNum(poc.buy_price);
+                poc.sell_price   = safeNum(poc.sell_price);
+                poc.bid_price    = safeNum(poc.bid_price);
+                poc.ask_price    = safeNum(poc.ask_price);
+                poc.payout       = safeNum(poc.payout);
+                poc.stake        = safeNum(poc.stake);
+                poc.barrier      = poc.barrier;          // keep as string (digit barrier)
+                poc.entry_tick   = poc.entry_tick;       // string/number — used for display
+                poc.exit_tick    = poc.exit_tick;        // string/number — used for display
+                poc.current_spot = safeNum(poc.current_spot);
+
+                // ── BROADCAST: live updates to shared stores ──────────────────
+                // Mirrors what OpenContract.js does in the Blockly engine.
+                // Every TransactionsStore.onBotContractEvent and
+                // SummaryCardStore.onBotContractEvent listener registered
+                // through run_panel.registerBotListeners() will receive this.
+                observer.emit('bot.contract', { ...poc });
+
                 if (poc.is_sold) {
                     unsub();
                     clearTimeout(timer);
-                    const profit: number = poc.profit ?? 0;
+
+                    const profit = poc.profit;   // already a number after safeNum above
+
+                    console.log('[AI-BOT][LIFECYCLE] Contract closed', {
+                        contractId,
+                        profit,
+                        buy_price: poc.buy_price,
+                        sell_price: poc.sell_price,
+                        exit_tick: poc.exit_tick,
+                        is_sold: poc.is_sold,
+                    });
+
+                    // ── STAGE: contract.sold → RunPanelStore contract stage ────
+                    observer.emit('contract.status', {
+                        id: 'contract.sold',
+                        data: poc.transaction_ids?.sell,
+                        contract: poc,
+                    });
+
+                    // ── STAGE: journal entry via shared JournalStore ──────────
+                    // JournalStore.onLogSuccess is registered in RunPanelStore.onMount
+                    // (always active), so this reliably reaches the Journal panel.
+                    observer.emit('ui.log.success', {
+                        log_type: profit > 0 ? LogTypes.PROFIT : LogTypes.LOST,
+                        extra: { currency: poc.currency || 'USD', profit },
+                    });
+
+                    console.log('[AI-BOT][LIFECYCLE] Summary updated — profit:', profit);
+                    console.log('[AI-BOT][LIFECYCLE] Journal updated — type:', profit > 0 ? 'PROFIT' : 'LOST');
+                    console.log('[AI-BOT][LIFECYCLE] Transactions updated — contract_id:', contractId);
+
                     RuntimeLogger.recordTrade(AI_BOT_RUNTIME_ID, poc);
                     RuntimeLogger.updatePosition(AI_BOT_RUNTIME_ID, '--');
-                    resolve({
-                        won: profit > 0,
-                        profit,
-                        exitDigit: this.extractDigit(String(poc.exit_tick ?? 0)),
-                    });
+
+                    // Determine exit digit from the exit tick value.
+                    // exit_tick may be a formatted string like "1234.56" or
+                    // a number — extractDigit handles both.
+                    const exitTickRaw = poc.exit_tick ?? poc.exit_spot ?? 0;
+                    const exitDigit = this.extractDigit(String(exitTickRaw));
+
+                    resolve({ won: profit > 0, profit, exitDigit });
                 } else {
+                    // Contract is open (not yet settled).
                     RuntimeLogger.updatePosition(
                         AI_BOT_RUNTIME_ID,
                         `${poc.contract_type ?? ''} @ ${poc.underlying ?? this.config.symbol}`.trim()
@@ -759,6 +931,7 @@ export class TradingEngine {
             );
             this.setState('stopped');
             this._cleanupSubscriptions();
+            observer.emit('bot.stop', undefined);
             return;
         }
 
@@ -766,6 +939,7 @@ export class TradingEngine {
             this.log(`🛑 Stop Loss hit (${this.profit.toFixed(2)} / -${this.config.stopLoss})`);
             this.setState('stopped');
             this._cleanupSubscriptions();
+            observer.emit('bot.stop', undefined);
         }
     }
 
@@ -805,7 +979,7 @@ export class TradingEngine {
             stake,
             exitDigit: result.exitDigit,
             won: result.won,
-            profit: result.profit,
+            profit: safeNum(result.profit),
         });
     }
 
