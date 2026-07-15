@@ -1,6 +1,7 @@
 import { getRoundedNumber } from '@/components/shared';
 import { api_base } from '../../api/api-base';
 import { contract as broadcastContract, contractStatus } from '../utils/broadcast';
+import { normalizeContractSpots } from '../utils/normalize-contract';
 import { openContractReceived, sell } from './state/actions';
 
 export default Engine =>
@@ -9,11 +10,17 @@ export default Engine =>
             if (!api_base.api) return;
             const subscription = api_base.api.onMessage().subscribe(({ data }) => {
                 if (data.msg_type === 'proposal_open_contract') {
-                    const contract = data.proposal_open_contract;
+                    const raw_contract = data.proposal_open_contract;
 
-                    if (!contract || !this.expectedContractId(contract?.contract_id)) {
+                    if (!raw_contract || !this.expectedContractId(raw_contract?.contract_id)) {
                         return;
                     }
+
+                    // Normalize entry/exit/current/sell spot field names — the new
+                    // trading API (api.derivws.com) does not guarantee the same
+                    // field names as the legacy WebSocket API v3. See
+                    // normalize-contract.js for why this is needed.
+                    const contract = normalizeContractSpots(raw_contract);
 
                     this.setContractFlags(contract);
 
