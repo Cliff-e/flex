@@ -114,10 +114,14 @@ export default Engine =>
             if (!api_base.api) return;
             const subscription = api_base.api.onMessage().subscribe(response => {
                 if (response.data.msg_type === 'proposal') {
-                    const { passthrough, proposal } = response.data;
+                    // api.derivws.com may not echo `passthrough` at the top level of the
+                    // response (that is a Deriv v3 WS feature). Fall back to echo_req.passthrough
+                    // so matching still works on both endpoints.
+                    const { passthrough, proposal, echo_req } = response.data;
+                    const passthroughData = passthrough || echo_req?.passthrough || {};
                     if (proposal && this.data.proposals.findIndex(p => p.id === proposal.id) === -1) {
                         // Add proposals based on the ID returned by the API.
-                        this.data.proposals.push({ ...proposal, ...passthrough });
+                        this.data.proposals.push({ ...proposal, ...passthroughData });
                         this.checkProposalReady();
                     }
                 }

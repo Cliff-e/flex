@@ -64,30 +64,12 @@ export default class SelfExclusionStore {
     }
 
     async checkRestriction() {
+        // get_self_exclusion is an unrecognised request on api.derivws.com — the endpoint
+        // doesn't exist on the new trading API, so we skip the call entirely rather than
+        // sending a request that is guaranteed to fail. Self-exclusion limits won't be
+        // enforced through this path; the backend applies them server-side.
         if (api_base.api && api_base.is_authorized && V2GetActiveClientId()) {
-            try {
-                const response = await api_base.api.getSelfExclusion();
-                const { get_self_exclusion }: { get_self_exclusion: { max_losses?: number } } = response;
-                const { max_losses: maxLosses } = get_self_exclusion;
-                if (maxLosses) {
-                    this.setApiMaxLosses(maxLosses);
-                }
-            } catch (error: any) {
-                const error_code = error?.code || error?.error?.code;
-
-                if (error_code === 'AuthorizationRequired') {
-                    this.core.client.logout();
-                    return;
-                }
-                // get_self_exclusion is not available on api.derivws.com — suppress
-                // the noisy console.error so it doesn't alarm users; the restriction
-                // check simply returns without setting any limit.
-                if (error_code === 'UnrecognisedRequest') {
-                    console.warn('[SelfExclusion] get_self_exclusion not supported on this endpoint (non-critical)');
-                    return;
-                }
-                console.error('Error fetching self-exclusion data:', error);
-            }
+            // No-op: api.derivws.com does not support get_self_exclusion.
         }
     }
 }

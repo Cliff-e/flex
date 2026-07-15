@@ -154,6 +154,24 @@ class WebSocketManagerClass {
                 socket.close();
             }, 15_000);
 
+            // Intercept socket.send() to log the raw JSON bytes going over the wire.
+            // This is the ground truth — it confirms what schema the API actually receives,
+            // regardless of any middleware or library-level transformations.
+            const _originalSend = socket.send.bind(socket);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (socket as any).send = (data: string | ArrayBuffer | Blob | ArrayBufferView) => {
+                if (typeof data === 'string') {
+                    try {
+                        const parsed = JSON.parse(data);
+                        // Skip authorize — contains tokens; skip ping-like messages
+                        if (!parsed.authorize && !parsed.ping) {
+                            console.log('[WS-RAW-SEND]', data.length > 600 ? data.slice(0, 600) + '…' : data);
+                        }
+                    } catch {}
+                }
+                return _originalSend(data);
+            };
+
             socket.addEventListener('open', () => {
                 clearTimeout(connectTimeout);
                 this._connected = true;
