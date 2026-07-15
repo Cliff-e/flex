@@ -19,17 +19,19 @@ import { dcirclesStore } from './dcirclesStore';
 //     consumers never need to wait for a "warm-up" period.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DEFAULT_TICK_LIMIT = 3000;
+const DEFAULT_TICK_LIMIT = 1000;
 const STORAGE_KEY = 'digitsMap';
 const LIMIT_KEY = 'dc_tickLimit';
 
 export type DigitsMap = Record<string, number[]>;
 type TickCallback = (symbol: string, digits: number[]) => void;
+type LimitCallback = (limit: number) => void;
 
 class GlobalTickEngine {
     private digitsMap: DigitsMap = {};
     private decimals: Record<string, number> = {};
     private subscribers = new Set<TickCallback>();
+    private _limitSubs = new Set<LimitCallback>();
     private started = false;
     private unsubFns: Array<() => void> = [];
     private _limit: number = DEFAULT_TICK_LIMIT;
@@ -165,19 +167,35 @@ class GlobalTickEngine {
         }
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.digitsMap)); } catch {}
 
-        // Notify all subscribers so UIs re-render immediately
+        // Notify all tick subscribers so UIs re-render immediately
         for (const sym in this.digitsMap) {
             const digits = this.digitsMap[sym];
             this.subscribers.forEach(cb => {
                 try { cb(sym, digits); } catch {}
             });
         }
+
+        // Notify limit-change subscribers so input controls stay in sync
+        this._limitSubs.forEach(cb => {
+            try { cb(clamped); } catch {}
+        });
     }
 
     /** Subscribe to tick updates. Returns an unsubscribe function. */
     subscribe(cb: TickCallback): () => void {
         this.subscribers.add(cb);
         return () => this.subscribers.delete(cb);
+    }
+
+    /**
+     * Subscribe to limit changes. Fires whenever setLimit() is called with a
+     * new value — lets every DCircles UI keep its displayed input in sync even
+     * when another consumer changes the limit.
+     * Returns an unsubscribe function.
+     */
+    onLimitChange(cb: LimitCallback): () => void {
+        this._limitSubs.add(cb);
+        return () => this._limitSubs.delete(cb);
     }
 
     destroy() {
