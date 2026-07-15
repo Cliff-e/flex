@@ -11,6 +11,7 @@ import PerformanceDashboard from '../../components/performance-dashboard/Perform
 import DigitHeatmap from '../../components/digit-heatmap/DigitHeatmap';
 import { AuthSessionManager } from '../../utils/AuthSessionManager';
 import { useStore } from '@/hooks/useStore';
+import { globalTickEngine } from '../../bot/globalTickEngine';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -192,6 +193,7 @@ const AiBots: React.FC = () => {
     const [symbol, setSymbol] = useState('R_75');
     const [stake, setStake] = useState(1);
     const [martingaleMultiplier, setMartingaleMultiplier] = useState(1);
+    const [tickHistoryLimit, setTickHistoryLimit] = useState(() => globalTickEngine.getLimit());
     const [targetProfit, setTargetProfit] = useState(10);
     const [stopLoss, setStopLoss] = useState(5);
 
@@ -510,6 +512,27 @@ const AiBots: React.FC = () => {
                                     {martingaleMultiplier <= 1
                                         ? '1.0 = disabled (flat stake)'
                                         : `×${martingaleMultiplier} stake after each loss, reset on win`}
+                                </span>
+                            </div>
+
+                            <div style={S.row}>
+                                <label style={S.label}>Tick History Limit</label>
+                                <select
+                                    value={tickHistoryLimit}
+                                    disabled={isRunning}
+                                    onChange={e => {
+                                        const n = Number(e.target.value);
+                                        setTickHistoryLimit(n);
+                                        globalTickEngine.setLimit(n);
+                                    }}
+                                    style={S.select}
+                                >
+                                    {[100, 500, 1000, 3000, 5000].map(n => (
+                                        <option key={n} value={n}>{n.toLocaleString()} ticks</option>
+                                    ))}
+                                </select>
+                                <span style={S.hint}>
+                                    Shared with DCircles &amp; all analytics — affects confirmation accuracy
                                 </span>
                             </div>
                         </div>
