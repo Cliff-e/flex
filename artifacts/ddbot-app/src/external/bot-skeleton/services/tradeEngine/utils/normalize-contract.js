@@ -56,8 +56,40 @@ function normalizeTickItem(tick) {
  *   - current: current_spot*      → currentSpot*
  *   - sell:    sell_spot*         → sellSpot*
  */
+/**
+ * Normalizes the buy/sell/payout price fields the same way `entry_tick` etc.
+ * are normalized above — the new trading API (api.derivws.com) appears to
+ * also rename these to camelCase on `proposal_open_contract` updates. When
+ * `buy_price`/`payout`/`bid_price`/`sell_price`/`ask_price` are missing,
+ * Total Stake/Total Payout/Total Profit-Loss in the Transactions panel
+ * silently stay at 0.00 even though `profit`/`is_sold` (read directly,
+ * unrenamed) show the contract settled correctly.
+ */
+export function normalizeContractFinancials(contract) {
+    if (!contract || typeof contract !== 'object') return contract;
+
+    const buy_price = pick(contract, ['buy_price', 'buyPrice']);
+    const sell_price = pick(contract, ['sell_price', 'sellPrice']);
+    const bid_price = pick(contract, ['bid_price', 'bidPrice']);
+    const ask_price = pick(contract, ['ask_price', 'askPrice']);
+    const payout = pick(contract, ['payout', 'payoutAmount']);
+    const profit = pick(contract, ['profit', 'profitAmount', 'profit_amount']);
+
+    return {
+        ...contract,
+        buy_price,
+        sell_price,
+        bid_price,
+        ask_price,
+        payout,
+        profit,
+    };
+}
+
 export function normalizeContractSpots(contract) {
     if (!contract || typeof contract !== 'object') return contract;
+
+    contract = normalizeContractFinancials(contract);
 
     const entry_tick = pick(contract, ['entry_tick', 'entrySpot', 'entry_spot']);
     const entry_tick_display_value = pick(contract, [
