@@ -158,6 +158,11 @@ export class TradingEngine {
     private _tickUnsub: (() => void) | null = null;
     private _currentTradeReject: ((e: Error) => void) | null = null;
 
+    // Callback resolved by executeRecoveryTrade when recovery finishes.
+    // Used by runDifferSequenceLoop to await the shared recovery engine
+    // without polling — the same engine used by OVER_1, UNDER_8, and DIFFER.
+    private _onRecoveryComplete: (() => void) | null = null;
+
     // Logging
     private logs: string[] = [];
     private onStatus: ((s: EngineStatus) => void) | null = null;
@@ -231,6 +236,11 @@ export class TradingEngine {
         // Notify shared run-panel that the bot has stopped.
         observer.emit('bot.stop', undefined);
         RuntimeLogger.stop(AI_BOT_RUNTIME_ID);
+        // Unblock any DIFFER_SEQUENCE loop that is awaiting recovery so it can
+        // observe the stopped state and exit cleanly rather than hanging.
+        const cb = this._onRecoveryComplete;
+        this._onRecoveryComplete = null;
+        cb?.();
     }
 
     // ─────────────────────────────────────────
@@ -418,6 +428,21 @@ export class TradingEngine {
 
                     this.publishStatus();
                     this.checkTPSL();
+
+                    // ── RECOVERY HOOK ─────────────────────────────────────────
+                    // After a losing trade, pause the sequence and enter the
+                    // same shared recovery engine used by OVER_1, UNDER_8 and
+                    // DIFFER. _awaitRecovery() sets inRecovery=true and returns
+                    // a Promise that resolves only when executeRecoveryTrade()
+                    // completes — so the recovery path (DCircles confirmation +
+                    // 3 OVER-6 digits + recovery trade) is identical for every
+                    // strategy. The while-loop condition is re-checked after the
+                    // await so a stop() during recovery exits cleanly.
+                    if (!result.won && !this._isStopped()) {
+                        await this._awaitRecovery();
+                        if (!this._isStopped()) this.setState('executing');
+                    }
+
                     if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next sequence entry — seq index ${i + 2}/10`);
                 } catch (err) {
                     // A single trade error must NOT kill the entire sequence.
@@ -609,6 +634,30 @@ export class TradingEngine {
             this.setState('monitoring');
             this.log('↩️ Recovery complete — back to monitoring');
         }
+
+        // Notify any awaiting DIFFER_SEQUENCE loop that recovery is done
+        // (resolved unconditionally so the loop can check _isStopped itself).
+        const cb = this._onRecoveryComplete;
+        this._onRecoveryComplete = null;
+        cb?.();
+    }
+
+    /**
+     * Used exclusively by runDifferSequenceLoop to plug into the shared
+     * recovery engine (handleRecoveryTick → executeRecoveryTrade) without
+     * polling. Sets all recovery state identically to what executeBatch does
+     * for OVER_1, UNDER_8 and DIFFER, then returns a Promise that resolves
+     * when executeRecoveryTrade signals completion via _onRecoveryComplete.
+     */
+    private _awaitRecovery(): Promise<void> {
+        return new Promise<void>(resolve => {
+            this._onRecoveryComplete = resolve;
+            this.inRecovery = true;
+            this.recoveryConfirmed = false;
+            this.recoveryOver6Count = 0;
+            this.setState('recovery');
+            this.log('🔄 Loss detected — entering shared recovery engine');
+        });
     }
 
     private resolveRecoveryContract(): { contractType: string; barrier: string } {
