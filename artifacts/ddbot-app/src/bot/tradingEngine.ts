@@ -547,7 +547,7 @@ export class TradingEngine {
                     );
                 } else {
                     this.log(
-                        `❌ ${label} LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)} | next stake: $${this.currentStake.toFixed(2)}`
+                        `❌ ${label} LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)} | next stake: ${this.currentStake.toFixed(2)}`
                     );
                     hadLoss = true;
                 }
@@ -556,14 +556,19 @@ export class TradingEngine {
                 this.checkTPSL();
                 if (this._isStopped()) break;
 
+                // Exit the batch immediately on the first loss so the very next
+                // trade is the recovery trade — no further normal strategy trades.
+                if (hadLoss) break;
+
                 if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next trade — batch index ${i + 2}/${TRADES_PER_BATCH}`);
             } catch (err) {
-                // A single trade error must NOT kill the entire batch. Log and
-                // continue to the next iteration so the session stays alive.
+                // A trade error counts as a loss — break immediately so the
+                // very next trade is the recovery trade, not another strategy trade.
                 const msg = (err as Error).message ?? String(err);
                 this.log(`❌ ${label} error: ${msg}`);
                 console.error('[AI-BOT][LIFECYCLE] Trade error in executeBatch (continuing):', msg);
                 hadLoss = true;
+                break;
             }
         }
 
