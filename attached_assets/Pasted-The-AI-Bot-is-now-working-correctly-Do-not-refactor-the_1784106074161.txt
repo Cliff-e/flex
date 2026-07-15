@@ -1,0 +1,119 @@
+The AI Bot is now working correctly. Do not refactor the execution engine or change any trading logic.
+
+The only task is to clean up the temporary debugging logs that were added during troubleshooting.
+
+IMPORTANT
+
+This is a low-risk cleanup only.
+
+Do NOT modify:
+
+Trading logic
+Strategy logic
+Proposal flow
+Buy flow
+Contract monitoring
+Auto Sequence
+TP/SL logic
+Observer events
+Summary integration
+Transactions integration
+Journal integration
+WebSocket message handling
+
+If a line is not a log statement, leave it untouched.
+
+Current issue
+
+The browser console is producing excessive output from temporary diagnostics such as:
+
+[AI-BOT][TradingEngine] sending proposal req_id ...
+[AI-BOT][TradingEngine] proposal response matched ...
+[AI-BOT][LIFECYCLE] Proposal response received ...
+[AI-BOT][LIFECYCLE] BUY response received ...
+[AI-BOT][LIFECYCLE] Contract opened ...
+[AI-BOT][LIFECYCLE] Contract closed ...
+[AI-BOT][LIFECYCLE] Summary updated ...
+[AI-BOT][LIFECYCLE] Journal updated ...
+[AI-BOT][LIFECYCLE] Transactions updated ...
+
+These were useful during debugging but are no longer needed.
+
+What to remove
+
+Remove only repetitive debug logs such as:
+
+proposal sent
+proposal matched
+buy sent
+buy response
+req_id tracking
+every proposal_open_contract update
+every transaction update
+every summary update
+every journal update
+batch index progress
+sequence progress
+
+These produce too much console noise.
+
+Keep these logs
+
+Keep only concise logs that are genuinely useful in production:
+
+[AI-BOT] Started
+[AI-BOT] Stopped
+[AI-BOT] Trade opened
+[AI-BOT] Trade closed (Profit/Loss)
+[AI-BOT] Take Profit reached
+[AI-BOT] Stop Loss reached
+
+Keep all:
+
+console.error(...)
+console.warn(...)
+exception logging
+WebSocket errors
+unexpected API errors
+
+Do not remove any logs that help diagnose failures.
+
+Optional improvement
+
+Instead of deleting every debug log, create a single development flag, for example:
+
+const DEBUG_AI_BOT = false;
+
+or reuse an existing development/debug configuration if one already exists.
+
+Wrap verbose logs like:
+
+if (DEBUG_AI_BOT) {
+    console.log(...);
+}
+
+This allows verbose tracing to be re-enabled later without reintroducing code.
+
+Before committing
+
+Verify that:
+
+AI Bots still place real trades.
+Summary still updates.
+Transactions still update.
+Journal still updates.
+Auto Sequence still works.
+TP/SL still works.
+No observer events were removed.
+No event listeners were removed.
+No execution logic was changed.
+
+This should be a logging cleanup only.
+
+Finally:
+
+Show exactly which files were modified.
+Confirm that only logging statements changed.
+Push the cleanup to GitHub with the commit hash.
+
+This approach is much safer than simply deleting every console.log(). By gating verbose logs behind a debug flag (or removing only the noisy ones), you preserve the ability to troubleshoot future issues without risking the now-working execution flow.
