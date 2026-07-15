@@ -1,6 +1,7 @@
 import { action, computed, makeObservable, observable, reaction } from 'mobx';
 import { formatDate, isEnded } from '@/components/shared';
 import { LogTypes } from '@/external/bot-skeleton';
+import { normalizeContractSpots } from '@/external/bot-skeleton/services/tradeEngine/utils/normalize-contract';
 import { ProposalOpenContract } from '@deriv/api-types';
 import { TPortfolioPosition, TStores } from '@deriv/stores/types';
 import { TContractInfo } from '../components/summary/summary-card.types';
@@ -104,20 +105,28 @@ export default class TransactionsStore {
     }
 
     pushTransaction(data: TContractInfo) {
-        const is_completed = isEnded(data as ProposalOpenContract);
+        // Defense-in-depth: normalize entry/exit/current/sell spot field
+        // names here too, in case this contract data ever arrives via a
+        // path other than OpenContract.js's observeOpenContract (e.g.
+        // future portfolio-based recovery). Safe/idempotent if already
+        // normalized upstream.
+        const normalized_data = normalizeContractSpots(data) as TContractInfo;
+        const is_completed = isEnded(normalized_data as ProposalOpenContract);
         const { run_id } = this.root_store.run_panel;
         const current_account = this.core?.client?.loginid as string;
 
         const contract: TContractInfo = {
-            ...data,
+            ...normalized_data,
             is_completed,
             run_id,
-            date_start: formatDate(data.date_start, 'YYYY-M-D HH:mm:ss [GMT]'),
-            entry_tick: data.entry_tick_display_value,
-            entry_tick_time: data.entry_tick_time && formatDate(data.entry_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
-            exit_tick: data.exit_tick_display_value,
-            exit_tick_time: data.exit_tick_time && formatDate(data.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
-            profit: is_completed ? data.profit : 0,
+            date_start: formatDate(normalized_data.date_start, 'YYYY-M-D HH:mm:ss [GMT]'),
+            entry_tick: normalized_data.entry_tick_display_value,
+            entry_tick_time:
+                normalized_data.entry_tick_time && formatDate(normalized_data.entry_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
+            exit_tick: normalized_data.exit_tick_display_value,
+            exit_tick_time:
+                normalized_data.exit_tick_time && formatDate(normalized_data.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
+            profit: is_completed ? normalized_data.profit : 0,
         };
 
         if (!this.elements[current_account]) {
