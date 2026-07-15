@@ -463,10 +463,13 @@ class APIBase {
         const subscribeToStream = (streamName: string) => {
             return doUntilDone(
                 () => {
+                    // Note: `account: 'all'` was previously added for balance subscriptions
+                    // but Deriv's new trading API (api.derivws.com) rejects it with
+                    // InputValidationFailed.  The plain subscribe is sufficient — the
+                    // authorized account's balance is returned by default.
                     const subscription = this.api?.send({
                         [streamName]: 1,
                         subscribe: 1,
-                        ...(streamName === 'balance' ? { account: 'all' } : {}),
                     });
                     if (subscription) {
                         this.current_auth_subscriptions.push(subscription);

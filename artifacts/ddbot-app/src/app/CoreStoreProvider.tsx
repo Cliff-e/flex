@@ -202,36 +202,58 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
     useEffect(() => {
         if (!isAuthorizing && isAuthorized && !accountInitialization.current && client) {
             accountInitialization.current = true;
-            api_base.api.getSettings().then((settingRes: TSocketResponseData<'get_settings'>) => {
-                client?.setAccountSettings(settingRes.get_settings);
-                const client_information: TClientInformation = {
-                    loginid: activeAccount?.loginid,
-                    email: settingRes.get_settings?.email,
-                    currency: client?.currency,
-                    residence: settingRes.get_settings?.residence,
-                    first_name: settingRes.get_settings?.first_name,
-                    last_name: settingRes.get_settings?.last_name,
-                    preferred_language: settingRes.get_settings?.preferred_language,
-                    user_id: ((api_base.account_info as any)?.user_id as number) || activeLoginid,
-                    landing_company_shortcode: activeAccount?.landing_company_name,
-                };
 
-                Cookies.set('client_information', JSON.stringify(client_information), {
-                    domain: currentDomain,
+            // get_settings and get_account_status are not supported on the new
+            // api.derivws.com trading endpoint — they return UnrecognisedRequest.
+            // We catch the error so a failed call doesn't break the bot session;
+            // the data they provide (email, residence, account status) is
+            // supplementary UI enrichment and not required for trading.
+            api_base.api
+                .getSettings()
+                .then((settingRes: TSocketResponseData<'get_settings'>) => {
+                    client?.setAccountSettings(settingRes.get_settings);
+                    const client_information: TClientInformation = {
+                        loginid: activeAccount?.loginid,
+                        email: settingRes.get_settings?.email,
+                        currency: client?.currency,
+                        residence: settingRes.get_settings?.residence,
+                        first_name: settingRes.get_settings?.first_name,
+                        last_name: settingRes.get_settings?.last_name,
+                        preferred_language: settingRes.get_settings?.preferred_language,
+                        user_id: ((api_base.account_info as any)?.user_id as number) || activeLoginid,
+                        landing_company_shortcode: activeAccount?.landing_company_name,
+                    };
+
+                    Cookies.set('client_information', JSON.stringify(client_information), {
+                        domain: currentDomain,
+                    });
+
+                    api_base.api
+                        .landingCompany({
+                            landing_company: settingRes.get_settings?.country_code,
+                        })
+                        .then((res: TSocketResponseData<'landing_company'>) => {
+                            client?.setLandingCompany(res.landing_company as unknown as TLandingCompany);
+                        })
+                        .catch((err: unknown) => {
+                            console.warn('[CoreStoreProvider] landing_company request failed (non-critical):', err);
+                        });
+                })
+                .catch((err: unknown) => {
+                    console.warn('[CoreStoreProvider] get_settings not supported on this endpoint (non-critical):', err);
                 });
 
-                api_base.api
-                    .landingCompany({
-                        landing_company: settingRes.get_settings?.country_code,
-                    })
-                    .then((res: TSocketResponseData<'landing_company'>) => {
-                        client?.setLandingCompany(res.landing_company as unknown as TLandingCompany);
-                    });
-            });
-
-            api_base.api.getAccountStatus().then((res: TSocketResponseData<'get_account_status'>) => {
-                client?.setAccountStatus(res.get_account_status);
-            });
+            api_base.api
+                .getAccountStatus()
+                .then((res: TSocketResponseData<'get_account_status'>) => {
+                    client?.setAccountStatus(res.get_account_status);
+                })
+                .catch((err: unknown) => {
+                    console.warn(
+                        '[CoreStoreProvider] get_account_status not supported on this endpoint (non-critical):',
+                        err
+                    );
+                });
         }
     }, [isAuthorizing, isAuthorized, client]);
 

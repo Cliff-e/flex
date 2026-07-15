@@ -152,14 +152,18 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
     }
 
     makeDirectPurchaseDecision() {
-        const { has_payout_block, is_basis_payout } = checkBlocksForProposalRequest();
-        this.is_proposal_subscription_required = has_payout_block || is_basis_payout;
-
-        if (this.is_proposal_subscription_required) {
-            this.makeProposals({ ...this.options, ...this.tradeOptions });
-            this.checkProposalReady();
-        } else {
-            this.store.dispatch(proposalsReady());
-        }
+        // Deriv's new trading API (api.derivws.com) no longer accepts `symbol`
+        // inside the `buy` `parameters` object — it returns:
+        //   InputValidationFailed: "Properties not allowed: symbol"
+        // The only valid buy format on this endpoint is:
+        //   { buy: <proposal_id>, price: <ask_price> }
+        // which requires a prior proposal subscription to obtain the proposal ID.
+        //
+        // We therefore always use the proposal-subscription path regardless of
+        // whether the bot XML contains a payout block.  The previous "direct buy"
+        // shortcut is disabled until/unless Deriv adds the parameter back.
+        this.is_proposal_subscription_required = true;
+        this.makeProposals({ ...this.options, ...this.tradeOptions });
+        this.checkProposalReady();
     }
 }
