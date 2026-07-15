@@ -194,6 +194,8 @@ const AiBots: React.FC = () => {
     const [stake, setStake] = useState(1);
     const [martingaleMultiplier, setMartingaleMultiplier] = useState(1);
     const [tickHistoryLimit, setTickHistoryLimit] = useState(() => globalTickEngine.getLimit());
+    const [tickLimitInput, setTickLimitInput] = useState(() => String(globalTickEngine.getLimit()));
+    const [isEditingTickLimit, setIsEditingTickLimit] = useState(false);
     const [targetProfit, setTargetProfit] = useState(10);
     const [stopLoss, setStopLoss] = useState(5);
 
@@ -219,6 +221,20 @@ const AiBots: React.FC = () => {
 
     // Cleanup on unmount
     useEffect(() => () => { engineRef.current?.stop(); }, []);
+
+    // Keep tickHistoryLimit in sync when changed from another DCircles consumer
+    useEffect(() => {
+        const unsub = globalTickEngine.onLimitChange(n => {
+            setTickHistoryLimit(n);
+            if (!isEditingTickLimit) setTickLimitInput(String(n));
+        });
+        return unsub;
+    }, [isEditingTickLimit]);
+
+    // Sync input string when not editing
+    useEffect(() => {
+        if (!isEditingTickLimit) setTickLimitInput(String(tickHistoryLimit));
+    }, [tickHistoryLimit, isEditingTickLimit]);
 
     // ── Shared Blockly infrastructure ─────────────────────────────────────────
     // useStore() provides access to the same MobX stores used by the Blockly
@@ -516,23 +532,43 @@ const AiBots: React.FC = () => {
                             </div>
 
                             <div style={S.row}>
-                                <label style={S.label}>Tick History Limit</label>
-                                <select
-                                    value={tickHistoryLimit}
+                                <label style={S.label}>Last Ticks</label>
+                                <input
+                                    type='text'
+                                    value={tickLimitInput}
                                     disabled={isRunning}
+                                    onFocus={() => setIsEditingTickLimit(true)}
                                     onChange={e => {
-                                        const n = Number(e.target.value);
-                                        setTickHistoryLimit(n);
-                                        globalTickEngine.setLimit(n);
+                                        const v = e.target.value;
+                                        if (v === '' || /^\d+$/.test(v)) setTickLimitInput(v);
                                     }}
-                                    style={S.select}
-                                >
-                                    {[100, 500, 1000, 3000, 5000].map(n => (
-                                        <option key={n} value={n}>{n.toLocaleString()} ticks</option>
-                                    ))}
-                                </select>
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            let n = Number(tickLimitInput);
+                                            if (isNaN(n) || tickLimitInput === '') n = tickHistoryLimit;
+                                            const clamped = Math.max(100, Math.min(5000, Math.round(n)));
+                                            setTickLimitInput(String(clamped));
+                                            setIsEditingTickLimit(false);
+                                            if (clamped !== tickHistoryLimit) globalTickEngine.setLimit(clamped);
+                                            (e.target as HTMLInputElement).blur();
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        let n = Number(tickLimitInput);
+                                        if (isNaN(n) || tickLimitInput === '') n = tickHistoryLimit;
+                                        const clamped = Math.max(100, Math.min(5000, Math.round(n)));
+                                        setTickLimitInput(String(clamped));
+                                        setIsEditingTickLimit(false);
+                                        if (clamped !== tickHistoryLimit) globalTickEngine.setLimit(clamped);
+                                    }}
+                                    style={{
+                                        ...S.input,
+                                        borderColor: isEditingTickLimit ? '#00bfff' : undefined,
+                                        color: isEditingTickLimit ? '#00bfff' : undefined,
+                                    }}
+                                />
                                 <span style={S.hint}>
-                                    Shared with DCircles &amp; all analytics — affects confirmation accuracy
+                                    100–5000 · shared with DCircles &amp; all analytics
                                 </span>
                             </div>
                         </div>
