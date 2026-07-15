@@ -69,16 +69,26 @@ export default class TransactionsStore {
         );
         const statistics = trxs.reduce(
             (stats, { data }) => {
-                const { profit = 0, is_completed = false, buy_price = 0, payout, bid_price } = data as TContractInfo;
+                const { profit, is_completed = false, buy_price, payout, bid_price } = data as TContractInfo;
+                // The new trading API sometimes sends these financial fields
+                // as strings rather than numbers. `+=` on a string operand
+                // silently falls back to string concatenation instead of
+                // addition (e.g. `0 + "0.10"` -> `"00.10"`), corrupting the
+                // running total into garbage that then renders as 0.00 even
+                // though each row's own value displays correctly. Coerce
+                // explicitly before accumulating.
+                const numeric_profit = Number(profit) || 0;
+                const numeric_buy_price = Number(buy_price) || 0;
+                const numeric_payout = Number(payout ?? bid_price) || 0;
                 if (is_completed) {
-                    if (profit > 0) {
+                    if (numeric_profit > 0) {
                         stats.won_contracts += 1;
-                        stats.total_payout += payout ?? bid_price ?? 0;
+                        stats.total_payout += numeric_payout;
                     } else {
                         stats.lost_contracts += 1;
                     }
-                    stats.total_profit += profit;
-                    stats.total_stake += buy_price;
+                    stats.total_profit += numeric_profit;
+                    stats.total_stake += numeric_buy_price;
                     total_runs += 1;
                 }
                 return stats;
@@ -120,10 +130,15 @@ export default class TransactionsStore {
             is_completed,
             run_id,
             date_start: formatDate(normalized_data.date_start, 'YYYY-M-D HH:mm:ss [GMT]'),
-            entry_tick: normalized_data.entry_tick_display_value,
+            // Prefer the display-value variant (nicer formatting), but the
+            // new trading API often omits `*_display_value` fields entirely.
+            // Fall back to the already-normalized numeric spot rather than
+            // overwriting it with `undefined`, which is what left Entry/Exit
+            // spot blank even after normalizeContractSpots resolved them.
+            entry_tick: normalized_data.entry_tick_display_value ?? normalized_data.entry_tick,
             entry_tick_time:
                 normalized_data.entry_tick_time && formatDate(normalized_data.entry_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
-            exit_tick: normalized_data.exit_tick_display_value,
+            exit_tick: normalized_data.exit_tick_display_value ?? normalized_data.exit_tick,
             exit_tick_time:
                 normalized_data.exit_tick_time && formatDate(normalized_data.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
             profit: is_completed ? normalized_data.profit : 0,
