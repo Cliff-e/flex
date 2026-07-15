@@ -123,6 +123,14 @@ export const getCancellationPrice = (contract_info: TContractInfo) => {
 export const isEnded = (contract_info: TContractInfo) =>
     !!(
         (contract_info.status && contract_info.status !== 'open') ||
+        // `is_sold` is the authoritative "this contract is finished" signal on
+        // the new trading API (api.derivws.com) — the trade engine itself
+        // already relies on it exclusively (see OpenContract.js's isSold).
+        // `status` isn't guaranteed to be populated the same way it was on
+        // the legacy API, so without this check completed contracts could
+        // never be flagged `is_completed`, leaving Total Stake/Payout/P&L
+        // stuck at 0 even after trades settle.
+        contract_info.is_sold ||
         contract_info.is_expired ||
         contract_info.is_settleable
     );
