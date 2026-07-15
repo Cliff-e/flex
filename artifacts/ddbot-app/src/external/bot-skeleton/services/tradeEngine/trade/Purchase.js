@@ -50,22 +50,25 @@ export default Engine =>
                 const action = () => {
                     const buy_request = { buy: id, price: askPrice };
                     // eslint-disable-next-line no-console
-                    console.log('[TRADE][Purchase] Sending buy request:', buy_request);
+                    console.log('[TRADE][Purchase] Sending buy request:', JSON.stringify(buy_request));
                     return api_base.api
                         .send(buy_request)
                         .then(response => {
                             // eslint-disable-next-line no-console
-                            console.log('[TRADE][Purchase] Buy response:', response);
+                            console.log('[TRADE][Purchase] Buy response:', JSON.stringify(response));
                             return response;
                         })
                         .catch(error => {
-                            console.error('[TRADE][Purchase] Buy request failed', {
-                                request: buy_request,
-                                response: error,
-                                errorCode: error?.error?.code,
-                                errorMessage: error?.error?.message,
-                                errorDetails: error?.error?.details,
-                            });
+                            console.error(
+                                '[TRADE][Purchase] Buy request failed',
+                                JSON.stringify({
+                                    request: buy_request,
+                                    response: error,
+                                    errorCode: error?.error?.code,
+                                    errorMessage: error?.error?.message,
+                                    errorDetails: error?.error?.details,
+                                })
+                            );
                             throw error;
                         });
                 };
@@ -106,22 +109,25 @@ export default Engine =>
             const trade_option = tradeOptionToBuy(contract_type, this.tradeOptions);
             const action = () => {
                 // eslint-disable-next-line no-console
-                console.log('[TRADE][Purchase] Sending direct buy request:', trade_option);
+                console.log('[TRADE][Purchase] Sending direct buy request:', JSON.stringify(trade_option));
                 return api_base.api
                     .send(trade_option)
                     .then(response => {
                         // eslint-disable-next-line no-console
-                        console.log('[TRADE][Purchase] Direct buy response:', response);
+                        console.log('[TRADE][Purchase] Direct buy response:', JSON.stringify(response));
                         return response;
                     })
                     .catch(error => {
-                        console.error('[TRADE][Purchase] Direct buy request failed', {
-                            request: trade_option,
-                            response: error,
-                            errorCode: error?.error?.code,
-                            errorMessage: error?.error?.message,
-                            errorDetails: error?.error?.details,
-                        });
+                        console.error(
+                            '[TRADE][Purchase] Direct buy request failed',
+                            JSON.stringify({
+                                request: trade_option,
+                                response: error,
+                                errorCode: error?.error?.code,
+                                errorMessage: error?.error?.message,
+                                errorDetails: error?.error?.details,
+                            })
+                        );
                         throw error;
                     });
             };

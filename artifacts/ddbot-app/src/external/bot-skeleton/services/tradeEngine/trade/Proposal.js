@@ -68,21 +68,24 @@ export default Engine =>
             Promise.all(
                 this.proposal_templates.map(proposal => {
                     // eslint-disable-next-line no-console
-                    console.log('[TRADE][Proposal] Sending proposal request:', proposal);
+                    console.log('[TRADE][Proposal] Sending proposal request:', JSON.stringify(proposal));
                     return doUntilDone(() => api_base.api.send(proposal))
                         .then(response => {
                             // eslint-disable-next-line no-console
-                            console.log('[TRADE][Proposal] Proposal response:', response);
+                            console.log('[TRADE][Proposal] Proposal response:', JSON.stringify(response));
                             return response;
                         })
                         .catch(error => {
-                            console.error('[TRADE][Proposal] Proposal request failed', {
-                                request: proposal,
-                                response: error,
-                                errorCode: error?.error?.code,
-                                errorMessage: error?.error?.message,
-                                errorDetails: error?.error?.details,
-                            });
+                            console.error(
+                                '[TRADE][Proposal] Proposal request failed',
+                                JSON.stringify({
+                                    request: proposal,
+                                    response: error,
+                                    errorCode: error?.error?.code,
+                                    errorMessage: error?.error?.message,
+                                    errorDetails: error?.error?.details,
+                                })
+                            );
 
                             // We intercept ContractBuyValidationError as user may have specified
                             // e.g. a DIGITUNDER 0 or DIGITOVER 9, while one proposal may be invalid
