@@ -27,11 +27,11 @@ const DCircles = () => {
         const saved = localStorage.getItem('digitsMap');
         return safeJsonParse<Record<string, number[]>>(saved, {});
     });
-    const [viewLimit, setViewLimit] = useState(() => Number(localStorage.getItem('dc_viewLimit')) || 1000);
+    const [viewLimit, setViewLimit] = useState(() => globalTickEngine.getLimit());
 
 // 👇 REQUIRED for the input to work
 const inputRef = useRef<HTMLInputElement | null>(null);
-const [inputValue, setInputValue] = useState<string>('1000');
+const [inputValue, setInputValue] = useState<string>(() => String(globalTickEngine.getLimit()));
 const [isEditing, setIsEditing] = useState(false); 
 
 
@@ -55,6 +55,14 @@ const [isEditing, setIsEditing] = useState(false);
     }
 }, [viewLimit, isEditing]);
 
+    // Keep viewLimit in sync when another DCircles consumer changes the engine limit
+    useEffect(() => {
+        const unsub = globalTickEngine.onLimitChange(n => {
+            setViewLimit(n);
+        });
+        return unsub;
+    }, []);
+
     // =========================
     // 🔥 SAVE TO LOCALSTORAGE
     // =========================
@@ -66,10 +74,6 @@ const [isEditing, setIsEditing] = useState(false);
     useEffect(() => {
         localStorage.setItem('dc_symbol', symbol);
     }, [symbol]);
-
-    useEffect(() => {
-        localStorage.setItem('dc_viewLimit', String(viewLimit));
-    }, [viewLimit]);
 
     // =========================
     // 🔥 SUBSCRIBE TO SHARED ENGINE
@@ -299,10 +303,11 @@ const digits =
         // 🔥 LIVE UPDATE (percentages update instantly)
         let num = Number(val);
 
-        if (num < 50) num = 50;
-        if (num > 3000) num = 3000;
+        if (num < 100) num = 100;
+        if (num > 5000) num = 5000;
 
         setViewLimit(num);
+        globalTickEngine.setLimit(num);
     }}
 
     onKeyDown={(e) => {
@@ -310,12 +315,13 @@ const digits =
             let val = Number(inputValue);
 
             if (isNaN(val)) val = 1000;
-            if (val < 50) val = 50;
-            if (val > 3000) val = 3000;
+            if (val < 100) val = 100;
+            if (val > 5000) val = 5000;
 
             setViewLimit(val);
             setInputValue(String(val));
             setIsEditing(false);
+            globalTickEngine.setLimit(val);
 
             // 🔥 FORCE blur AFTER render (fix blinking)
             setTimeout(() => {
@@ -328,15 +334,16 @@ const digits =
         let val = Number(inputValue);
 
         if (isNaN(val)) val = 1000;
-        if (val < 50) val = 50;
-        if (val > 3000) val = 3000;
+        if (val < 100) val = 100;
+        if (val > 5000) val = 5000;
 
         setViewLimit(val);
         setInputValue(String(val));
         setIsEditing(false);
+        globalTickEngine.setLimit(val);
     }}
 
-    placeholder="Enter ticks (50–3000)"
+    placeholder="Enter ticks (100–5000)"
 
     style={{
         width: '150px',
