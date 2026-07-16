@@ -24,7 +24,6 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
-import MobileBottomNav from '@/pages/mobile-bottom-nav/MobileBottomNav';
 import './main.scss';
 
 
@@ -331,9 +330,6 @@ const AppWrapper = observer(() => {
                 <TradingViewModal />
             </DesktopWrapper>
             <MobileWrapper>{!is_open && <RunPanel />}</MobileWrapper>
-            {!isDesktop && (
-                <MobileBottomNav active_tab={active_tab} onTabChange={handleTabChange} />
-            )}
             <Dialog
                 cancel_button_text={cancel_button_text || localize('Cancel')}
                 className='dc-dialog__wrapper--fixed'

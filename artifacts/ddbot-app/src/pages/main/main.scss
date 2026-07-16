@@ -788,7 +788,8 @@
 
 @include mobile-or-tablet-screen {
     .main .dc-tabs__content {
-        height: calc(var(--tab-content-height-mobile) - 60px) !important;
+        /* Bottom nav removed — content now uses the full available height. */
+        height: var(--tab-content-height-mobile) !important;
         padding-bottom: 0;
     }
 }
