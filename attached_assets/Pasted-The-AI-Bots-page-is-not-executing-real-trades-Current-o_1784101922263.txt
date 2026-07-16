@@ -1,0 +1,342 @@
+The AI Bots page is not executing real trades.
+
+Current observations:
+
+- Login is successful.
+- Real account is connected.
+- WebSocket is connected.
+- Proposal requests are continuously sent.
+
+Console shows:
+
+[WS-RAW-SEND]
+{"proposal":1,...}
+
+repeated many times.
+
+However:
+
+- NO buy request is ever sent.
+- NO proposal_open_contract subscription appears.
+- NO transaction events.
+- No contract_id is created.
+- The bot remains on "Executing" forever.
+
+This indicates the strategy is producing signals but the execution pipeline never reaches purchase().
+
+====================================================
+TASK
+====================================================
+
+Perform a COMPLETE execution-path audit for AI Bots.
+
+Do NOT guess.
+
+Trace the exact code path from:
+
+Run Button
+        ↓
+AI Strategy Engine
+        ↓
+Signal generation
+        ↓
+Trade validation
+        ↓
+Proposal response
+        ↓
+Purchase()
+        ↓
+Proposal Open Contract
+        ↓
+Transactions
+        ↓
+Journal
+        ↓
+Summary
+
+Find exactly where execution stops.
+
+====================================================
+VERIFY THESE ITEMS
+====================================================
+
+1. AI Bots MUST use the SAME execution engine used by Blockly Bot Builder.
+
+Check whether AI Bots accidentally implemented their own executor.
+
+If duplicated:
+
+remove it
+
+reuse the existing execution service
+
+====================================================
+
+2. Proposal Response
+
+Verify that proposal responses are actually received.
+
+Log:
+
+proposal id
+
+ask price
+
+barrier
+
+symbol
+
+contract type
+
+req_id
+
+Confirm they are passed into purchase().
+
+====================================================
+
+3. Purchase()
+
+Verify purchase() is actually called.
+
+If not:
+
+identify the condition preventing it.
+
+Examples:
+
+waiting forever
+
+validation failing
+
+incorrect state
+
+proposal cache empty
+
+wrong proposal id
+
+stale proposal
+
+missing await
+
+silent exception
+
+====================================================
+
+4. Real Trading Gate
+
+Inspect every condition that blocks buying.
+
+Examples:
+
+logged_in
+
+active account
+
+token
+
+balance
+
+market open
+
+cooldown
+
+duplicate prevention
+
+max trades
+
+risk manager
+
+Take Profit
+
+Stop Loss
+
+Auto Sequence
+
+Manual mode
+
+Confirm which condition evaluates false.
+
+====================================================
+
+5. AI Strategy
+
+Verify strategy actually emits
+
+EXECUTE TRADE
+
+and not merely
+
+REQUEST PROPOSAL.
+
+====================================================
+
+6. Execution Service
+
+Confirm AI Bots use the existing:
+
+TradeExecutor
+
+PurchaseService
+
+ExecutionManager
+
+or equivalent shared module.
+
+DO NOT duplicate logic.
+
+====================================================
+
+7. Transactions
+
+AI Bots should use exactly the same:
+
+Journal
+
+Transactions page
+
+Summary page
+
+Trade history
+
+PnL
+
+used by Blockly Bot Builder.
+
+If AI Bots maintain separate state,
+
+remove it.
+
+Route everything into the existing shared stores.
+
+====================================================
+
+8. WebSocket Messages
+
+Capture complete sequence:
+
+proposal
+
+proposal response
+
+buy
+
+buy response
+
+proposal_open_contract
+
+transaction
+
+profit/loss
+
+summary update
+
+Show where the sequence breaks.
+
+====================================================
+
+9. Silent Errors
+
+Search for:
+
+try/catch {}
+
+catch(error){}
+
+Promise rejection
+
+console.error
+
+swallowed exceptions
+
+state resets
+
+AbortController
+
+timeouts
+
+====================================================
+
+10. State Machine
+
+Inspect AI Bot state transitions.
+
+Expected:
+
+Idle
+↓
+
+Running
+↓
+
+Waiting Proposal
+↓
+
+Proposal Received
+↓
+
+Buying
+↓
+
+Contract Open
+↓
+
+Monitoring
+↓
+
+Contract Closed
+↓
+
+Journal Updated
+↓
+
+Next Trade
+
+Report actual state sequence.
+
+====================================================
+
+11. Compare with Blockly
+
+Diff the execution flow against Blockly Bot Builder.
+
+Identify every missing function call.
+
+====================================================
+
+12. Fix
+
+Implement the minimal fix so AI Bots:
+
+reuse the Blockly execution engine,
+
+reuse Blockly journal,
+
+reuse Blockly transactions,
+
+reuse Blockly summary,
+
+execute real purchases,
+
+receive contract updates,
+
+and continue trading normally.
+
+Do NOT change strategy logic.
+
+Do NOT introduce duplicate execution code.
+
+====================================================
+
+DELIVERABLES
+
+1. Root cause.
+
+2. Files modified.
+
+3. Why purchases never happened.
+
+4. Why proposals continued forever.
+
+5. Git commit hash.
+
+6. Push all fixes to GitHub.
