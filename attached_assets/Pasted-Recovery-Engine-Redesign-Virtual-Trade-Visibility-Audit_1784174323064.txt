@@ -1,0 +1,210 @@
+Recovery Engine Redesign + Virtual Trade Visibility Audit
+
+Before making changes, audit the existing recovery flow and then implement the behavior described below.
+
+Current Problem
+
+The current AI Bot recovery behavior is not what I want.
+
+Right now, after a loss:
+
+Martingale increases the stake.
+But the bot continues using the original contract type/strategy.
+Recovery is therefore tied to the original strategy.
+
+This is incorrect.
+
+Desired Recovery Behavior
+
+Recovery should become a completely separate mode.
+
+When any AI Bot strategy loses:
+
+Detect the loss.
+Immediately suspend the original strategy.
+Enter Recovery Mode.
+Recovery Mode must trade ONLY:
+OVER 5
+or UNDER 4
+
+according to the existing recovery-selection rules.
+
+The original strategy should not place any trades while recovery is active.
+
+Example
+
+Assume:
+
+Initial strategy = DIFFER
+Stake = 1
+Martingale multiplier = 2
+
+Trade 1:
+
+DIFFER
+Stake = 1
+Result = LOSS
+
+Immediately:
+
+Recovery Trade 1:
+
+OVER 5 or UNDER 4
+Stake = 2
+
+If LOSS:
+
+Recovery Trade 2:
+
+OVER 5 or UNDER 4
+Stake = 4
+
+If LOSS:
+
+Recovery Trade 3:
+
+OVER 5 or UNDER 4
+Stake = 8
+
+Continue recovery progression until a WIN occurs.
+
+Only after a recovery WIN:
+
+Reset recovery state.
+Return to the original strategy.
+Resume normal trading.
+Apply To All AI Bots
+
+This recovery behavior must be identical for:
+
+OVER 1
+UNDER 8
+DIFFER (Manual)
+DIFFER Auto Sequence
+MATCHES
+Any other AI Bot strategy using the shared recovery engine
+
+There should be one shared Recovery Engine.
+
+The only thing that differs between bots should be the entry strategy.
+
+Recovery Rules
+
+During recovery:
+
+Do not execute the original strategy.
+Do not alternate between recovery and strategy trades.
+Do not place any normal strategy trade until recovery is complete.
+Recovery trades must exclusively use:
+OVER 5
+UNDER 4
+
+until a recovery win occurs.
+
+Audit Requirement
+
+Before changing code:
+
+Trace:
+
+strategy signal
+→ trade execution
+→ settlement
+→ loss detection
+→ recovery trigger
+→ recovery trade selection
+→ martingale progression
+→ recovery completion
+
+Identify exactly where the current implementation continues trading the original strategy instead of staying inside recovery.
+
+Provide the root cause.
+
+Virtual Trade Visibility
+
+I also want full visibility of virtual trading activity.
+
+Currently virtual trades are difficult to verify.
+
+Implement support so virtual trades appear in:
+
+Summary
+
+Show:
+
+virtual wins
+virtual losses
+virtual profit/loss
+virtual strike rate
+Transactions
+
+Include virtual trades in the transaction history.
+
+Clearly label them:
+
+VIRTUAL
+REAL
+
+Users must be able to distinguish them easily.
+
+Journal
+
+Log all virtual trade activity:
+
+entry
+result
+recovery activation
+recovery completion
+strategy transitions
+
+The journal should show the same level of detail for virtual trades that currently exists for real trades.
+
+Real-Time Tracking
+
+The objective is to make bot behavior fully observable.
+
+Users should be able to see:
+
+what the bot decided
+why it traded
+whether the trade was virtual or real
+when recovery started
+which recovery trade was executed
+when recovery finished
+
+in real time.
+
+Constraints
+
+Do NOT modify:
+
+OAuth/authentication
+account management
+chart rendering
+DCircles architecture
+unrelated UI
+
+Keep changes limited to:
+
+recovery engine
+AI Bot execution tracking
+virtual trade reporting
+Deliverables
+
+Provide:
+
+Root cause of the current recovery behavior.
+Recovery flow before vs after.
+Files modified.
+Confirmation that:
+a loss immediately enters recovery,
+recovery trades only OVER 5 / UNDER 4,
+martingale progression occurs only inside recovery,
+original strategy remains suspended until recovery succeeds.
+Confirmation that virtual trades now appear in:
+Summary
+Transactions
+Journal
+Push the completed implementation to GitHub.
+
+Important: Recovery is no longer strategy-specific. After a loss, the bot should remain entirely inside the recovery engine until a recovery win occurs, then return to its original strategy.
