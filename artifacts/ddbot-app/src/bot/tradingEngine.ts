@@ -27,6 +27,13 @@ import { observer } from '../external/bot-skeleton/utils/observer';
 // to the legacy snake_case field names expected by every downstream
 // consumer (Transactions table, Summary card, Journal, CSV export).
 import { normalizeContractSpots } from '../external/bot-skeleton/services/tradeEngine/utils/normalize-contract';
+import {
+    appendExitDigit,
+    resetExitDigitHistory,
+    getExitDigitHistory,
+    getLastNDigits,
+    type ExitDigitEntry,
+} from './sharedExitDigitHistory';
 
 const AI_BOT_RUNTIME_ID = 'ai-bot';
 
@@ -38,7 +45,7 @@ const TRADES_PER_BATCH = 3;
 const MIN_FREQ_TICKS = 50;
 const ENTRY_DEBOUNCE_MS = 2500;
 const TRADE_TIMEOUT_MS = 30_000;
-const EXIT_DIGIT_LOG_LIMIT = 20;
+// EXIT_DIGIT_LOG_LIMIT removed — history cap is now owned by sharedExitDigitHistory.ts
 
 // ─────────────────────────────────────────────
 // Safe numeric coercion
@@ -83,12 +90,9 @@ export interface TradeResult {
     exitDigit: number;
 }
 
-export interface ExitDigitEntry {
-    digit: number;
-    source: 'virtual' | 'real';
-    won?: boolean;
-    ts: number;
-}
+// ExitDigitEntry is now the canonical type in sharedExitDigitHistory.ts.
+// Re-exported here so existing imports in AiBots.tsx remain unchanged.
+export type { ExitDigitEntry } from './sharedExitDigitHistory';
 
 export interface TradeRecord {
     id: number;
@@ -136,11 +140,10 @@ export class TradingEngine {
     // globalTickEngine (the single shared source of truth) instead of
     // maintaining its own private buffer.
     private decimals: number | null = null;
-    private virtualDigits: number[] = [];
-    private realDigits: number[] = [];
-
-    // Exit digit log (last 20, mixed virtual+real)
-    private exitDigitLog: ExitDigitEntry[] = [];
+    // virtualDigits, realDigits, and exitDigitLog removed.
+    // The single shared sharedExitDigitHistory module is the only exit-digit
+    // buffer. Both virtual and real digits are appended there in chronological
+    // order; strategy decisions read from it via getLastNDigits().
 
     // Full trade history — kept locally for PerformanceDashboard/DigitHeatmap.
     // AI Bot trades are also forwarded to the shared TransactionsStore via
@@ -205,9 +208,7 @@ export class TradingEngine {
         this.tradeCount = 0;
         this.tradeIdCounter = 0;
         this.currentStake = this.config.stake;
-        this.virtualDigits = [];
-        this.realDigits = [];
-        this.exitDigitLog = [];
+        resetExitDigitHistory();   // clear the shared chronological buffer
         this.tradeHistory = [];
         this.executionLock = false;
         this.lastEntryTs = 0;
@@ -1074,21 +1075,22 @@ export class TradingEngine {
     // ─────────────────────────────────────────
 
     private addVirtualExitDigit(d: number): void {
-        this.virtualDigits.push(d);
-        if (this.virtualDigits.length > 20) this.virtualDigits.shift();
-        this.exitDigitLog.push({ digit: d, source: 'virtual', ts: Date.now() });
-        if (this.exitDigitLog.length > EXIT_DIGIT_LOG_LIMIT) this.exitDigitLog.shift();
+        // Write to the single shared chronological history only.
+        appendExitDigit({ digit: d, source: 'virtual', ts: Date.now() });
     }
 
     private addRealExitDigit(d: number, won: boolean): void {
-        this.realDigits.push(d);
-        if (this.realDigits.length > 20) this.realDigits.shift();
-        this.exitDigitLog.push({ digit: d, source: 'real', won, ts: Date.now() });
-        if (this.exitDigitLog.length > EXIT_DIGIT_LOG_LIMIT) this.exitDigitLog.shift();
+        // Write to the single shared chronological history only.
+        appendExitDigit({ digit: d, source: 'real', won, ts: Date.now() });
     }
 
     private getLast20Digits(): number[] {
-        return [...this.virtualDigits, ...this.realDigits].slice(-20);
+        // Read the last 20 digit values from the shared chronological history.
+        // This is guaranteed to be in arrival order (virtual and real interleaved)
+        // because sharedExitDigitHistory appends each entry as it occurs.
+        // The old implementation incorrectly concatenated two separate arrays
+        // (all virtual first, then all real) which broke chronological order.
+        return getLastNDigits(20);
     }
 
     private recordTrade(
@@ -1159,7 +1161,7 @@ export class TradingEngine {
             profit: this.profit,
             trades: this.tradeCount,
             currentStake: this.currentStake,
-            exitDigitLog: [...this.exitDigitLog],
+            exitDigitLog: getExitDigitHistory(),
             tradeHistory: [...this.tradeHistory],
             logs: [...this.logs],
             recoveryTradeCount: this.recoveryTradeCount,
@@ -1173,7 +1175,7 @@ export class TradingEngine {
             profit: this.profit,
             trades: this.tradeCount,
             currentStake: this.currentStake,
-            exitDigitLog: [...this.exitDigitLog],
+            exitDigitLog: getExitDigitHistory(),
             tradeHistory: [...this.tradeHistory],
             logs: [...this.logs],
             recoveryTradeCount: this.recoveryTradeCount,
