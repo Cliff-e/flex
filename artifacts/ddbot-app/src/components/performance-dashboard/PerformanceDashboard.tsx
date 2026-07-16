@@ -112,7 +112,6 @@ const PerformanceDashboard: React.FC<Props> = ({ history }) => {
         const bestWin = profits.length ? Math.max(...profits) : 0;
         const worstLoss = profits.length ? Math.min(...profits) : 0;
 
-        let streak = 0;
         let bestStreak = 0;
         let worstStreak = 0;
         let curStreak = 0;
@@ -130,7 +129,14 @@ const PerformanceDashboard: React.FC<Props> = ({ history }) => {
             if (!t.won && curStreak > worstStreak) worstStreak = curStreak;
         });
 
-        return { wins, losses, totalPnL, avgPnL, bestWin, worstLoss, bestStreak, worstStreak };
+        // Break out stats by trade type for the summary cells
+        const strategyTrades = history.filter(t => t.tradeType === 'strategy');
+        const recoveryTrades = history.filter(t => t.tradeType === 'recovery');
+        const strategyWins   = strategyTrades.filter(t => t.won).length;
+        const recoveryWins   = recoveryTrades.filter(t => t.won).length;
+
+        return { wins, losses, totalPnL, avgPnL, bestWin, worstLoss, bestStreak, worstStreak,
+                 strategyTrades, recoveryTrades, strategyWins, recoveryWins };
     }, [history]);
 
     return (
@@ -170,6 +176,55 @@ const PerformanceDashboard: React.FC<Props> = ({ history }) => {
                     <StatCell label='Worst Streak' value={`${stats.worstStreak}L`} color='#ff4444' />
                 </div>
             </div>
+
+            {/* ── Trade log — labelled STRATEGY / RECOVERY ── */}
+            {history.length > 0 && (
+                <div>
+                    <div style={{ ...S.chartTitle, marginBottom: 6 }}>Trade Log</div>
+                    {/* Type breakdown */}
+                    <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#00bfff' }}>
+                            STRATEGY {stats.strategyWins}/{stats.strategyTrades.length}
+                        </span>
+                        <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#c084fc' }}>
+                            RECOVERY {stats.recoveryWins}/{stats.recoveryTrades.length}
+                        </span>
+                    </div>
+                    <div style={S.tradeLog}>
+                        {[...history].reverse().map(t => {
+                            const isRecovery = t.tradeType === 'recovery';
+                            const typeColor  = isRecovery ? '#c084fc' : '#00bfff';
+                            const pnlColor   = t.won ? '#00ff66' : '#ff4444';
+                            return (
+                                <div key={t.id} style={S.tradeRow}>
+                                    {/* Type label */}
+                                    <span style={{ ...S.tradeTag, color: typeColor, borderColor: typeColor }}>
+                                        {isRecovery ? 'REC' : 'STR'}
+                                    </span>
+                                    {/* Contract + barrier */}
+                                    <span style={S.tradeContract}>
+                                        {t.contractType} @{t.barrier}
+                                    </span>
+                                    {/* Stake */}
+                                    <span style={S.tradeStake}>${t.stake.toFixed(2)}</span>
+                                    {/* Exit digit */}
+                                    <span style={S.tradeMeta}>exit:{t.exitDigit}</span>
+                                    {/* Win/Loss */}
+                                    <span style={{ ...S.tradeResult, color: pnlColor }}>
+                                        {t.won ? '✅ WIN' : '❌ LOSS'}
+                                    </span>
+                                    {/* Profit */}
+                                    <span style={{ ...S.tradePnl, color: pnlColor }}>
+                                        {t.profit >= 0 ? '+' : ''}{t.profit.toFixed(2)}
+                                    </span>
+                                    {/* Time */}
+                                    <span style={S.tradeTs}>{t.ts}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -261,5 +316,60 @@ const S: Record<string, React.CSSProperties> = {
         fontSize: 13,
         fontWeight: 700,
         fontFamily: 'monospace',
+    },
+    tradeLog: {
+        display: 'flex',
+        flexDirection: 'column' as const,
+        gap: 3,
+        maxHeight: 260,
+        overflowY: 'auto' as const,
+    },
+    tradeRow: {
+        display: 'grid',
+        gridTemplateColumns: '38px 1fr 52px 58px 72px 58px auto',
+        gap: 6,
+        alignItems: 'center',
+        padding: '4px 6px',
+        borderRadius: 4,
+        background: '#0d0d0d',
+        fontSize: 11,
+        fontFamily: 'monospace',
+    },
+    tradeTag: {
+        fontSize: 9,
+        fontWeight: 700,
+        border: '1px solid',
+        borderRadius: 3,
+        padding: '1px 4px',
+        textAlign: 'center' as const,
+        letterSpacing: 0.5,
+    },
+    tradeContract: {
+        color: '#aaa',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap' as const,
+    },
+    tradeStake: {
+        color: '#666',
+        textAlign: 'right' as const,
+    },
+    tradeMeta: {
+        color: '#555',
+        textAlign: 'center' as const,
+    },
+    tradeResult: {
+        fontWeight: 700,
+        textAlign: 'center' as const,
+    },
+    tradePnl: {
+        fontWeight: 700,
+        textAlign: 'right' as const,
+    },
+    tradeTs: {
+        color: '#444',
+        fontSize: 9,
+        textAlign: 'right' as const,
+        whiteSpace: 'nowrap' as const,
     },
 };

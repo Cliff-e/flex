@@ -214,6 +214,8 @@ const AiBots: React.FC = () => {
         exitDigitLog: [],
         tradeHistory: [],
         logs: [],
+        recoveryTradeCount: 0,
+        recoveryWinCount: 0,
     });
     const [status, setStatus] = useState<EngineStatus>(defaultStatus);
     const isRunning = status.state !== 'idle' && status.state !== 'stopped';
@@ -370,6 +372,12 @@ const AiBots: React.FC = () => {
                         {isRunning && martingaleMultiplier > 1 && (
                             <span style={{ color: '#ffa500' }}>
                                 Stake: <strong>${status.currentStake.toFixed(2)}</strong>
+                            </span>
+                        )}
+                        {status.recoveryTradeCount > 0 && (
+                            <span style={{ color: '#c084fc' }}>
+                                Recovery: <strong>{status.recoveryWinCount}/{status.recoveryTradeCount}</strong>
+                                <span style={{ color: '#666', fontWeight: 400 }}> (wins/total)</span>
                             </span>
                         )}
                     </div>

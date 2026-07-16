@@ -99,6 +99,8 @@ export interface TradeRecord {
     exitDigit: number;
     won: boolean;
     profit: number;
+    /** Distinguishes strategy trades from recovery trades for labelling in the UI. */
+    tradeType: 'strategy' | 'recovery';
 }
 
 export interface EngineStatus {
@@ -109,6 +111,10 @@ export interface EngineStatus {
     exitDigitLog: ExitDigitEntry[];
     tradeHistory: TradeRecord[];
     logs: string[];
+    /** Total number of recovery trades executed this session. */
+    recoveryTradeCount: number;
+    /** Total number of recovery trades that resulted in a win. */
+    recoveryWinCount: number;
 }
 
 // ─────────────────────────────────────────────
@@ -151,6 +157,9 @@ export class TradingEngine {
     private inRecovery = false;
     private recoveryConfirmed = false;
     private recoveryOver6Count = 0;
+    // Recovery stats — for EngineStatus reporting and UI labelling.
+    private recoveryTradeCount = 0;
+    private recoveryWinCount = 0;
 
     // Differ Sequence state
     private differCycleOffset = 0;
@@ -168,6 +177,16 @@ export class TradingEngine {
     // Logging
     private logs: string[] = [];
     private onStatus: ((s: EngineStatus) => void) | null = null;
+
+    // ─────────────────────────────────────────
+    // Journal notify — routes to the shared JournalStore
+    // via the Blockly-compatible observer event bus so that
+    // every AI Bot event (recovery, virtual signal, strategy
+    // transition) is visible in the run-panel Journal tab.
+    // ─────────────────────────────────────────
+    private _journalNotify(message: string): void {
+        observer.emit('ui.log.notify', { message, className: 'ai-bot-event' });
+    }
 
     // ─────────────────────────────────────────
     // Constructor / lifecycle
@@ -196,6 +215,8 @@ export class TradingEngine {
         this.inRecovery = false;
         this.recoveryConfirmed = false;
         this.recoveryOver6Count = 0;
+        this.recoveryTradeCount = 0;
+        this.recoveryWinCount = 0;
         this.differCycleOffset = 0;
         this.logs = [];
         this.decimals = null;
@@ -308,6 +329,9 @@ export class TradingEngine {
             this.log(`🎯 Entry detected — digit ${digit} | Confirmation ✅`);
             if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Proposal matched — entry digit', digit, '| strategy', this.config.strategy);
             RuntimeLogger.updateSignal(AI_BOT_RUNTIME_ID, `Entry on digit ${digit}`);
+            // Journal: notify the shared JournalStore about this monitoring-phase
+            // signal so virtual activity is visible in the run-panel Journal tab.
+            this._journalNotify(`👁 [VIRTUAL] Entry signal — digit ${digit} — strategy ${this.config.strategy} — executing real trade`);
             this.lastEntryTs = now;
             this.currentEntryDigit = entryDigit;
             void this.executeBatch();
@@ -551,6 +575,7 @@ export class TradingEngine {
 
                 // Exit the batch immediately on the first loss so the very next
                 // trade is the recovery trade — no further normal strategy trades.
+                // The original strategy must NOT continue while recovery is pending.
                 if (hadLoss) break;
 
                 if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next trade — batch index ${i + 2}/${TRADES_PER_BATCH}`);
@@ -572,7 +597,10 @@ export class TradingEngine {
 
         if (!this._isStopped()) {
             if (hadLoss) {
-                this.log('🔄 Loss detected — entering recovery');
+                this.log('🔄 Loss detected — suspending strategy, entering recovery');
+                this._journalNotify(
+                    `🔄 [RECOVERY] Activated — original strategy (${this.config.strategy}) suspended — waiting for DCircles + 3×OVER-6`
+                );
                 this.inRecovery = true;
                 this.recoveryConfirmed = false;
                 this.recoveryOver6Count = 0;
@@ -591,28 +619,45 @@ export class TradingEngine {
         this.executionLock = true;
         this.setState('executing');
 
+        // ── Use currentStake: applyMartingale(false) was already called by
+        // executeBatch (or _awaitRecovery for DIFFER_SEQUENCE) so currentStake
+        // is the martingale-escalated value correct for this recovery attempt.
         const { contractType, barrier } = this.resolveRecoveryContract();
-        const stakeForRecovery = this.config.stake;
+        const stakeForRecovery = this.currentStake;   // ← FIXED: was always config.stake
+        this.recoveryTradeCount++;
+
         this.log(
-            `🔄 Recovery trade — ${contractType} @ ${barrier}, stake $${stakeForRecovery.toFixed(2)}`
+            `🔄 Recovery trade #${this.recoveryTradeCount} — ${contractType} @ ${barrier}, stake ${stakeForRecovery.toFixed(2)}`
+        );
+        this._journalNotify(
+            `🔄 [RECOVERY #${this.recoveryTradeCount}] ${contractType} @ ${barrier} — stake ${stakeForRecovery.toFixed(2)}`
         );
 
+        let recoveryWon = false;
         try {
             const result = await this.placeOneTrade(contractType, barrier, stakeForRecovery);
 
             this.addRealExitDigit(result.exitDigit, result.won);
-            this.recordTrade(contractType, barrier, stakeForRecovery, result);
+            this.recordTrade(contractType, barrier, stakeForRecovery, result, 'recovery');
             this.tradeCount++;
             this.profit += safeNum(result.profit);
             this.applyMartingale(result.won);
+            recoveryWon = result.won;
 
             if (result.won) {
+                this.recoveryWinCount++;
                 this.log(
                     `✅ Recovery WON | exit:${result.exitDigit} | P&L: +${this.profit.toFixed(2)}`
                 );
+                this._journalNotify(
+                    `✅ [RECOVERY] WON — exit digit ${result.exitDigit} — returning to ${this.config.strategy}`
+                );
             } else {
                 this.log(
-                    `❌ Recovery LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)}`
+                    `❌ Recovery LOST | exit:${result.exitDigit} | P&L: ${this.profit.toFixed(2)} | next stake: ${this.currentStake.toFixed(2)}`
+                );
+                this._journalNotify(
+                    `❌ [RECOVERY] LOST — exit ${result.exitDigit} — escalating to ${this.currentStake.toFixed(2)} — awaiting next signal`
                 );
             }
 
@@ -622,22 +667,45 @@ export class TradingEngine {
             const msg = (err as Error).message ?? String(err);
             this.log(`❌ Recovery error: ${msg}`);
             console.error('[AI-BOT][LIFECYCLE] Recovery trade error:', msg);
+            // Treat API error as a non-win so recovery stays active and the
+            // next tick-based trigger can re-attempt rather than hanging forever.
+            recoveryWon = false;
         }
 
         if (!this._isStopped()) {
-            this.inRecovery = false;
-            this.recoveryConfirmed = false;
-            this.recoveryOver6Count = 0;
-            this.executionLock = false;
-            this.setState('monitoring');
-            this.log('↩️ Recovery complete — back to monitoring');
+            if (recoveryWon) {
+                // ── WIN: exit recovery, resume original strategy ──────────────
+                this.inRecovery = false;
+                this.recoveryConfirmed = false;
+                this.recoveryOver6Count = 0;
+                this.executionLock = false;
+                this.setState('monitoring');
+                this.log(`↩️ Recovery complete (${this.recoveryTradeCount} trade(s)) — back to monitoring`);
+                this._journalNotify(
+                    `↩️ [RECOVERY] Complete — ${this.config.strategy} resumed after ${this.recoveryTradeCount} recovery trade(s)`
+                );
+                // Notify any awaiting DIFFER_SEQUENCE loop that recovery won.
+                const cb = this._onRecoveryComplete;
+                this._onRecoveryComplete = null;
+                cb?.();
+            } else {
+                // ── LOSS: stay inside recovery ────────────────────────────────
+                // The original strategy MUST NOT resume. Reset per-trade
+                // condition counters so handleRecoveryTick will re-gate the
+                // next recovery trade on a fresh DCircles + 3×OVER-6 sequence.
+                // inRecovery stays true. _onRecoveryComplete is NOT resolved —
+                // DIFFER_SEQUENCE must keep waiting until recovery wins.
+                this.recoveryConfirmed = false;
+                this.recoveryOver6Count = 0;
+                this.executionLock = false;
+                this.setState('recovery');
+            }
+        } else {
+            // Bot was stopped during recovery — unblock any waiting loop.
+            const cb = this._onRecoveryComplete;
+            this._onRecoveryComplete = null;
+            cb?.();
         }
-
-        // Notify any awaiting DIFFER_SEQUENCE loop that recovery is done
-        // (resolved unconditionally so the loop can check _isStopped itself).
-        const cb = this._onRecoveryComplete;
-        this._onRecoveryComplete = null;
-        cb?.();
     }
 
     /**
@@ -655,6 +723,9 @@ export class TradingEngine {
             this.recoveryOver6Count = 0;
             this.setState('recovery');
             this.log('🔄 Loss detected — entering shared recovery engine');
+            this._journalNotify(
+                `🔄 [RECOVERY] Activated — DIFFER_SEQUENCE suspended — waiting for DCircles + 3×OVER-6`
+            );
         });
     }
 
@@ -1024,7 +1095,8 @@ export class TradingEngine {
         contractType: string,
         barrier: string,
         stake: number,
-        result: TradeResult
+        result: TradeResult,
+        tradeType: 'strategy' | 'recovery' = 'strategy'
     ): void {
         this.tradeHistory.push({
             id: ++this.tradeIdCounter,
@@ -1035,6 +1107,7 @@ export class TradingEngine {
             exitDigit: result.exitDigit,
             won: result.won,
             profit: safeNum(result.profit),
+            tradeType,
         });
     }
 
@@ -1089,6 +1162,8 @@ export class TradingEngine {
             exitDigitLog: [...this.exitDigitLog],
             tradeHistory: [...this.tradeHistory],
             logs: [...this.logs],
+            recoveryTradeCount: this.recoveryTradeCount,
+            recoveryWinCount: this.recoveryWinCount,
         });
     }
 
@@ -1101,6 +1176,8 @@ export class TradingEngine {
             exitDigitLog: [...this.exitDigitLog],
             tradeHistory: [...this.tradeHistory],
             logs: [...this.logs],
+            recoveryTradeCount: this.recoveryTradeCount,
+            recoveryWinCount: this.recoveryWinCount,
         };
     }
 }
