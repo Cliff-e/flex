@@ -65,3 +65,19 @@ export function getLastNDigits(n: number): number[] {
     const slice = _history.slice(-n);
     return slice.map(e => e.digit);
 }
+
+/**
+ * Extract the last digit (0–9) from a raw exit-tick value.
+ *
+ * Works for:
+ *   • integer ticks:  "1234567" → 7
+ *   • decimal ticks:  "1234.56" → 6  (decimal point stripped before slicing)
+ *   • number inputs:  1234567  → 7
+ *
+ * This is the application-wide canonical implementation. All code that needs
+ * to derive an exit digit from a tick value should call this function rather
+ * than re-implementing the logic locally.
+ */
+export function extractLastDigit(raw: string | number): number {
+    return Number(String(raw).replace('.', '').slice(-1));
+}

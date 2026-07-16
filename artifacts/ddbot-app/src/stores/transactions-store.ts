@@ -6,6 +6,7 @@ import { ProposalOpenContract } from '@deriv/api-types';
 import { TPortfolioPosition, TStores } from '@deriv/stores/types';
 import { TContractInfo } from '../components/summary/summary-card.types';
 import { transaction_elements } from '../constants/transactions';
+import { appendExitDigit, extractLastDigit } from '../bot/sharedExitDigitHistory';
 import { getStoredItemsByKey, getStoredItemsByUser, setStoredItemsByKey } from '../utils/session-storage';
 import RootStore from './root-store';
 
@@ -159,6 +160,34 @@ export default class TransactionsStore {
                 c.data.transaction_ids.buy === data.transaction_ids?.buy
             );
         });
+
+        // ── SHARED EXIT-DIGIT HISTORY ─────────────────────────────────────────
+        // This is the single authoritative append point for real settled
+        // contracts.  Every trade — AI Bot strategy, AI Bot recovery, Blockly,
+        // future engines — flows through pushTransaction.  We append the exit
+        // digit exactly once: when the contract first transitions to completed.
+        //
+        // Deduplication logic:
+        //   • INSERT path (same_contract_index === -1):
+        //       Append if the contract is already completed on first insertion
+        //       (e.g. recovered contracts that arrive pre-settled).
+        //   • UPDATE path (same_contract_index !== -1):
+        //       Only append if the stored record was NOT yet completed and the
+        //       incoming data marks it as completed.  This is the normal flow
+        //       for live trades: they arrive open first, then settle.
+        if (is_completed) {
+            const wasAlreadyCompleted =
+                same_contract_index !== -1 &&
+                typeof this.elements[current_account]?.[same_contract_index]?.data === 'object' &&
+                !!(this.elements[current_account][same_contract_index].data as TContractInfo).is_completed;
+
+            if (!wasAlreadyCompleted) {
+                const exitTickRaw = normalized_data.exit_tick ?? 0;
+                const digit = extractLastDigit(String(exitTickRaw));
+                const won = (Number(normalized_data.profit) || 0) > 0;
+                appendExitDigit({ digit, source: 'real', won, ts: Date.now() });
+            }
+        }
 
         if (same_contract_index === -1) {
             // Render a divider if the "run_id" for this contract is different.

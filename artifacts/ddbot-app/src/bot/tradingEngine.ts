@@ -427,7 +427,6 @@ export class TradingEngine {
 
                 try {
                     const result = await this.placeOneTrade('DIGITDIFF', barrier, this.config.stake);
-                    this.addRealExitDigit(result.exitDigit, result.won);
                     this.recordTrade('DIGITDIFF', barrier, this.config.stake, result);
                     this.tradeCount++;
                     // Use safe addition: result.profit is already a number after _awaitSettlement
@@ -551,7 +550,6 @@ export class TradingEngine {
                 );
                 const result = await this.placeOneTrade(contractType, barrier, stakeForThisTrade);
 
-                this.addRealExitDigit(result.exitDigit, result.won);
                 this.recordTrade(contractType, barrier, stakeForThisTrade, result);
                 this.tradeCount++;
                 // safeNum guard: result.profit is already normalised inside
@@ -638,7 +636,6 @@ export class TradingEngine {
         try {
             const result = await this.placeOneTrade(contractType, barrier, stakeForRecovery);
 
-            this.addRealExitDigit(result.exitDigit, result.won);
             this.recordTrade(contractType, barrier, stakeForRecovery, result, 'recovery');
             this.tradeCount++;
             this.profit += safeNum(result.profit);
@@ -1076,13 +1073,18 @@ export class TradingEngine {
 
     private addVirtualExitDigit(d: number): void {
         // Write to the single shared chronological history only.
+        // Virtual (monitoring-phase) digits are NOT settled contracts so they
+        // never flow through pushTransaction — this remains the sole writer
+        // for virtual digits.
         appendExitDigit({ digit: d, source: 'virtual', ts: Date.now() });
     }
 
-    private addRealExitDigit(d: number, won: boolean): void {
-        // Write to the single shared chronological history only.
-        appendExitDigit({ digit: d, source: 'real', won, ts: Date.now() });
-    }
+    // NOTE: addRealExitDigit has been intentionally removed.
+    // Real trade exit digits are now appended by TransactionsStore.pushTransaction,
+    // which is the single authoritative write point for all settled contracts
+    // (AI Bot, Blockly, recovery, recovered contracts).  This prevents the
+    // duplicate-append bug that would have occurred when both TradingEngine and
+    // TransactionsStore wrote the same contract's digit independently.
 
     private getLast20Digits(): number[] {
         // Read the last 20 digit values from the shared chronological history.
