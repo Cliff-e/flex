@@ -5,6 +5,8 @@ import ErrorComponent from '@/components/error-component/error-component';
 import AppSplash from '@/components/loader/AppSplash';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
+import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import LandingPage, { PREVIEW_MODE_KEY } from '@/pages/landing/LandingPage';
 import { localize } from '@deriv-com/translations';
 import './app-root.scss';
 
@@ -38,6 +40,14 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
+    // Landing-page gate:
+    //   - Authenticated users skip the landing page entirely.
+    //   - Guest users who already clicked "Continue to Preview" this session skip it.
+    //   - Everyone else sees the landing page first.
+    const isAuthenticated = AuthSessionManager.isAuthenticated();
+    const hasChosenPreview = !!sessionStorage.getItem(PREVIEW_MODE_KEY);
+    const [show_landing, setShowLanding] = useState(!isAuthenticated && !hasChosenPreview);
+
     // Initialize WebSocket API directly — no Firebase/TMB gate.
     // TMB check has been removed; WebSocket startup depends only on the
     // canonical AuthSessionManager state (token in storage → authorize).
@@ -67,6 +77,12 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Show landing page while API is still booting AND user is unauthenticated —
+    // we don't want the splash screen competing with the landing page.
+    if (show_landing) {
+        return <LandingPage onContinueToPreview={() => setShowLanding(false)} />;
+    }
 
     if (!store || !is_api_initialized) return <AppRootLoader />;
 
