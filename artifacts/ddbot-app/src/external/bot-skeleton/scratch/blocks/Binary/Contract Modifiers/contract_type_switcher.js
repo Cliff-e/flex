@@ -5,11 +5,15 @@ import { modifyContextMenu } from '../../../utils';
  * Contract Type Switcher block.
  *
  * Lets a running bot change its active contract before the next proposal /
- * purchase without immediately placing a trade.  Add new contract types to
- * CONTRACT_TYPE_OPTIONS – that is the only place that needs updating.
+ * purchase without immediately placing a trade.  Selecting "Disable" clears
+ * the override and reverts to the contract selected in Trade Parameters.
+ *
+ * To add new contract types, append a row to CONTRACT_TYPE_OPTIONS — that is
+ * the only place that needs updating.
  */
 
 export const CONTRACT_TYPE_OPTIONS = [
+    ['Disable', 'DISABLE'],
     ['Rise', 'CALL'],
     ['Fall', 'PUT'],
     ['Higher', 'CALL'],
@@ -42,7 +46,7 @@ window.Blockly.Blocks.contract_type_switcher = {
             previousStatement: null,
             nextStatement: null,
             tooltip: localize(
-                'Switch the active contract type. The change takes effect on the next proposal request — no trade is placed immediately.'
+                'Switch the active contract type. Selecting "Disable" returns to the contract set in Trade Parameters. The change takes effect on the next proposal — no trade is placed immediately.'
             ),
             category: window.Blockly.Categories.Contract_Modifiers,
         };
@@ -51,9 +55,9 @@ window.Blockly.Blocks.contract_type_switcher = {
         return {
             display_name: localize('Contract Type Switcher'),
             description: localize(
-                'Changes the active contract type for the next proposal and all subsequent proposals until another switch occurs. Use inside If/Else, loops, or recovery branches to build hybrid strategies.'
+                'Changes the active contract type for the next proposal and all subsequent proposals until another switch occurs. Select "Disable" to revert to the Trade Parameters contract. Use inside If/Else, loops, or recovery branches to build hybrid strategies.'
             ),
-            key_words: localize('contract, switch, type, hybrid'),
+            key_words: localize('contract, switch, type, hybrid, disable'),
         };
     },
     customContextMenu(menu) {
