@@ -1,0 +1,136 @@
+# Improve Contract Switcher and Add Symbol Changer
+
+The Contract Type Switcher is working, but I want it to behave exactly like the reference implementation.
+
+## 1. Contract Type Switcher
+
+Update the **Current Active Contract** block.
+
+### Add a "Disable" option
+
+The dropdown should begin with:
+
+* Disable
+* Rise
+* Fall
+* Higher
+* Lower
+* Even
+* Odd
+* Matches
+* Differs
+* Over
+* Under
+
+### Runtime Behaviour
+
+When **Disable** is selected:
+
+* Clear any active contract override.
+* The execution engine must fall back to the contract selected in the normal **Trade Parameters** block.
+* Do not continue using the previously overridden contract.
+
+Example:
+
+```
+Trade Parameters
+Contract = Differs
+
+↓
+
+Current Active Contract = Over
+
+↓
+
+Bot trades Over
+
+↓
+
+Current Active Contract = Disable
+
+↓
+
+Bot automatically returns to trading Differs
+```
+
+This should reset the runtime override completely.
+
+---
+
+# 2. Symbol Changer Block
+
+Create a new Blockly block called:
+
+**Symbol Changer Status**
+
+Place it under the **Contract Modifiers** category.
+
+The dropdown should contain:
+
+* Disable
+* Volatility 10 (1s) Index
+* Volatility 10 Index
+* Volatility 25 (1s) Index
+* Volatility 25 Index
+* Volatility 50 (1s) Index
+* Volatility 50 Index
+* Volatility 75 (1s) Index
+* Volatility 75 Index
+* Volatility 100 (1s) Index
+* Volatility 100 Index
+
+(Use the application's supported symbol list where available, so new symbols can be added easily in the future.)
+
+---
+
+## Runtime Behaviour
+
+When a symbol is selected:
+
+* Update the runtime active symbol.
+* Cancel any cached proposals for the previous symbol.
+* Request new proposals for the selected symbol.
+* Continue trading the new symbol until another Symbol Changer block executes.
+
+When **Disable** is selected:
+
+* Remove the runtime symbol override.
+* Return to the symbol selected in the normal **Trade Parameters** block.
+* Clear any proposal cache associated with the overridden symbol.
+* Generate fresh proposals for the default symbol.
+
+---
+
+# Runtime Architecture
+
+The execution engine should maintain two optional runtime overrides:
+
+* activeContractOverride
+* activeSymbolOverride
+
+If an override exists, it takes priority.
+
+If the override is cleared (Disable), the engine must automatically use the values from **Trade Parameters**.
+
+This makes the Trade Parameters block the permanent default configuration, while the modifier blocks provide temporary runtime overrides.
+
+---
+
+# XML Support
+
+Both blocks must:
+
+* Export correctly to XML.
+* Import correctly from XML.
+* Preserve the selected dropdown value.
+* Remain fully backward compatible with existing DBot XML files.
+
+---
+
+# Goal
+
+The behaviour should mirror the reference implementation:
+
+* Contract Type Switcher can temporarily override or disable the contract type.
+* Symbol Changer can temporarily override or disable the market symbol.
+* Selecting **Disable** always returns control to the defaults configured in **Trade Parameters**.

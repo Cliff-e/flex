@@ -11,10 +11,18 @@ const getBotInterface = tradeEngine => {
         purchase: contract_type => tradeEngine.purchase(contract_type),
         /**
          * Switch the active contract type for every subsequent proposal and
-         * purchase.  Called by the Contract Type Switcher Blockly block.
+         * purchase.  Pass 'DISABLE' to revert to Trade Parameters.
+         * Called by the Contract Type Switcher Blockly block.
          * Does not place a trade immediately.
          */
         setActiveContract: contract_type => tradeEngine.setActiveContractOverride(contract_type),
+        /**
+         * Switch the active market symbol for every subsequent proposal.
+         * Pass 'DISABLE' to revert to Trade Parameters.
+         * Called by the Symbol Changer Blockly block.
+         * Does not place a trade immediately.
+         */
+        setActiveSymbol: symbol => tradeEngine.setActiveSymbolOverride(symbol),
         getAskPrice: contract_type => Number(getProposal(contract_type, tradeEngine).ask_price),
         getPayout: contract_type => Number(getProposal(contract_type, tradeEngine).payout),
         getPurchaseReference: () => tradeEngine.getPurchaseReference(),
