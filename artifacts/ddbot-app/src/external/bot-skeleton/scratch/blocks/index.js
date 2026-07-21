@@ -5,6 +5,7 @@ import './Advanced/Variable';
 import './Binary/After Purchase';
 import './Binary/Before Purchase';
 import './Binary/Contract Modifiers';
+import './Binary/Virtual Hook';
 import './Binary/During Purchase';
 import './Binary/Indicators';
 import './Binary/Tick Analysis';

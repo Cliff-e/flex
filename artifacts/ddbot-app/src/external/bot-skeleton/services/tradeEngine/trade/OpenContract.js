@@ -32,11 +32,21 @@ export default Engine =>
                         this.contractId = '';
                         clearTimeout(this.transaction_recovery_timeout);
                         this.updateTotals(contract);
+
                         contractStatus({
                             id: 'contract.sold',
                             data: contract.transaction_ids.sell,
                             contract,
                         });
+
+                        // Notify the Virtual Hook that a real trade has settled.
+                        // This allows the hook to track consecutive real wins and
+                        // reset the virtual warm-up sequence when the threshold
+                        // is reached.  No-ops when the Virtual Hook is disabled.
+                        if (typeof this.onRealTradeComplete === 'function') {
+                            const won = contract.status === 'won';
+                            this.onRealTradeComplete(won);
+                        }
 
                         if (this.afterPromise) {
                             this.afterPromise();

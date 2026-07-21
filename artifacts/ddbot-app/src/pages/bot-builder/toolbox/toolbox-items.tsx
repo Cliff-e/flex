@@ -795,6 +795,32 @@ export const ToolboxItems = () => {
                 <Block type='symbol_changer'>
                     <Field name='SYMBOL'>DISABLE</Field>
                 </Block>
+                <Block type='custom_prediction'>
+                    <Value name='PREDICTION'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>5</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
+            </Category>
+
+            <Category id='virtual_hook' name={localize('Virtual Hook')}>
+                <Block type='virtual_hook_toggle'>
+                    <Field name='STATE'>ENABLE</Field>
+                </Block>
+                <Block type='virtual_hook_settings'>
+                    <Value name='VIRTUAL_TRADES'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>21</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='REAL_WINS'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>1</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
+                <Block type='virtual_hook_status' />
             </Category>
 
             <Examples id='examples'>

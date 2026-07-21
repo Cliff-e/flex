@@ -8,6 +8,7 @@ window.Blockly.Categories = {
     During_Purchase: 'sell_conditions',
     After_Purchase: 'trade_results',
     Contract_Modifiers: 'contract_modifiers',
+    Virtual_Hook: 'virtual_hook',
     Mathematical: 'math',
     Logic: 'logic',
     Text: 'text',
