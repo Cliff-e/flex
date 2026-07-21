@@ -9,6 +9,7 @@ import { expectInitArg } from '../utils/sanitize';
 import { proposalsReady, start } from './state/actions';
 import * as constants from './state/constants';
 import rootReducer from './state/reducers';
+import ActiveContract from './ActiveContract';
 import Balance from './Balance';
 import OpenContract from './OpenContract';
 import Proposal from './Proposal';
@@ -62,7 +63,7 @@ const watchScope = ({ store, stopScope, passScope, passFlag }) => {
     });
 };
 
-export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Proposal(Ticks(Total(class {}))))))) {
+export default class TradeEngine extends ActiveContract(Balance(Purchase(Sell(OpenContract(Proposal(Ticks(Total(class {})))))))) {
     constructor($scope) {
         super();
         this.observer = $scope.observer;

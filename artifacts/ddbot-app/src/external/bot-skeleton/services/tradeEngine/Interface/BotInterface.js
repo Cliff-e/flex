@@ -9,6 +9,12 @@ const getBotInterface = tradeEngine => {
         start: (...args) => tradeEngine.start(...args),
         stop: (...args) => tradeEngine.stop(...args),
         purchase: contract_type => tradeEngine.purchase(contract_type),
+        /**
+         * Switch the active contract type for every subsequent proposal and
+         * purchase.  Called by the Contract Type Switcher Blockly block.
+         * Does not place a trade immediately.
+         */
+        setActiveContract: contract_type => tradeEngine.setActiveContractOverride(contract_type),
         getAskPrice: contract_type => Number(getProposal(contract_type, tradeEngine).ask_price),
         getPayout: contract_type => Number(getProposal(contract_type, tradeEngine).payout),
         getPurchaseReference: () => tradeEngine.getPurchaseReference(),

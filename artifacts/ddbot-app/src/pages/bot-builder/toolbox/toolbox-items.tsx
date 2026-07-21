@@ -788,6 +788,12 @@ export const ToolboxItems = () => {
                 </Category>
             </Category>
 
+            <Category id='contract_modifiers' name={localize('Contract Modifiers')}>
+                <Block type='contract_type_switcher'>
+                    <Field name='CONTRACT_TYPE'>CALL</Field>
+                </Block>
+            </Category>
+
             <Examples id='examples'>
                 <Example id='sell_available'>
                     <Block type='during_purchase'>

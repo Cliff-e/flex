@@ -16,6 +16,12 @@ export default Engine =>
                 return Promise.resolve();
             }
 
+            // If setActiveContractOverride has been called (via the Contract Type
+            // Switcher block), use that type instead of the one hardcoded in the
+            // Purchase block.  Falls back to the original contract_type when no
+            // override is active — full backward compatibility.
+            const effective_type = this.activeContractOverride || contract_type;
+
             const onSuccess = response => {
                 // Don't unnecessarily send a forget request for a purchased contract.
                 const { buy } = response;
@@ -39,13 +45,13 @@ export default Engine =>
                     accountID: this.accountInfo.loginid,
                     totalRuns: this.updateAndReturnTotalRuns(),
                     transaction_ids: { buy: buy.transaction_id },
-                    contract_type,
+                    contract_type: effective_type,
                     buy_price: buy.buy_price,
                 });
             };
 
             if (this.is_proposal_subscription_required) {
-                const { id, askPrice } = this.selectProposal(contract_type);
+                const { id, askPrice } = this.selectProposal(effective_type);
 
                 const action = () => {
                     const buy_request = { buy: id, price: askPrice };
