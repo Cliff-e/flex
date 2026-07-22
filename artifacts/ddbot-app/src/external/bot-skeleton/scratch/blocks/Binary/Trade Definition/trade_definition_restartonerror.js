@@ -22,7 +22,7 @@ window.Blockly.Blocks.trade_definition_restartonerror = {
             nextStatement: null,
         });
 
-        this.setNextStatement(false);
+        // Allow trade_definition_virtualhook to follow as the next chain block.
         this.setMovable(false);
         this.setDeletable(false);
     },

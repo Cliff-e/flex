@@ -7,6 +7,7 @@ import './trade_definition_candleinterval';
 import './trade_definition_restartbuysell';
 import './trade_definition_restartonerror';
 import './trade_definition_tradeoptions';
+import './trade_definition_virtualhook';
 import './accumulator_take_profit';
 import './trade_definition_accumulator';
 // Only import multiplier blocks if multipliers are available

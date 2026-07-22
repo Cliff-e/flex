@@ -101,54 +101,6 @@ window.Blockly.Blocks.trade_definition = {
                     height: 10,
                 },
             ],
-            message7: '%1 %2 %3',
-            args7: [
-                {
-                    type: 'field_image',
-                    src: ' ',
-                    width: 4,
-                    height: 25,
-                },
-                {
-                    type: 'field_label',
-                    text: localize('Virtual Hook:'),
-                    class: 'blocklyTextRootBlockHeader',
-                },
-                {
-                    type: 'input_dummy',
-                },
-            ],
-            message8: localize('Enabled {{ state }}', { state: '%1' }),
-            args8: [
-                {
-                    type: 'field_dropdown',
-                    name: 'VH_ENABLED',
-                    options: [
-                        [localize('disable'), 'FALSE'],
-                        [localize('enable'), 'TRUE'],
-                    ],
-                },
-            ],
-            message9: localize('Virtual Trades {{ num }}', { num: '%1' }),
-            args9: [
-                {
-                    type: 'field_number',
-                    name: 'VH_VIRTUAL_TRADES',
-                    value: 21,
-                    min: 1,
-                    precision: 1,
-                },
-            ],
-            message10: localize('Reset after Real Wins {{ num }}', { num: '%1' }),
-            args10: [
-                {
-                    type: 'field_number',
-                    name: 'VH_REAL_WINS',
-                    value: 1,
-                    min: 1,
-                    precision: 1,
-                },
-            ],
             colour: window.Blockly.Colours.RootBlock.colour,
             colourSecondary: window.Blockly.Colours.RootBlock.colourSecondary,
             colourTertiary: window.Blockly.Colours.RootBlock.colourTertiary,
@@ -236,11 +188,12 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
             ? opposites[trade_type.toUpperCase()].map(opposite => Object.keys(opposite)[0])
             : [contract_type];
 
-    // Virtual Hook configuration — read from Trade Parameters fields.
-    // These values are the single source of truth for VH configuration.
-    const vh_enabled = block.getFieldValue('VH_ENABLED') === 'TRUE';
-    const vh_virtual_trades = parseInt(block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 21;
-    const vh_real_wins = parseInt(block.getFieldValue('VH_REAL_WINS'), 10) || 1;
+    // Virtual Hook configuration — read from the standalone trade_definition_virtualhook
+    // chain block.  Falls back to disabled/defaults when the block is absent (old bots).
+    const vh_block = block.getChildByType('trade_definition_virtualhook');
+    const vh_enabled = vh_block ? vh_block.getFieldValue('VH_ENABLED') === 'TRUE' : false;
+    const vh_virtual_trades = vh_block ? parseInt(vh_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 3 : 3;
+    const vh_real_wins = vh_block ? parseInt(vh_block.getFieldValue('VH_REAL_WINS'), 10) || 1 : 1;
 
     const initialization = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'INITIALIZATION');
     const trade_options_statement = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'SUBMARKET');
