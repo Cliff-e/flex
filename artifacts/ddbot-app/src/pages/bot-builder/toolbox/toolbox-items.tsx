@@ -804,22 +804,7 @@ export const ToolboxItems = () => {
                 </Block>
             </Category>
 
-            <Category id='virtual_hook' name={localize('Virtual Hook Switcher')}>
-                <Block type='virtual_hook_settings'>
-                    <Value name='VIRTUAL_TRADES'>
-                        <Shadow type='math_number'>
-                            <Field name='NUM'>21</Field>
-                        </Shadow>
-                    </Value>
-                    <Value name='REAL_WINS'>
-                        <Shadow type='math_number'>
-                            <Field name='NUM'>1</Field>
-                        </Shadow>
-                    </Value>
-                </Block>
-                <Block type='virtual_hook_toggle'>
-                    <Field name='STATE'>DISABLE</Field>
-                </Block>
+            <Category id='virtual_hook' name={localize('Virtual Hook')}>
                 <Block type='virtual_hook_status' />
             </Category>
 

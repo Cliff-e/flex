@@ -1,6 +1,9 @@
 <xml xmlns="http://www.w3.org/1999/xhtml" collection="false" is_dbot="true">
   <variables></variables>
   <block type="trade_definition" x="33" y="33">
+    <field name="VH_ENABLED">FALSE</field>
+    <field name="VH_VIRTUAL_TRADES">21</field>
+    <field name="VH_REAL_WINS">1</field>
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" deletable="false" movable="false">
         <field name="MARKET_LIST">synthetic_index</field>
@@ -72,27 +75,8 @@
   </block>
   <block type="before_purchase" x="33" y="456">
     <statement name="BEFOREPURCHASE_STACK">
-      <block type="virtual_hook_toggle">
-        <field name="STATE">DISABLE</field>
-        <next>
-          <block type="virtual_hook_settings">
-            <value name="VIRTUAL_TRADES">
-              <shadow type="math_number">
-                <field name="NUM">21</field>
-              </shadow>
-            </value>
-            <value name="REAL_WINS">
-              <shadow type="math_number">
-                <field name="NUM">1</field>
-              </shadow>
-            </value>
-            <next>
-              <block type="purchase">
-                <field name="PURCHASE_LIST">CALL</field>
-              </block>
-            </next>
-          </block>
-        </next>
+      <block type="purchase">
+        <field name="PURCHASE_LIST">CALL</field>
       </block>
     </statement>
   </block>
