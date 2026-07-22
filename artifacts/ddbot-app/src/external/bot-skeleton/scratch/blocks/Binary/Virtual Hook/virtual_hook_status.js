@@ -15,7 +15,7 @@ window.Blockly.Blocks.virtual_hook_status = {
     },
     definition() {
         return {
-            message0: localize('Virtual Hook Status'),
+            message0: localize('VirtualHookStatus'),
             output: 'Boolean',
             outputShape: window.Blockly.OUTPUT_SHAPE_ROUND,
             colour: window.Blockly.Colours.Special3.colour,
@@ -30,9 +30,7 @@ window.Blockly.Blocks.virtual_hook_status = {
     meta() {
         return {
             display_name: localize('Virtual Hook Status'),
-            description: localize(
-                'A reporter block that returns true when the Virtual Hook is currently running virtual (simulated) trades, and false when in real trading mode. Use inside If/Else, loops, or variables to adapt your strategy based on virtual vs real state.'
-            ),
+            description: localize('This block returns if virtual hook is active or not.'),
             key_words: localize('virtual, hook, status, active, is, check, bool'),
         };
     },

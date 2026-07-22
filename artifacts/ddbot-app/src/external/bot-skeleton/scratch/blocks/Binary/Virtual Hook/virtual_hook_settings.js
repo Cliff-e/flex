@@ -2,11 +2,14 @@ import { localize } from '@deriv-com/translations';
 import { modifyContextMenu } from '../../../utils';
 
 /**
- * Virtual Hook Settings block.
+ * Virtual Hook (Settings) block.
  *
- * Configures the number of virtual (simulated) trades to run before live
- * trading begins, and how many consecutive real wins cause the virtual
- * sequence to reset and run again.
+ * Configures how many virtual (simulated) trades run before live trading
+ * begins, and how many consecutive real wins cause the virtual sequence
+ * to reset and run again.
+ *
+ * Internal field names (VIRTUAL_TRADES / REAL_WINS) are preserved so that
+ * existing saved bots and XML imports continue to work without modification.
  */
 window.Blockly.Blocks.virtual_hook_settings = {
     init() {
@@ -14,16 +17,18 @@ window.Blockly.Blocks.virtual_hook_settings = {
     },
     definition() {
         return {
-            message0: localize('Set Virtual Hook Settings: {{ virtual_trades }} virtual trades, reset after {{ real_wins }} real win(s)', {
-                virtual_trades: '%1',
-                real_wins: '%2',
-            }),
-            args0: [
+            message0: localize('set Virtual Hook Settings'),
+            args0: [],
+            message1: localize('No. of Virtual losses %1'),
+            args1: [
                 {
                     type: 'input_value',
                     name: 'VIRTUAL_TRADES',
                     check: 'Number',
                 },
+            ],
+            message2: localize('No. of Wins on Real Trades %1'),
+            args2: [
                 {
                     type: 'input_value',
                     name: 'REAL_WINS',
@@ -36,18 +41,18 @@ window.Blockly.Blocks.virtual_hook_settings = {
             previousStatement: null,
             nextStatement: null,
             tooltip: localize(
-                'Configure the number of virtual trades to run before live trading begins, and how many real wins trigger a new virtual sequence.'
+                'Configure the number of virtual trades to run before live trading begins, and how many consecutive real wins trigger a new virtual warm-up sequence.'
             ),
             category: window.Blockly.Categories.Virtual_Hook,
         };
     },
     meta() {
         return {
-            display_name: localize('Set Virtual Hook Settings'),
+            display_name: localize('Virtual Hook'),
             description: localize(
-                'Configure the Virtual Hook engine. Set how many virtual (simulated) trades run before live trading begins, and how many consecutive real wins trigger a fresh virtual warm-up sequence.'
+                'Virtual Hook is an innovative trading tool designed to enhance the trading experience by allowing users to engage in virtual trades alongside live trading activities. This unique feature aims to minimize potential losses by offering the option to take partial virtual trades instead of committing fully to live trades.'
             ),
-            key_words: localize('virtual, hook, settings, trades, wins, simulate, warm-up'),
+            key_words: localize('virtual, hook, settings, losses, wins, simulate, warm-up'),
         };
     },
     customContextMenu(menu) {

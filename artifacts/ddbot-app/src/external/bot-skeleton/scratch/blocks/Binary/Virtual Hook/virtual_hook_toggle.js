@@ -2,7 +2,7 @@ import { localize } from '@deriv-com/translations';
 import { modifyContextMenu } from '../../../utils';
 
 /**
- * Virtual Hook Enable / Disable block.
+ * Virtual Hook Enabler block.
  *
  * Turns the Virtual Hook engine on or off.  When enabled, the engine runs
  * the configured number of virtual (simulated) trades before allowing any
@@ -15,14 +15,14 @@ window.Blockly.Blocks.virtual_hook_toggle = {
     },
     definition() {
         return {
-            message0: localize('Virtual Hook {{ state }}', { state: '%1' }),
+            message0: localize('Enable/Disable VH {{ state }}', { state: '%1' }),
             args0: [
                 {
                     type: 'field_dropdown',
                     name: 'STATE',
                     options: [
-                        [localize('Disable'), 'DISABLE'],
-                        [localize('Enable'), 'ENABLE'],
+                        [localize('disable'), 'DISABLE'],
+                        [localize('enable'), 'ENABLE'],
                     ],
                 },
             ],
@@ -39,10 +39,8 @@ window.Blockly.Blocks.virtual_hook_toggle = {
     },
     meta() {
         return {
-            display_name: localize('Enable / Disable Virtual Hook'),
-            description: localize(
-                'Toggles the Virtual Hook system on or off. When enabled, the bot first runs a configured number of virtual (simulated) trades before executing real trades. Disable to run the bot normally without any virtual warm-up sequence.'
-            ),
+            display_name: localize('Virtual Hook Enabler'),
+            description: localize('This block displays Enable and Disable Virtual Hook.'),
             key_words: localize('virtual, hook, enable, disable, toggle, simulate'),
         };
     },
