@@ -1,18 +1,18 @@
-﻿<xml xmlns="http://www.w3.org/1999/xhtml" collection="false" is_dbot="true">
+<xml xmlns="http://www.w3.org/1999/xhtml" collection="false" is_dbot="true">
   <variables></variables>
-  <block type="trade_definition" x="0" y="0">
+  <block type="trade_definition" x="33" y="33">
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" deletable="false" movable="false">
-        <field name="MARKET_LIST"></field>
-        <field name="SUBMARKET_LIST"></field>
-        <field name="SYMBOL_LIST"></field>
+        <field name="MARKET_LIST">synthetic_index</field>
+        <field name="SUBMARKET_LIST">random_index</field>
+        <field name="SYMBOL_LIST">1HZ10V</field>
         <next>
           <block type="trade_definition_tradetype" deletable="false" movable="false">
-            <field name="TRADETYPECAT_LIST"></field>
-            <field name="TRADETYPE_LIST"></field>
+            <field name="TRADETYPECAT_LIST">callput</field>
+            <field name="TRADETYPE_LIST">callput</field>
             <next>
               <block type="trade_definition_contracttype" deletable="false" movable="false">
-                <field name="TYPE_LIST"></field>
+                <field name="TYPE_LIST">both</field>
                 <next>
                   <block type="trade_definition_candleinterval" deletable="false" movable="false">
                     <field name="CANDLEINTERVAL_LIST">60</field>
@@ -37,11 +37,11 @@
     <statement name="SUBMARKET">
       <block type="trade_definition_tradeoptions">
         <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
-        <field name="DURATIONTYPE_LIST"></field>
+        <field name="DURATIONTYPE_LIST">t</field>
         <field name="CURRENCY_LIST">USD</field>
         <value name="DURATION">
           <shadow type="math_number_positive">
-            <field name="NUM">5</field>
+            <field name="NUM">1</field>
           </shadow>
         </value>
         <value name="AMOUNT">
@@ -53,24 +53,46 @@
       </block>
     </statement>
   </block>
-  <block type="during_purchase" x="720" y="0">
+  <block type="during_purchase" x="572" y="33">
     <statement name="DURING_PURCHASE_STACK">
       <block type="controls_if">
         <value name="IF0">
           <block type="check_sell"></block>
         </value>
+        <statement name="DO0">
+          <block type="sell_at_market"></block>
+        </statement>
       </block>
     </statement>
   </block>
-  <block type="after_purchase" x="720" y="248">
+  <block type="after_purchase" x="572" y="296">
     <statement name="AFTERPURCHASE_STACK">
       <block type="trade_again"></block>
     </statement>
   </block>
-  <block type="before_purchase" x="0" y="576">
+  <block type="before_purchase" x="33" y="456">
     <statement name="BEFOREPURCHASE_STACK">
-      <block type="purchase">
-        <field name="PURCHASE_LIST"></field>
+      <block type="virtual_hook_toggle">
+        <field name="STATE">DISABLE</field>
+        <next>
+          <block type="virtual_hook_settings">
+            <value name="VIRTUAL_TRADES">
+              <shadow type="math_number">
+                <field name="NUM">21</field>
+              </shadow>
+            </value>
+            <value name="REAL_WINS">
+              <shadow type="math_number">
+                <field name="NUM">1</field>
+              </shadow>
+            </value>
+            <next>
+              <block type="purchase">
+                <field name="PURCHASE_LIST">CALL</field>
+              </block>
+            </next>
+          </block>
+        </next>
       </block>
     </statement>
   </block>
