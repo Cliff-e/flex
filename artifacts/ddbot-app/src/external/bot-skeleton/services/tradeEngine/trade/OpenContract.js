@@ -39,14 +39,10 @@ export default Engine =>
                             contract,
                         });
 
-                        // Notify the Virtual Hook that a real trade has settled.
-                        // This allows the hook to track consecutive real wins and
-                        // reset the virtual warm-up sequence when the threshold
-                        // is reached.  No-ops when the Virtual Hook is disabled.
-                        if (typeof this.onRealTradeComplete === 'function') {
-                            const won = contract.status === 'won';
-                            this.onRealTradeComplete(won);
-                        }
+                        // Notify VirtualHookRuntime that a real trade has settled so it
+                        // can track consecutive wins and re-enter virtual mode when the
+                        // configured threshold is reached.  No-op when the hook is disabled.
+                        this.virtualHookRuntime.onRealTradeComplete(contract.status === 'won');
 
                         if (this.afterPromise) {
                             this.afterPromise();

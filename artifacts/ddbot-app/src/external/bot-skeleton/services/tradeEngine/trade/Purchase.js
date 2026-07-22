@@ -2,6 +2,7 @@ import { LogTypes } from '../../../constants/messages';
 import { api_base } from '../../api/api-base';
 import { contractStatus, info, log } from '../utils/broadcast';
 import { doUntilDone, getLastDigit, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
+import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
 import { openContractReceived, purchaseSuccessful, sell } from './state/actions';
 import { BEFORE_PURCHASE } from './state/constants';
 
@@ -11,15 +12,14 @@ let purchase_reference;
 export default Engine =>
     class Purchase extends Engine {
         purchase(contract_type) {
-            // Prevent calling purchase twice
+            // Prevent calling purchase twice.
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
                 return Promise.resolve();
             }
 
-            // If the Virtual Hook is active, run a simulated trade instead of a
-            // real API purchase.  Falls back to normal trading when the hook is
-            // disabled or the virtual warm-up sequence has completed.
-            if (this.virtualHookEnabled && this.virtualHookActive) {
+            // Gate: if the Virtual Hook runtime is in virtual mode, run a
+            // simulated trade instead of a real API purchase.
+            if (this.virtualHookRuntime.isVirtualMode()) {
                 return this._executeVirtualTrade(contract_type);
             }
 
@@ -30,7 +30,6 @@ export default Engine =>
             const effective_type = this.activeContractOverride || contract_type;
 
             const onSuccess = response => {
-                // Don't unnecessarily send a forget request for a purchased contract.
                 const { buy } = response;
 
                 contractStatus({
@@ -100,7 +99,6 @@ export default Engine =>
                 return recoverFromError(
                     action,
                     (errorCode, makeDelay) => {
-                        // if disconnected no need to resubscription (handled by live-api)
                         if (errorCode !== 'DisconnectError') {
                             this.renewProposalsOnPurchase();
                         } else {
@@ -119,6 +117,7 @@ export default Engine =>
                     delayIndex++
                 ).then(onSuccess);
             }
+
             const trade_option = tradeOptionToBuy(contract_type, this.tradeOptions);
             const action = () => {
                 // eslint-disable-next-line no-console
@@ -187,8 +186,22 @@ export default Engine =>
          * the bot's before/during/after_purchase Blockly blocks all execute
          * normally, and the UI transaction log shows virtual entries.
          *
-         * @param {string} contract_type  The contract type requested by the
-         *                                Purchase block (e.g. 'DIGITDIFF').
+         * Market-closed / invalid tick handling
+         * ──────────────────────────────────────
+         * getLastTick() resolves with 'MarketIsClosed' when the market has no
+         * data.  An invalid tick must never be used to evaluate a virtual trade:
+         * the VirtualHookRuntime counter must not advance, history must not be
+         * recorded, and the same virtual trade is retried after a delay.
+         *
+         * Event ordering
+         * ──────────────
+         * afterPromise() is called BEFORE onVirtualTradeComplete() so that any
+         * strategy block inside after_purchase which reads getVirtualHookStatus()
+         * observes the pre-advance state.  A setTimeout(0) yield ensures the
+         * after_purchase continuation has had the opportunity to run before the
+         * runtime counter advances.
+         *
+         * @param {string} contract_type  e.g. 'DIGITDIFF'
          * @returns {Promise<void>}
          */
         async _executeVirtualTrade(contract_type) {
@@ -228,11 +241,54 @@ export default Engine =>
             return new Promise(resolve => {
                 setTimeout(async () => {
                     try {
-                        // Determine outcome from the current last tick digit.
-                        const lastTickStr = await this.getLastTick(false, true);
+                        // ── 3a: Obtain a valid tick, retrying when the market is closed ──
+                        //
+                        // Do not evaluate (and do not advance the runtime counter) until a
+                        // valid numeric tick is available.  This ensures the configured
+                        // virtual trade count always consists of real completed evaluations.
+                        const RETRY_DELAY_MS = 5000;
+                        const MAX_RETRIES = 72; // ~6 minutes of retrying
+
+                        let lastTickStr;
+                        let retries = 0;
+
+                        while (true) {
+                            lastTickStr = await this.getLastTick(false, true);
+
+                            const isMarketClosed = lastTickStr === 'MarketIsClosed';
+                            const isValidNumber = !isNaN(parseFloat(String(lastTickStr)));
+
+                            if (!isMarketClosed && isValidNumber) {
+                                break; // Valid tick — proceed with evaluation.
+                            }
+
+                            retries++;
+                            if (retries > MAX_RETRIES) {
+                                // eslint-disable-next-line no-console
+                                console.warn(
+                                    `[VirtualHook] Market unavailable after ${retries - 1} retries. ` +
+                                    'Skipping virtual trade — counter not advanced.'
+                                );
+                                // Unblock the bot without recording anything.
+                                if (this.afterPromise) this.afterPromise();
+                                this.store.dispatch(sell());
+                                resolve();
+                                return;
+                            }
+
+                            // eslint-disable-next-line no-console
+                            console.warn(
+                                `[VirtualHook] Market closed or invalid tick ("${lastTickStr}"). ` +
+                                `Retrying in ${RETRY_DELAY_MS / 1000}s ` +
+                                `(attempt ${retries}/${MAX_RETRIES})...`
+                            );
+                            await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+                        }
+
+                        // ── 3b: Evaluate outcome via the VirtualHookRuntime static helper ─
                         const lastDigit = getLastDigit(String(lastTickStr));
-                        const prediction = this.activePredictionOverride;
-                        const won = this._determineVirtualOutcome(effective_type, lastDigit, prediction);
+                        const prediction = this.activePredictionOverride ?? null;
+                        const won = VirtualHookRuntime.determineOutcome(effective_type, lastDigit, prediction);
 
                         const fakeContract = {
                             contract_type: effective_type,
@@ -257,15 +313,15 @@ export default Engine =>
                             exit_tick: lastTickStr,
                             exit_tick_display_value: String(lastTickStr),
                             exit_tick_time: Math.floor(Date.now() / 1000),
-                            // Virtual flag — downstream code can inspect this to
-                            // distinguish virtual from real contracts if needed.
                             is_virtual: true,
                         };
 
                         this.data.contract = fakeContract;
 
-                        // Dispatch openContractReceived so DURING_PURCHASE scope
-                        // becomes active and the bot's during_purchase block runs.
+                        // ── 3c: Fire lifecycle events ─────────────────────────────────────
+
+                        // Dispatch openContractReceived so DURING_PURCHASE scope becomes
+                        // active and the bot's during_purchase block runs.
                         this.store.dispatch(openContractReceived());
 
                         // Short pause to let DURING_PURCHASE code complete.
@@ -279,23 +335,37 @@ export default Engine =>
                             contract: fakeContract,
                         });
 
-                        // Notify virtual hook machinery — advances the counter and
-                        // switches to real mode when the sequence completes.
-                        this.onVirtualTradeComplete(won);
-
-                        // Resolve the after_purchase promise so the bot's
-                        // after_purchase block executes.
+                        // ── 3d: Unblock after_purchase BEFORE advancing the runtime ───────
+                        //
+                        // afterPromise() resolves Bot.waitForAfter(), triggering the bot's
+                        // after_purchase Blockly block.  Any strategy block inside
+                        // after_purchase that reads getVirtualHookStatus() must see the
+                        // pre-advance state, so VirtualHookRuntime.onVirtualTradeComplete()
+                        // must not run until after_purchase has had the opportunity to
+                        // execute.
+                        //
+                        // Calling afterPromise() then yielding via setTimeout(0) flushes
+                        // the microtask queue so the after_purchase continuation runs before
+                        // the runtime counter is advanced.
                         if (this.afterPromise) {
                             this.afterPromise();
                         }
 
-                        // Transition Redux scope back to STOP/idle.
+                        // Transition Redux scope back to idle.
                         this.store.dispatch(sell());
+
+                        // Yield so the after_purchase Blockly code runs first.
+                        await new Promise(r => setTimeout(r, 0));
+
+                        // Advance the VirtualHookRuntime — this is the single source of
+                        // truth for counter/history; no other code updates these.
+                        this.virtualHookRuntime.onVirtualTradeComplete(won);
                     } catch (err) {
                         // eslint-disable-next-line no-console
-                        console.error('[VirtualHook] Error during virtual trade settlement:', err);
-                        // Fail-safe: record as a loss and unblock the bot.
-                        this.onVirtualTradeComplete(false);
+                        console.error('[VirtualHook] Unexpected error during virtual trade settlement:', err);
+                        // Unblock the bot.  The runtime counter is intentionally NOT
+                        // advanced — an unexpected error is not a valid evaluation and
+                        // must not pollute the history.
                         if (this.afterPromise) {
                             this.afterPromise();
                         }
@@ -305,48 +375,6 @@ export default Engine =>
                     resolve();
                 }, 400);
             });
-        }
-
-        /**
-         * Determine whether a virtual trade would have been a win based on the
-         * last tick digit and the active contract type / prediction.
-         *
-         * @param {string}      contractType  e.g. 'DIGITOVER'
-         * @param {number}      lastDigit     0–9
-         * @param {number|null} prediction    Active prediction override, or null.
-         * @returns {boolean}
-         */
-        _determineVirtualOutcome(contractType, lastDigit, prediction) {
-            const pred = prediction !== null && prediction !== undefined ? Number(prediction) : null;
-
-            switch (contractType) {
-                case 'DIGITOVER':
-                    // Win if last digit is strictly greater than prediction.
-                    return pred !== null ? lastDigit > pred : lastDigit > 4;
-                case 'DIGITUNDER':
-                    // Win if last digit is strictly less than prediction.
-                    return pred !== null ? lastDigit < pred : lastDigit < 5;
-                case 'DIGITMATCH':
-                    // Win if last digit exactly matches prediction.
-                    return pred !== null ? lastDigit === pred : false;
-                case 'DIGITDIFF':
-                    // Win if last digit differs from prediction.
-                    return pred !== null ? lastDigit !== pred : lastDigit !== 5;
-                case 'DIGITEVEN':
-                    return lastDigit % 2 === 0;
-                case 'DIGITODD':
-                    return lastDigit % 2 !== 0;
-                case 'CALL':
-                case 'CALLE':
-                    // Simplified proxy: win if last digit > 4 (rough upward pressure).
-                    return lastDigit > 4;
-                case 'PUT':
-                case 'PUTE':
-                    return lastDigit <= 4;
-                default:
-                    // For contract types without a simple digit rule, use parity.
-                    return lastDigit % 2 === 0;
-            }
         }
 
         getPurchaseReference = () => purchase_reference;
