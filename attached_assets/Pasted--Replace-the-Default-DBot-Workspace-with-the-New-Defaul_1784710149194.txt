@@ -1,0 +1,141 @@
+# Replace the Default DBot Workspace with the New Default Trading Template
+
+Use the uploaded screenshot as the visual reference.
+
+I want the Bot Builder to load with this enhanced template by default instead of the original Deriv DBot starter template.
+
+## Objective
+
+When a user creates a **new bot** or resets the workspace, the Blockly workspace should automatically load the enhanced default template shown in the attached screenshot.
+
+Do not load the original Deriv DBot template anymore.
+
+---
+
+# Default Workspace Layout
+
+The default workspace should already contain the following top-level blocks arranged similarly to the uploaded screenshot:
+
+### 1. Trade Parameters
+
+This block should be preconfigured with:
+
+* Market
+* Symbol
+* Trade Type
+* Contract Type
+* Trade Options
+* Stake
+* Duration
+
+and also include the newly added:
+
+* Virtual Hook Settings
+
+The Virtual Hook section should already exist inside the Trade Parameters block.
+
+---
+
+### 2. Purchase Conditions
+
+Include the standard Purchase Conditions block connected exactly as in the screenshot.
+
+---
+
+### 3. Sell Conditions
+
+Include the Sell Conditions block.
+
+---
+
+### 4. Restart Trading Conditions
+
+Include the Restart Trading Conditions block.
+
+---
+
+# Trade Parameters Defaults
+
+Populate the block with sensible defaults matching the screenshot.
+
+Example defaults:
+
+* Derived Market
+* Continuous Indices
+* Volatility 10 (1s)
+* Trade Type: Up/Down
+* Contract Type: Both
+* Stake: 1
+* Duration: 1 Tick
+
+Include the Virtual Hook section with its default configuration.
+
+---
+
+# Workspace Layout
+
+Arrange the blocks similarly to the uploaded screenshot.
+
+Maintain spacing between:
+
+* Trade Parameters
+* Purchase Conditions
+* Sell Conditions
+* Restart Trading Conditions
+
+The layout should look clean and organized immediately after opening the builder.
+
+---
+
+# Existing Behaviour
+
+The following must remain unchanged:
+
+* Existing XML imports
+* Existing saved bots
+* Existing strategies
+
+Only the **default template** for newly created workspaces should change.
+
+---
+
+# XML Template
+
+Create a new default XML template representing this enhanced workspace.
+
+Whenever:
+
+* New Bot
+* Reset Workspace
+* Empty Workspace
+
+is selected,
+
+load this XML instead of the original Deriv template.
+
+Do not generate the blocks programmatically every time if a default XML template already exists in the project. Replace the default starter template with the new one.
+
+---
+
+# Future Compatibility
+
+The default template should automatically support all custom Blockly extensions already implemented, including:
+
+* Virtual Hook
+* Contract Modifiers
+* Symbol Changer
+* Custom Prediction Setter
+* Barrier Settings
+* Future Exit Digit History blocks
+
+The starter template should become the standard foundation for building advanced hybrid bots.
+
+---
+
+# UI Requirement
+
+Match the uploaded screenshot as closely as possible.
+
+The goal is that a user opening the Bot Builder immediately sees the enhanced trading workspace already configured, instead of the basic Deriv DBot template.
+
+This should feel like the application's native default experience.
