@@ -16,6 +16,9 @@
         <field name="MARKET_LIST">synthetic_index</field>
         <field name="SUBMARKET_LIST">random_index</field>
         <field name="SYMBOL_LIST">1HZ75V</field>
+        <field name="VH_ENABLED">FALSE</field>
+        <field name="VH_VIRTUAL_TRADES">3</field>
+        <field name="VH_REAL_WINS">1</field>
         <next>
           <block type="trade_definition_tradetype" id="7XER:rs*DLM{4#?`]WL(" deletable="false" movable="false">
             <field name="TRADETYPECAT_LIST">digits</field>
@@ -32,13 +35,6 @@
                         <next>
                           <block type="trade_definition_restartonerror" id="gWB7E75:@%A{2I3G,LEQ" deletable="false" movable="false">
                             <field name="RESTARTONERROR">TRUE</field>
-                            <next>
-                              <block type="trade_definition_virtualhook" deletable="false" movable="false">
-                                <field name="VH_ENABLED">FALSE</field>
-                                <field name="VH_VIRTUAL_TRADES">3</field>
-                                <field name="VH_REAL_WINS">1</field>
-                              </block>
-                            </next>
                           </block>
                         </next>
                       </block>

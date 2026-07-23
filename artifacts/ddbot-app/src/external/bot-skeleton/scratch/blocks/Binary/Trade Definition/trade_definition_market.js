@@ -29,6 +29,35 @@ window.Blockly.Blocks.trade_definition_market = {
                     options: [['', '']],
                 },
             ],
+            message1: localize('Virtual Hook: {{ enabled }}', { enabled: '%1' }),
+            args1: [
+                {
+                    type: 'field_checkbox',
+                    name: 'VH_ENABLED',
+                    checked: false,
+                    class: 'blocklyCheckbox',
+                },
+            ],
+            message2: localize('No. of Virtual losses {{ num }}', { num: '%1' }),
+            args2: [
+                {
+                    type: 'field_number',
+                    name: 'VH_VIRTUAL_TRADES',
+                    value: 3,
+                    min: 1,
+                    precision: 1,
+                },
+            ],
+            message3: localize('No. of Wins on Real Trades {{ num }}', { num: '%1' }),
+            args3: [
+                {
+                    type: 'field_number',
+                    name: 'VH_REAL_WINS',
+                    value: 1,
+                    min: 1,
+                    precision: 1,
+                },
+            ],
             colour: window.Blockly.Colours.Special1.colour,
             colourSecondary: window.Blockly.Colours.Special1.colourSecondary,
             colourTertiary: window.Blockly.Colours.Special1.colourTertiary,

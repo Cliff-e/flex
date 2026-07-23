@@ -188,12 +188,11 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
             ? opposites[trade_type.toUpperCase()].map(opposite => Object.keys(opposite)[0])
             : [contract_type];
 
-    // Virtual Hook configuration — read from the standalone trade_definition_virtualhook
-    // chain block.  Falls back to disabled/defaults when the block is absent (old bots).
-    const vh_block = block.getChildByType('trade_definition_virtualhook');
-    const vh_enabled = vh_block ? vh_block.getFieldValue('VH_ENABLED') === 'TRUE' : false;
-    const vh_virtual_trades = vh_block ? parseInt(vh_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 3 : 3;
-    const vh_real_wins = vh_block ? parseInt(vh_block.getFieldValue('VH_REAL_WINS'), 10) || 1 : 1;
+    // Virtual Hook configuration — read from the Market block where the VH fields live.
+    // Falls back gracefully when the market block predates VH (old bots).
+    const vh_enabled = market_block ? market_block.getFieldValue('VH_ENABLED') === 'TRUE' : false;
+    const vh_virtual_trades = market_block ? parseInt(market_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 3 : 3;
+    const vh_real_wins = market_block ? parseInt(market_block.getFieldValue('VH_REAL_WINS'), 10) || 1 : 1;
 
     const initialization = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'INITIALIZATION');
     const trade_options_statement = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'SUBMARKET');
