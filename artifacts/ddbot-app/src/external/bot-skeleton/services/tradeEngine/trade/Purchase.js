@@ -9,6 +9,34 @@ import { BEFORE_PURCHASE } from './state/constants';
 let delayIndex = 0;
 let purchase_reference;
 
+/**
+ * Maps each contract type to its direct opposite.
+ * Both directions are listed so lookups work regardless of which side is active.
+ * This is the single source of truth — hedge() reads from here and nowhere else.
+ */
+const OPPOSITE_CONTRACT_MAP = {
+    CALL:        'PUT',
+    PUT:         'CALL',
+    CALLE:       'PUTE',
+    PUTE:        'CALLE',
+    ONETOUCH:    'NOTOUCH',
+    NOTOUCH:     'ONETOUCH',
+    EXPIRYRANGE: 'EXPIRYMISS',
+    EXPIRYMISS:  'EXPIRYRANGE',
+    DIGITMATCH:  'DIGITDIFF',
+    DIGITDIFF:   'DIGITMATCH',
+    DIGITEVEN:   'DIGITODD',
+    DIGITODD:    'DIGITEVEN',
+    DIGITOVER:   'DIGITUNDER',
+    DIGITUNDER:  'DIGITOVER',
+    RESETCALL:   'RESETPUT',
+    RESETPUT:    'RESETCALL',
+    RUNHIGH:     'RUNLOW',
+    RUNLOW:      'RUNHIGH',
+    CALLSPREAD:  'PUTSPREAD',
+    PUTSPREAD:   'CALLSPREAD',
+};
+
 export default Engine =>
     class Purchase extends Engine {
         purchase(contract_type) {
@@ -375,6 +403,58 @@ export default Engine =>
                     resolve();
                 }, 400);
             });
+        }
+
+        /**
+         * Execute a hedge trade by purchasing the opposite of the currently
+         * active contract type.
+         *
+         * Design principle: zero duplicated execution logic.
+         * This method only resolves the opposite contract type then delegates
+         * straight into the existing purchase() pipeline, which handles:
+         *   • VirtualHook routing (_executeVirtualTrade)
+         *   • proposal subscription & selection (selectProposal)
+         *   • buy request + retry (doUntilDone / recoverFromError)
+         *   • open contract monitoring (renewProposalsOnPurchase)
+         *   • recovery engine (timeMachineEnabled path)
+         *
+         * The activeContractOverride is temporarily cleared for the duration of
+         * the purchase() call so that purchase() does not re-apply the override
+         * on top of the already-resolved opposite type.  It is restored
+         * synchronously before any async work begins.
+         *
+         * @returns {Promise<void>}
+         */
+        hedge() {
+            // Determine the currently effective contract type.
+            const current_type = this.activeContractOverride || this.tradeOptions?.contractTypes?.[0];
+
+            if (!current_type) {
+                // eslint-disable-next-line no-console
+                console.error('[TRADE][Hedge] Cannot determine current contract type — no active override or trade option set.');
+                return Promise.resolve();
+            }
+
+            const opposite_type = OPPOSITE_CONTRACT_MAP[current_type];
+
+            if (!opposite_type) {
+                // eslint-disable-next-line no-console
+                console.error(`[TRADE][Hedge] No opposite contract type defined for "${current_type}".`);
+                return Promise.resolve();
+            }
+
+            // eslint-disable-next-line no-console
+            console.log(`[TRADE][Hedge] ${current_type} → ${opposite_type}`);
+
+            // Temporarily clear the override so purchase() uses opposite_type as-is.
+            // activeContractOverride is only read synchronously at the top of purchase()
+            // and _executeVirtualTrade(), so restoring it before the await is safe.
+            const saved_override = this.activeContractOverride;
+            this.activeContractOverride = null;
+            const result = this.purchase(opposite_type);
+            this.activeContractOverride = saved_override;
+
+            return result;
         }
 
         getPurchaseReference = () => purchase_reference;

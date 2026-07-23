@@ -402,9 +402,21 @@ const getAllRequiredBlocks = (workspace, required_block_types) => {
     });
 };
 
+/**
+ * Block types that satisfy the "purchase" requirement.
+ * A bot only needs ONE of these — not both.
+ */
+const PURCHASE_BLOCK_TYPES = ['purchase', 'purchase_all_contracts'];
+
 const getMissingBlocks = (workspace, required_block_types) => {
+    const allBlocks = workspace.getAllBlocks();
     return required_block_types.filter(blockType => {
-        return !workspace.getAllBlocks().some(block => block.type === blockType);
+        // Either a standard `purchase` block OR a `purchase_all_contracts` block
+        // satisfies the purchase requirement — the user must not be forced to keep both.
+        if (PURCHASE_BLOCK_TYPES.includes(blockType)) {
+            return !allBlocks.some(block => PURCHASE_BLOCK_TYPES.includes(block.type));
+        }
+        return !allBlocks.some(block => block.type === blockType);
     });
 };
 
@@ -417,7 +429,7 @@ const getDisabledBlocks = required_blocks_check => {
             .filter(block => required_block_types.includes(block.type))
             .map(block => [block.type, block.disabled])
     );
-    const mandatory_blocks = ['before_purchase', 'purchase', 'trade_definition', 'trade_definition_tradeoptions'];
+    const mandatory_blocks = ['before_purchase', 'purchase', 'purchase_all_contracts', 'trade_definition', 'trade_definition_tradeoptions'];
     const has_disabled_blocks = mandatory_blocks.some(type => disabled_blocks[type]);
 
     return has_disabled_blocks

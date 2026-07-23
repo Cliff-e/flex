@@ -10,6 +10,24 @@ const getBotInterface = tradeEngine => {
         stop: (...args) => tradeEngine.stop(...args),
         purchase: contract_type => tradeEngine.purchase(contract_type),
         /**
+         * Execute a hedge trade — automatically purchases the opposite contract
+         * of whatever is currently selected (via Trade Definition or active
+         * contract override).
+         *
+         * Delegates entirely to the existing purchase pipeline:
+         *   VirtualHook, ActiveContractOverride, SymbolOverride, PredictionOverride,
+         *   proposal regeneration, recovery, and open-contract monitoring all apply
+         *   exactly as they do for Bot.purchase().
+         *
+         * Opposite contract mapping (both directions):
+         *   Rise (CALL) ↔ Fall (PUT)   •   Rise Equals (CALLE) ↔ Fall Equals (PUTE)
+         *   Touch ↔ No Touch           •   Ends Between ↔ Ends Outside
+         *   Matches ↔ Differs          •   Even ↔ Odd
+         *   Over ↔ Under               •   Reset Call ↔ Reset Put
+         *   Only Ups ↔ Only Downs      •   Call Spread ↔ Put Spread
+         */
+        hedge: () => tradeEngine.hedge(),
+        /**
          * Switch the active contract type for every subsequent proposal and
          * purchase.  Pass 'DISABLE' to revert to Trade Parameters.
          * Called by the Contract Type Switcher Blockly block.
