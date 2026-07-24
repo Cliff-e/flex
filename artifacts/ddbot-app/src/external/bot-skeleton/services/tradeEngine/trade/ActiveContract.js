@@ -1,5 +1,6 @@
 import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
 import { tradeOptionToProposal } from '../utils/helpers';
+import { OPPOSITE_CONTRACT_MAP } from './Purchase';
 
 /**
  * ActiveContract mixin
@@ -115,9 +116,19 @@ export default Engine =>
          * @returns {object}
          */
         _applyActiveOverrides(trade_option) {
-            const effectiveContractTypes = this.activeContractOverride
-                ? [this.activeContractOverride]
-                : trade_option.contractTypes;
+            // When an override is active, always subscribe proposals for both
+            // the override type AND its opposite.  This guarantees that hedge()
+            // can call selectProposal(opposite) without failing — even when the
+            // Contract Type Switcher has restricted the default set to one type.
+            let effectiveContractTypes;
+            if (this.activeContractOverride) {
+                const opposite = OPPOSITE_CONTRACT_MAP[this.activeContractOverride];
+                effectiveContractTypes = opposite
+                    ? [this.activeContractOverride, opposite]
+                    : [this.activeContractOverride];
+            } else {
+                effectiveContractTypes = trade_option.contractTypes;
+            }
 
             const effectiveSymbol = this.activeSymbolOverride ?? trade_option.symbol;
 

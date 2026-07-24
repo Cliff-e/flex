@@ -95,6 +95,8 @@ export default class TradeEngine extends ActiveContract(Balance(Purchase(Sell(Op
         }
 
         globalObserver.emit('bot.running');
+        // Reset the explicit in-progress guard so each new bot run starts clean.
+        this._purchaseInProgress = false;
 
         const validated_trade_options = this.validateTradeOptions(tradeOptions);
 

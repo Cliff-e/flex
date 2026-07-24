@@ -12,9 +12,13 @@ let purchase_reference;
 /**
  * Maps each contract type to its direct opposite.
  * Both directions are listed so lookups work regardless of which side is active.
- * This is the single source of truth — hedge() reads from here and nowhere else.
+ * This is the single source of truth — hedge() and _applyActiveOverrides() both
+ * read from here and nowhere else.
+ *
+ * Exported so ActiveContract can import it to widen proposals when an override
+ * is active (ensures the opposite type's proposal is always available for hedge).
  */
-const OPPOSITE_CONTRACT_MAP = {
+export const OPPOSITE_CONTRACT_MAP = {
     CALL:        'PUT',
     PUT:         'CALL',
     CALLE:       'PUTE',
@@ -39,11 +43,31 @@ const OPPOSITE_CONTRACT_MAP = {
 
 export default Engine =>
     class Purchase extends Engine {
+        /**
+         * Explicit in-progress guard.  Set to true between the synchronous entry
+         * of purchase() and the moment purchaseSuccessful() is dispatched.  Cleared
+         * in onSuccess (real trades), after purchaseSuccessful() dispatch (virtual
+         * trades), and in every recoverFn callback before a REVERT.
+         *
+         * This closes the window where the scope-based guard cannot help: the scope
+         * only transitions to DURING_PURCHASE after the async API buy response, so
+         * without this flag a second purchase/hedge call issued before the response
+         * arrives would pass the scope check and send a duplicate buy request.
+         */
+        _purchaseInProgress = false;
+
         purchase(contract_type) {
-            // Prevent calling purchase twice.
+            // Prevent calling purchase twice — scope-based guard (async).
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
                 return Promise.resolve();
             }
+
+            // Prevent duplicate buy requests while the first is still pending
+            // (synchronous guard that covers the API round-trip window).
+            if (this._purchaseInProgress) {
+                return Promise.resolve();
+            }
+            this._purchaseInProgress = true;
 
             // Gate: if the Virtual Hook runtime is in virtual mode, run a
             // simulated trade instead of a real API purchase.
@@ -58,6 +82,10 @@ export default Engine =>
             const effective_type = this.activeContractOverride || contract_type;
 
             const onSuccess = response => {
+                // Buy acknowledged — scope transitions to DURING_PURCHASE via
+                // purchaseSuccessful(); the scope guard takes over from here.
+                this._purchaseInProgress = false;
+
                 const { buy } = response;
 
                 contractStatus({
@@ -127,6 +155,10 @@ export default Engine =>
                 return recoverFromError(
                     action,
                     (errorCode, makeDelay) => {
+                        // Clear the in-progress guard before REVERT so the
+                        // before_purchase retry can call purchase() again.
+                        this._purchaseInProgress = false;
+
                         if (errorCode !== 'DisconnectError') {
                             this.renewProposalsOnPurchase();
                         } else {
@@ -186,6 +218,10 @@ export default Engine =>
             return recoverFromError(
                 action,
                 (errorCode, makeDelay) => {
+                    // Clear the in-progress guard before REVERT so the
+                    // before_purchase retry can call purchase() again.
+                    this._purchaseInProgress = false;
+
                     if (errorCode === 'DisconnectError') {
                         this.clearProposals();
                     }
@@ -251,6 +287,8 @@ export default Engine =>
             this.contractId = virtualId;
             this.isSold = false;
             this.store.dispatch(purchaseSuccessful());
+            // Scope is now DURING_PURCHASE; the scope guard takes over.
+            this._purchaseInProgress = false;
 
             if (this.is_proposal_subscription_required) {
                 this.renewProposalsOnPurchase();
