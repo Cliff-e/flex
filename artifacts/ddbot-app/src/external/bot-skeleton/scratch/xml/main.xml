@@ -386,84 +386,11 @@
   </block>
   <block type="before_purchase" id="licmPn={lrajX{,il-1Y" deletable="false" x="0" y="1240">
     <statement name="BEFOREPURCHASE_STACK">
-      <block type="controls_if" id="bpModeFsm0001">
-        <mutation xmlns="http://www.w3.org/1999/xhtml" else="1"></mutation>
-        <value name="IF0">
-          <block type="logic_compare" id="bpModeCmp0001">
-            <field name="OP">EQ</field>
-            <value name="A">
-              <block type="variables_get" id="bpModeGetA0001">
-                <field name="VAR" id="newvar-mode-0001">Mode</field>
-              </block>
-            </value>
-            <value name="B">
-              <block type="text" id="bpModeTxt0001">
-                <field name="TEXT">NORMAL</field>
-              </block>
-            </value>
-          </block>
-        </value>
-        <statement name="DO0">
-          <block type="active_symbol_changer" id="@0x6CYtOK!pWHrp`=h15">
-            <field name="SYMBOL_ACTIVE_TYPE">disable</field>
-            <next>
-              <block type="custom_prediction_setter" id="6)$vjI0RESGX{2z{}s~f">
-                <value name="PREDICTION_ACTIVE_TYPE">
-                  <shadow type="math_number_positive" id="Lp[?0^RMyP/V0;koQ?P,">
-                    <field name="NUM">1</field>
-                  </shadow>
-                </value>
-                <next>
-                  <block type="contract_changer_block" id="lN!_sQ{{gKfymh]Yy(2{">
-                    <field name="CONTRACT_CHANGER">DIGITDIFF</field>
-                    <next>
-                      <block type="apollo_purchase" id="g0$#P)s}l;60LDPCzx1`">
-                        <field name="PURCHASE_LIST">DIGITDIFF</field>
-                        <field name="MULTIPLE_CONTRACTS">FALSE</field>
-                        <field name="CONTRACT_QUANTITY">1</field>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </statement>
-        <statement name="ELSE">
-          <block type="active_symbol_changer" id="bpRecSymChg0001">
-            <field name="SYMBOL_ACTIVE_TYPE">disable</field>
-            <next>
-              <block type="contract_changer_block" id="bpRecContractChg0001">
-                <field name="CONTRACT_CHANGER">DIGITUNDER</field>
-                <next>
-                  <block type="apollo_purchase2" id="ZvD(9?$~5Q[D#=u|j_0/">
-                    <field name="PURCHASE_LIST">DIGITUNDER</field>
-                    <value name="PREDICTION">
-                      <shadow type="math_number_positive" id=",)_=m16)T,-_syplp`uv">
-                        <field name="NUM">3</field>
-                      </shadow>
-                    </value>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </statement>
+      <block type="purchase_all_contracts" id="default_purchase_all">
         <next>
-          <block type="apollo_purchase" id="bpRecPurchase0001">
-            <field name="PURCHASE_LIST">DIGITDIFF</field>
-            <field name="MULTIPLE_CONTRACTS">FALSE</field>
-            <field name="CONTRACT_QUANTITY">1</field>
-          </block>
+          <block type="hedge" id="default_hedge"></block>
         </next>
       </block>
     </statement>
-  </block>
-  <block type="custom_prediction_setter" id="bpRecPredSet0001" disabled="true" x="0" y="2110">
-    <value name="PREDICTION_ACTIVE_TYPE">
-      <shadow type="math_number_positive" id="bpRecPredShadow0001">
-        <field name="NUM">2</field>
-      </shadow>
-    </value>
   </block>
 </xml>

@@ -4,7 +4,7 @@ import { contractStatus, info, log } from '../utils/broadcast';
 import { doUntilDone, getLastDigit, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
 import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
 import { openContractReceived, purchaseSuccessful, sell } from './state/actions';
-import { BEFORE_PURCHASE } from './state/constants';
+import { BEFORE_PURCHASE, NEW_TICK } from './state/constants';
 
 let delayIndex = 0;
 let purchase_reference;
@@ -241,32 +241,15 @@ export default Engine =>
         /**
          * Execute a virtual (simulated) trade.
          *
-         * Simulates the full contract lifecycle — purchase sent → purchase
-         * received → contract open → contract sold — without touching the
-         * Deriv API.  The outcome is determined from the last tick digit so
-         * the result is data-driven and consistent with live market behaviour.
-         *
-         * The method fires the same contractStatus events as a real trade so
-         * the bot's before/during/after_purchase Blockly blocks all execute
-         * normally, and the UI transaction log shows virtual entries.
-         *
-         * Market-closed / invalid tick handling
-         * ──────────────────────────────────────
-         * getLastTick() resolves with 'MarketIsClosed' when the market has no
-         * data.  An invalid tick must never be used to evaluate a virtual trade:
-         * the VirtualHookRuntime counter must not advance, history must not be
-         * recorded, and the same virtual trade is retried after a delay.
-         *
-         * Event ordering
-         * ──────────────
-         * afterPromise() is called BEFORE onVirtualTradeComplete() so that any
-         * strategy block inside after_purchase which reads getVirtualHookStatus()
-         * observes the pre-advance state.  A setTimeout(0) yield ensures the
-         * after_purchase continuation has had the opportunity to run before the
-         * runtime counter advances.
+         * Dispatches purchaseSuccessful() synchronously so the interpreter can
+         * exit watchBefore (scope = DURING_PURCHASE → watchBefore returns false)
+         * and enter the watchDuring loop immediately.  Settlement then runs in a
+         * detached background task (_runVirtualSettlement) that drives the
+         * watchDuring lifecycle via NEW_TICK dispatches, exactly mirroring how
+         * real proposal_open_contract WebSocket messages drive a live trade.
          *
          * @param {string} contract_type  e.g. 'DIGITDIFF'
-         * @returns {Promise<void>}
+         * @returns {Promise<void>}  Resolves as soon as scope = DURING_PURCHASE.
          */
         async _executeVirtualTrade(contract_type) {
             const effective_type = this.activeContractOverride || contract_type;
@@ -287,7 +270,8 @@ export default Engine =>
             this.contractId = virtualId;
             this.isSold = false;
             this.store.dispatch(purchaseSuccessful());
-            // Scope is now DURING_PURCHASE; the scope guard takes over.
+            // Scope is now DURING_PURCHASE — watchBefore will return false,
+            // allowing the interpreter to exit the before loop immediately.
             this._purchaseInProgress = false;
 
             if (this.is_proposal_subscription_required) {
@@ -303,144 +287,172 @@ export default Engine =>
                 buy_price: 0,
             });
 
-            // ── Step 3: Simulate contract open then settle ────────────────────
-            return new Promise(resolve => {
-                setTimeout(async () => {
-                    try {
-                        // ── 3a: Obtain a valid tick, retrying when the market is closed ──
-                        //
-                        // Do not evaluate (and do not advance the runtime counter) until a
-                        // valid numeric tick is available.  This ensures the configured
-                        // virtual trade count always consists of real completed evaluations.
-                        const RETRY_DELAY_MS = 5000;
-                        const MAX_RETRIES = 72; // ~6 minutes of retrying
+            // ── Step 3: Kick off background settlement ────────────────────────
+            // Return immediately (scope = DURING_PURCHASE) so the interpreter
+            // exits watchBefore.  _runVirtualSettlement drives watchDuring.
+            this._runVirtualSettlement(effective_type, virtualId, fakeBuy);
+        }
 
-                        let lastTickStr;
-                        let retries = 0;
+        /**
+         * Run the virtual trade settlement lifecycle in the background.
+         *
+         * Called fire-and-forget from _executeVirtualTrade after scope has
+         * already been set to DURING_PURCHASE.  This method drives the
+         * watchDuring interpreter loop via NEW_TICK dispatches, mirrors the
+         * real open-contract WebSocket lifecycle, then advances the
+         * VirtualHookRuntime counter once after_purchase has had a chance to run.
+         *
+         * Market-closed / invalid tick handling
+         * ──────────────────────────────────────
+         * getLastTick() resolves with 'MarketIsClosed' when the market has no
+         * data.  An invalid tick must never be used to evaluate a virtual trade:
+         * the VirtualHookRuntime counter must not advance, history must not be
+         * recorded, and the same virtual trade is retried after a delay.
+         *
+         * Event ordering
+         * ──────────────
+         * afterPromise() is called BEFORE sell() + NEW_TICK so that any
+         * strategy block inside after_purchase which reads getVirtualHookStatus()
+         * observes the pre-advance state.  A setTimeout(0) yield ensures the
+         * after_purchase continuation has had the opportunity to run before the
+         * runtime counter advances.
+         *
+         * @param {string} effective_type  Resolved contract type (e.g. 'DIGITDIFF').
+         * @param {string} virtualId       Unique ID for this virtual trade.
+         * @param {Object} fakeBuy         Fake buy response object.
+         */
+        async _runVirtualSettlement(effective_type, virtualId, fakeBuy) {
+            try {
+                // ── 3a: Obtain a valid tick, retrying when the market is closed ──
+                //
+                // Do not evaluate (and do not advance the runtime counter) until a
+                // valid numeric tick is available.  This ensures the configured
+                // virtual trade count always consists of real completed evaluations.
+                const RETRY_DELAY_MS = 5000;
+                const MAX_RETRIES = 72; // ~6 minutes of retrying
 
-                        while (true) {
-                            lastTickStr = await this.getLastTick(false, true);
+                let lastTickStr;
+                let retries = 0;
 
-                            const isMarketClosed = lastTickStr === 'MarketIsClosed';
-                            const isValidNumber = !isNaN(parseFloat(String(lastTickStr)));
+                while (true) {
+                    lastTickStr = await this.getLastTick(false, true);
 
-                            if (!isMarketClosed && isValidNumber) {
-                                break; // Valid tick — proceed with evaluation.
-                            }
+                    const isMarketClosed = lastTickStr === 'MarketIsClosed';
+                    const isValidNumber = !isNaN(parseFloat(String(lastTickStr)));
 
-                            retries++;
-                            if (retries > MAX_RETRIES) {
-                                // eslint-disable-next-line no-console
-                                console.warn(
-                                    `[VirtualHook] Market unavailable after ${retries - 1} retries. ` +
-                                    'Skipping virtual trade — counter not advanced.'
-                                );
-                                // Unblock the bot without recording anything.
-                                if (this.afterPromise) this.afterPromise();
-                                this.store.dispatch(sell());
-                                resolve();
-                                return;
-                            }
-
-                            // eslint-disable-next-line no-console
-                            console.warn(
-                                `[VirtualHook] Market closed or invalid tick ("${lastTickStr}"). ` +
-                                `Retrying in ${RETRY_DELAY_MS / 1000}s ` +
-                                `(attempt ${retries}/${MAX_RETRIES})...`
-                            );
-                            await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-                        }
-
-                        // ── 3b: Evaluate outcome via the VirtualHookRuntime static helper ─
-                        const lastDigit = getLastDigit(String(lastTickStr));
-                        const prediction = this.activePredictionOverride ?? null;
-                        const won = VirtualHookRuntime.determineOutcome(effective_type, lastDigit, prediction);
-
-                        const fakeContract = {
-                            contract_type: effective_type,
-                            contract_id: virtualId,
-                            transaction_ids: {
-                                buy: virtualId,
-                                sell: `${virtualId}_sell`,
-                            },
-                            is_sold: 1,
-                            is_expired: 1,
-                            is_valid_to_sell: 0,
-                            status: won ? 'won' : 'lost',
-                            profit: won ? 1 : -1,
-                            profit_percentage: won ? 100 : -100,
-                            bid_price: won ? 2 : 0,
-                            buy_price: 1,
-                            sell_price: won ? 2 : 0,
-                            currency: this.options?.currency ?? 'USD',
-                            longcode: fakeBuy.longcode,
-                            entry_spot: lastTickStr,
-                            entry_spot_display_value: String(lastTickStr),
-                            exit_tick: lastTickStr,
-                            exit_tick_display_value: String(lastTickStr),
-                            exit_tick_time: Math.floor(Date.now() / 1000),
-                            is_virtual: true,
-                        };
-
-                        this.data.contract = fakeContract;
-
-                        // ── 3c: Fire lifecycle events ─────────────────────────────────────
-
-                        // Dispatch openContractReceived so DURING_PURCHASE scope becomes
-                        // active and the bot's during_purchase block runs.
-                        this.store.dispatch(openContractReceived());
-
-                        // Short pause to let DURING_PURCHASE code complete.
-                        await new Promise(r => setTimeout(r, 100));
-
-                        this.isSold = true;
-
-                        contractStatus({
-                            id: 'contract.sold',
-                            data: `${virtualId}_sell`,
-                            contract: fakeContract,
-                        });
-
-                        // ── 3d: Unblock after_purchase BEFORE advancing the runtime ───────
-                        //
-                        // afterPromise() resolves Bot.waitForAfter(), triggering the bot's
-                        // after_purchase Blockly block.  Any strategy block inside
-                        // after_purchase that reads getVirtualHookStatus() must see the
-                        // pre-advance state, so VirtualHookRuntime.onVirtualTradeComplete()
-                        // must not run until after_purchase has had the opportunity to
-                        // execute.
-                        //
-                        // Calling afterPromise() then yielding via setTimeout(0) flushes
-                        // the microtask queue so the after_purchase continuation runs before
-                        // the runtime counter is advanced.
-                        if (this.afterPromise) {
-                            this.afterPromise();
-                        }
-
-                        // Transition Redux scope back to idle.
-                        this.store.dispatch(sell());
-
-                        // Yield so the after_purchase Blockly code runs first.
-                        await new Promise(r => setTimeout(r, 0));
-
-                        // Advance the VirtualHookRuntime — this is the single source of
-                        // truth for counter/history; no other code updates these.
-                        this.virtualHookRuntime.onVirtualTradeComplete(won);
-                    } catch (err) {
-                        // eslint-disable-next-line no-console
-                        console.error('[VirtualHook] Unexpected error during virtual trade settlement:', err);
-                        // Unblock the bot.  The runtime counter is intentionally NOT
-                        // advanced — an unexpected error is not a valid evaluation and
-                        // must not pollute the history.
-                        if (this.afterPromise) {
-                            this.afterPromise();
-                        }
-                        this.store.dispatch(sell());
+                    if (!isMarketClosed && isValidNumber) {
+                        break; // Valid tick — proceed with evaluation.
                     }
 
-                    resolve();
-                }, 400);
-            });
+                    retries++;
+                    if (retries > MAX_RETRIES) {
+                        // eslint-disable-next-line no-console
+                        console.warn(
+                            `[VirtualHook] Market unavailable after ${retries - 1} retries. ` +
+                            'Skipping virtual trade — counter not advanced.'
+                        );
+                        // Unblock the bot without recording anything.
+                        if (this.afterPromise) this.afterPromise();
+                        this.store.dispatch(sell());
+                        this.store.dispatch({ type: NEW_TICK, payload: Date.now() });
+                        return;
+                    }
+
+                    // eslint-disable-next-line no-console
+                    console.warn(
+                        `[VirtualHook] Market closed or invalid tick ("${lastTickStr}"). ` +
+                        `Retrying in ${RETRY_DELAY_MS / 1000}s ` +
+                        `(attempt ${retries}/${MAX_RETRIES})...`
+                    );
+                    await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+                }
+
+                // ── 3b: Evaluate outcome via the VirtualHookRuntime static helper ─
+                const lastDigit = getLastDigit(String(lastTickStr));
+                const prediction = this.activePredictionOverride ?? null;
+                const won = VirtualHookRuntime.determineOutcome(effective_type, lastDigit, prediction);
+
+                const fakeContract = {
+                    contract_type: effective_type,
+                    contract_id: virtualId,
+                    transaction_ids: {
+                        buy: virtualId,
+                        sell: `${virtualId}_sell`,
+                    },
+                    is_sold: 1,
+                    is_expired: 1,
+                    is_valid_to_sell: 0,
+                    status: won ? 'won' : 'lost',
+                    profit: won ? 1 : -1,
+                    profit_percentage: won ? 100 : -100,
+                    bid_price: won ? 2 : 0,
+                    buy_price: 1,
+                    sell_price: won ? 2 : 0,
+                    currency: this.options?.currency ?? 'USD',
+                    longcode: fakeBuy.longcode,
+                    entry_spot: lastTickStr,
+                    entry_spot_display_value: String(lastTickStr),
+                    exit_tick: lastTickStr,
+                    exit_tick_display_value: String(lastTickStr),
+                    exit_tick_time: Math.floor(Date.now() / 1000),
+                    is_virtual: true,
+                };
+
+                this.data.contract = fakeContract;
+
+                // ── 3c: Wake watchDuring — open-contract phase ───────────────────
+                // openContractReceived() requires scope === DURING_PURCHASE.
+                // NEW_TICK is what watchDuring uses to detect a state update and
+                // return true (passing the loop guard), allowing during_purchase
+                // to execute.
+                this.store.dispatch(openContractReceived());
+                this.store.dispatch({ type: NEW_TICK, payload: Date.now() });
+
+                // Short pause so the during_purchase block has time to run.
+                await new Promise(r => setTimeout(r, 100));
+
+                this.isSold = true;
+
+                contractStatus({
+                    id: 'contract.sold',
+                    data: `${virtualId}_sell`,
+                    contract: fakeContract,
+                });
+
+                // ── 3d: Unblock after_purchase BEFORE advancing the runtime ───────
+                //
+                // afterPromise() resolves Bot.waitForAfter(), triggering the bot's
+                // after_purchase Blockly block.  Any strategy block inside
+                // after_purchase that reads getVirtualHookStatus() must see the
+                // pre-advance state, so VirtualHookRuntime.onVirtualTradeComplete()
+                // must not run until after_purchase has had the opportunity to run.
+                if (this.afterPromise) {
+                    this.afterPromise();
+                }
+
+                // sell() transitions scope → STOP; the second NEW_TICK causes
+                // watchDuring to return false and exit the during loop.
+                this.store.dispatch(sell());
+                this.store.dispatch({ type: NEW_TICK, payload: Date.now() });
+
+                // Yield so the after_purchase Blockly code runs first.
+                await new Promise(r => setTimeout(r, 0));
+
+                // Advance the VirtualHookRuntime — single source of truth for
+                // counter/history; no other code updates these.
+                this.virtualHookRuntime.onVirtualTradeComplete(won);
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[VirtualHook] Unexpected error during virtual trade settlement:', err);
+                // Unblock the bot.  The runtime counter is intentionally NOT
+                // advanced — an unexpected error is not a valid evaluation and
+                // must not pollute the history.
+                if (this.afterPromise) {
+                    this.afterPromise();
+                }
+                this.store.dispatch(sell());
+                this.store.dispatch({ type: NEW_TICK, payload: Date.now() });
+            }
         }
 
         /**
