@@ -8,6 +8,8 @@ export default Engine =>
     class OpenContract extends Engine {
         observeOpenContract() {
             if (!api_base.api) return;
+            // eslint-disable-next-line no-console
+            console.log('[VH] OpenContract.observeOpenContract() — proposal_open_contract subscription ACTIVE');
             const subscription = api_base.api.onMessage().subscribe(({ data }) => {
                 if (data.msg_type === 'proposal_open_contract') {
                     const raw_contract = data.proposal_open_contract;
@@ -15,6 +17,12 @@ export default Engine =>
                     if (!raw_contract || !this.expectedContractId(raw_contract?.contract_id)) {
                         return;
                     }
+
+                    // eslint-disable-next-line no-console
+                    console.log(
+                        `[VH] proposal_open_contract UPDATE received | contract_id=${raw_contract.contract_id}` +
+                        ` | is_sold=${raw_contract.is_sold} | status=${raw_contract.status ?? 'open'}`
+                    );
 
                     // Normalize entry/exit/current/sell spot field names — the new
                     // trading API (api.derivws.com) does not guarantee the same
@@ -39,12 +47,35 @@ export default Engine =>
                             contract,
                         });
 
-                        // Notify VirtualHookRuntime that a real trade has settled so it
-                        // can track consecutive wins and re-enter virtual mode when the
-                        // configured threshold is reached.  No-op when the hook is disabled.
-                        this.virtualHookRuntime.onRealTradeComplete(contract.status === 'won');
+                        // Route settlement to the correct VirtualHookRuntime callback.
+                        // In virtual mode, the trade counts toward the warm-up sequence
+                        // (onVirtualTradeComplete advances the virtual counter and
+                        // transitions to real mode when the limit is reached).
+                        // In real mode, onRealTradeComplete tracks consecutive wins and
+                        // re-enters virtual mode when the configured threshold is met.
+                        const isVirtual = this.virtualHookRuntime.isVirtualMode();
+                        const won = contract.status === 'won';
+                        // eslint-disable-next-line no-console
+                        console.log(
+                            `[VH] Contract settled | status=${contract.status}` +
+                            ` | isVirtualMode=${isVirtual}` +
+                            ` | routing to ${isVirtual ? 'onVirtualTradeComplete' : 'onRealTradeComplete'}`
+                        );
+                        if (isVirtual) {
+                            this.virtualHookRuntime.onVirtualTradeComplete(won);
+                            // eslint-disable-next-line no-console
+                            console.log(
+                                `[VH] onVirtualTradeComplete() called | counter=${this.virtualHookRuntime.virtualTradeCounter}` +
+                                ` | limit=${this.virtualHookRuntime.virtualTradeLimit}` +
+                                ` | phase=${this.virtualHookRuntime.currentPhase}`
+                            );
+                        } else {
+                            this.virtualHookRuntime.onRealTradeComplete(won);
+                        }
 
                         if (this.afterPromise) {
+                            // eslint-disable-next-line no-console
+                            console.log('[VH] afterPromise() resolved — interpreter resumes (after_purchase)');
                             this.afterPromise();
                         }
 
