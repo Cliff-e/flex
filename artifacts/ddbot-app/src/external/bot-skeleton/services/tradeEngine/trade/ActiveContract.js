@@ -91,6 +91,53 @@ export default Engine =>
             return this.activeMode || 'NORMAL';
         }
 
+        // ── Exit digit rolling buffer ─────────────────────────────────────────
+
+        /**
+         * Read the last contract's exit digit (last digit of exit_tick price)
+         * and push it into a rolling buffer.  When the buffer exceeds maxSize
+         * the oldest entry is dropped automatically.
+         * Called by Bot.storeExitDigit(maxSize).
+         * @param {number} maxSize  Maximum entries to keep (default 25)
+         */
+        storeExitDigit(maxSize = 25) {
+            const contract = this.data && this.data.contract;
+            if (!contract || contract.exit_tick == null) return;
+            const tickStr = contract.exit_tick.toString();
+            const digit = +tickStr[tickStr.length - 1];
+            if (!Array.isArray(this.exitDigitBuffer)) this.exitDigitBuffer = [];
+            this.exitDigitBuffer.push(digit);
+            const limit = Math.max(1, Math.floor(Number(maxSize)));
+            while (this.exitDigitBuffer.length > limit) {
+                this.exitDigitBuffer.shift();
+            }
+        }
+
+        /**
+         * Return a copy of the rolling exit-digit buffer.
+         * Index 0 = oldest, last index = most recent.
+         * Called by Bot.getExitDigitList().
+         * @returns {number[]}
+         */
+        getExitDigitList() {
+            return Array.isArray(this.exitDigitBuffer) ? this.exitDigitBuffer.slice() : [];
+        }
+
+        /**
+         * Return the exit digit at position index (1 = most recent).
+         * Returns null when the position is out of range.
+         * Called by Bot.getExitDigitAt(index).
+         * @param {number} index  1-based (1 = most recent)
+         * @returns {number|null}
+         */
+        getExitDigitAt(index = 1) {
+            if (!Array.isArray(this.exitDigitBuffer) || !this.exitDigitBuffer.length) return null;
+            const i = Math.floor(Number(index));
+            const pos = this.exitDigitBuffer.length - i;
+            if (pos < 0 || pos >= this.exitDigitBuffer.length) return null;
+            return this.exitDigitBuffer[pos];
+        }
+
         // ── Prediction helpers ────────────────────────────────────────────────
 
         /**

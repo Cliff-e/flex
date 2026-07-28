@@ -428,6 +428,16 @@ export const ToolboxItems = () => {
                     <Block type='ask_price' />
                 </Category>
 
+                <Category name={localize('Digit Observer')} id='digit_observer'>
+                    <Block type='exit_digit_store'>
+                        <Field name='BUFFER_SIZE'>25</Field>
+                    </Block>
+                    <Block type='get_exit_digit_list' />
+                    <Block type='get_exit_digit_at'>
+                        <Field name='POSITION'>1</Field>
+                    </Block>
+                </Category>
+
                 <Category name={localize('Stats')} id='stats'>
                     <Block type='balance' />
                     <Block type='total_profit' />

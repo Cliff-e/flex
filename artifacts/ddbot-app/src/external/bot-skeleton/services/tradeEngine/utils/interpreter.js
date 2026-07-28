@@ -141,6 +141,21 @@ const Interpreter = () => {
             'purchaseCurrentContract',
             createAsync(js_interpreter, bot_interface.purchaseCurrentContract)
         );
+        js_interpreter.setProperty(
+            pseudo_bot_interface,
+            'storeExitDigit',
+            createAsync(js_interpreter, bot_interface.storeExitDigit)
+        );
+        js_interpreter.setProperty(
+            pseudo_bot_interface,
+            'getExitDigitList',
+            createAsync(js_interpreter, bot_interface.getExitDigitList)
+        );
+        js_interpreter.setProperty(
+            pseudo_bot_interface,
+            'getExitDigitAt',
+            createAsync(js_interpreter, bot_interface.getExitDigitAt)
+        );
         js_interpreter.setProperty(scope, 'Bot', pseudo_bot_interface);
         js_interpreter.setProperty(
             scope,
