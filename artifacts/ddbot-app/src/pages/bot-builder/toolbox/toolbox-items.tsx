@@ -169,7 +169,11 @@ export const ToolboxItems = () => {
             </Category>
             <Category id='purchase_conditions' name={localize('Purchase conditions')}>
                 <Block type='before_purchase' />
+                <Block type='purchase'>
+                    <Field name='PURCHASE_LIST'>CALL</Field>
+                </Block>
                 <Block type='purchase_all_contracts' />
+                <Block type='purchase_current_contract' />
                 <Block type='hedge' />
             </Category>
             <Category id='sell_conditions' name={localize('Sell conditions (optional)')}>
@@ -789,13 +793,23 @@ export const ToolboxItems = () => {
                 </Category>
             </Category>
 
-            <Category id='contract_modifiers' name={localize('Contract Modifiers')}>
+            <Category id='contract_modifiers' name={localize('Contract Controls')}>
                 <Block type='contract_type_switcher'>
                     <Field name='CONTRACT_TYPE'>DISABLE</Field>
                 </Block>
-                <Block type='symbol_changer'>
-                    <Field name='SYMBOL'>DISABLE</Field>
+            </Category>
+
+            <Category id='runtime_state' name={localize('Runtime State')}>
+                <Block type='set_mode'>
+                    <Field name='MODE'>NORMAL</Field>
                 </Block>
+                <Block type='get_mode' />
+                <Block type='if_mode_equals'>
+                    <Field name='MODE'>NORMAL</Field>
+                </Block>
+            </Category>
+
+            <Category id='prediction_controls' name={localize('Prediction Controls')}>
                 <Block type='custom_prediction'>
                     <Value name='PREDICTION'>
                         <Shadow type='math_number'>
@@ -803,6 +817,36 @@ export const ToolboxItems = () => {
                         </Shadow>
                     </Value>
                 </Block>
+                <Block type='random_prediction'>
+                    <Value name='MIN'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>0</Field>
+                        </Shadow>
+                    </Value>
+                    <Value name='MAX'>
+                        <Shadow type='math_number'>
+                            <Field name='NUM'>9</Field>
+                        </Shadow>
+                    </Value>
+                </Block>
+                <Block type='prediction_from_variable' />
+            </Category>
+
+            <Category id='symbol_controls' name={localize('Symbol Controls')}>
+                <Block type='symbol_changer'>
+                    <Field name='SYMBOL'>DISABLE</Field>
+                </Block>
+                <Block type='random_symbol'>
+                    <Field name='GROUP'>volatility</Field>
+                </Block>
+                <Block type='symbol_from_variable' />
+                <Block type='symbol_rotation'>
+                    <Field name='GROUP'>volatility</Field>
+                </Block>
+            </Category>
+
+            <Category id='recovery_controls' name={localize('Recovery Controls')}>
+                <Block type='recovery_config' />
             </Category>
 
             <Category id='virtual_hook' name={localize('Virtual Hook Switcher')}>

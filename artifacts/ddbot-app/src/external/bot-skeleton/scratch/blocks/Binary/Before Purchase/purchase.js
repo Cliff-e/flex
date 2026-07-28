@@ -1,6 +1,36 @@
 import { localize } from '@deriv-com/translations';
-import { getContractTypeOptions } from '../../../shared';
 import { excludeOptionFromContextMenu, modifyContextMenu } from '../../../utils';
+
+/**
+ * Full static list of every purchasable contract type.
+ *
+ * This intentionally does NOT depend on Trade Parameters — the user can
+ * pick any type here and combine it with Symbol Controls / Contract Type
+ * Switcher to build cross-type strategies (e.g. recover Vol 10 DIGITOVER
+ * losses with Vol 75 1s DIGITEVEN).
+ *
+ * Exported so other blocks (purchase_all_contracts, toolbox) can reuse it.
+ */
+export const ALL_CONTRACT_TYPE_OPTIONS = [
+    ['Rise (Call)',        'CALL'],
+    ['Fall (Put)',         'PUT'],
+    ['Even',              'DIGITEVEN'],
+    ['Odd',               'DIGITODD'],
+    ['Matches',           'DIGITMATCH'],
+    ['Differs',           'DIGITDIFF'],
+    ['Over',              'DIGITOVER'],
+    ['Under',             'DIGITUNDER'],
+    ['Touch',             'ONETOUCH'],
+    ['No Touch',          'NOTOUCH'],
+    ['Ends Between',      'EXPIRYRANGE'],
+    ['Ends Outside',      'EXPIRYMISS'],
+    ['Reset Call',        'RESETCALL'],
+    ['Reset Put',         'RESETPUT'],
+    ['Only Ups',          'RUNHIGH'],
+    ['Only Downs',        'RUNLOW'],
+    ['Call Spread',       'CALLSPREAD'],
+    ['Put Spread',        'PUTSPREAD'],
+];
 
 window.Blockly.Blocks.purchase = {
     init() {
@@ -16,14 +46,19 @@ window.Blockly.Blocks.purchase = {
                 {
                     type: 'field_dropdown',
                     name: 'PURCHASE_LIST',
-                    options: [['', '']],
+                    options: ALL_CONTRACT_TYPE_OPTIONS.map(([label, value]) => [localize(label), value]),
                 },
             ],
             previousStatement: null,
             colour: window.Blockly.Colours.Special1.colour,
             colourSecondary: window.Blockly.Colours.Special1.colourSecondary,
             colourTertiary: window.Blockly.Colours.Special1.colourTertiary,
-            tooltip: localize('This block purchases contract of a specified type.'),
+            tooltip: localize(
+                'Purchase a specific contract type. The full list of types is available — ' +
+                'the choice is not limited by Trade Parameters. Combine with Symbol Controls ' +
+                'and Contract Type Switcher to build cross-type strategies (e.g. trade ' +
+                'Over/Under on Vol 10 and recover with Even/Odd on Vol 75 1s).'
+            ),
             category: window.Blockly.Categories.Before_Purchase,
         };
     },
@@ -31,49 +66,13 @@ window.Blockly.Blocks.purchase = {
         return {
             display_name: localize('Purchase'),
             description: localize(
-                'Use this block to purchase the specific contract you want. You may add multiple Purchase blocks together with conditional blocks to define your purchase conditions. This block can only be used within the Purchase conditions block.'
+                'Purchases the selected contract type. The dropdown shows every available ' +
+                'type (Rise, Fall, Even, Odd, Matches, Differs, Over, Under, Touch, No Touch, ' +
+                'and more) regardless of what is set in Trade Parameters. Use multiple Purchase ' +
+                'blocks inside conditional logic to build multi-type and recovery strategies.'
             ),
-            key_words: localize('buy'),
+            key_words: localize('buy, purchase, rise, fall, even, odd, over, under, matches, differs'),
         };
-    },
-    onchange(event) {
-        if (!this.workspace || window.Blockly.derivWorkspace.isFlyoutVisible || this.workspace.isDragging()) {
-            return;
-        }
-
-        if (event.type === window.Blockly.Events.BLOCK_CREATE && event.ids.includes(this.id)) {
-            this.populatePurchaseList(event);
-        } else if (event.type === window.Blockly.Events.BLOCK_CHANGE) {
-            if (event.name === 'TYPE_LIST' || event.name === 'TRADETYPE_LIST') {
-                this.populatePurchaseList(event);
-            }
-        } else if (event.type === window.Blockly.Events.BLOCK_DRAG && !event.isStart && event.blockId === this.id) {
-            const purchase_type_list = this.getField('PURCHASE_LIST');
-            const purchase_options = purchase_type_list.menuGenerator_; // eslint-disable-line
-
-            if (purchase_options[0][0] === '') {
-                this.populatePurchaseList(event);
-            }
-        }
-    },
-    populatePurchaseList(event) {
-        const trade_definition_block = this.workspace.getTradeDefinitionBlock();
-
-        if (trade_definition_block) {
-            const trade_type_block = trade_definition_block.getChildByType('trade_definition_tradetype');
-            const trade_type = trade_type_block.getFieldValue('TRADETYPE_LIST');
-            const contract_type_block = trade_definition_block.getChildByType('trade_definition_contracttype');
-            const contract_type = contract_type_block.getFieldValue('TYPE_LIST');
-            const purchase_type_list = this.getField('PURCHASE_LIST');
-            const purchase_type = purchase_type_list.getValue();
-            const contract_type_options = getContractTypeOptions(contract_type, trade_type);
-
-            purchase_type_list.updateOptions(contract_type_options, {
-                default_value: purchase_type,
-                event_group: event.group,
-                should_pretend_empty: true,
-            });
-        }
     },
     customContextMenu(menu) {
         const menu_items = [localize('Enable Block'), localize('Disable Block')];
@@ -85,7 +84,5 @@ window.Blockly.Blocks.purchase = {
 
 window.Blockly.JavaScript.javascriptGenerator.forBlock.purchase = block => {
     const purchaseList = block.getFieldValue('PURCHASE_LIST');
-
-    const code = `Bot.purchase('${purchaseList}');\n`;
-    return code;
+    return `Bot.purchase('${purchaseList}');\n`;
 };
