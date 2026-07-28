@@ -38,6 +38,8 @@ export const OPPOSITE_CONTRACT_MAP = {
     RUNLOW:      'RUNHIGH',
     CALLSPREAD:  'PUTSPREAD',
     PUTSPREAD:   'CALLSPREAD',
+    ASIANU:      'ASIAND',
+    ASIAND:      'ASIANU',
 };
 
 export default Engine =>
@@ -75,11 +77,20 @@ export default Engine =>
                 ` | contract_type=${contract_type}`
             );
 
-            // If setActiveContractOverride has been called (via the Contract Type
-            // Switcher block), use that type instead of the one hardcoded in the
-            // Purchase block.  Falls back to the original contract_type when no
-            // override is active — full backward compatibility.
-            const effective_type = this.activeContractOverride || contract_type;
+            // Resolve the effective contract type.
+            //
+            // 'DISABLE' from the Purchase block dropdown means "do not override —
+            // use whatever is currently active".  Precedence for DISABLE:
+            //   1. activeContractOverride (set by Contract Changer block)
+            //   2. Trade Parameters contractTypes[0]
+            //
+            // Any real contract type selected in the Purchase block takes precedence
+            // over everything, including activeContractOverride — the block's explicit
+            // choice is the highest-priority signal for that single purchase.
+            const effective_type =
+                contract_type === 'DISABLE'
+                    ? (this.activeContractOverride ?? this.tradeOptions?.contractTypes?.[0] ?? null)
+                    : contract_type;
 
             const onSuccess = response => {
                 // Buy acknowledged — scope transitions to DURING_PURCHASE via
@@ -185,7 +196,7 @@ export default Engine =>
                 ).then(onSuccess);
             }
 
-            const trade_option = tradeOptionToBuy(contract_type, this.tradeOptions);
+            const trade_option = tradeOptionToBuy(effective_type, this.tradeOptions);
             const action = () => {
                 // eslint-disable-next-line no-console
                 console.log('[TRADE][Purchase] Sending direct buy request:', JSON.stringify(trade_option));
