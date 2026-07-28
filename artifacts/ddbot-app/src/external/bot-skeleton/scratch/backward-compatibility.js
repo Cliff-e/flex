@@ -4,6 +4,25 @@ import ApiHelpers from '../services/api/api-helpers';
 import { convertStrategyToIsDbot } from '../utils';
 
 /* eslint-disable no-underscore-dangle */
+
+/**
+ * Legacy block-type aliases.
+ * When a saved XML contains one of these types, the type is transparently
+ * rewritten to the modern equivalent before conversion or instantiation.
+ *
+ * Sources of legacy types:
+ *   - Old apollo-bot XMLs: apollo_purchase, apollo_purchase2
+ *   - Old DBot modifier blocks: contract_changer_block, active_symbol_changer,
+ *     custom_prediction_setter
+ */
+const LEGACY_BLOCK_TYPE_ALIASES = {
+    apollo_purchase:          'purchase_current_contract',
+    apollo_purchase2:         'purchase_current_contract',
+    contract_changer_block:   'contract_type_switcher',
+    active_symbol_changer:    'symbol_changer',
+    custom_prediction_setter: 'custom_prediction',
+};
+
 export default class BlockConversion {
     constructor() {
         this.blocks_pending_reconnect = {};
@@ -534,7 +553,9 @@ export default class BlockConversion {
 
     convertBlockNode(el_block, parent_block = null) {
         const conversions = this.getConversions();
-        const block_type = el_block.getAttribute('type');
+        // Transparently rewrite legacy block types before any conversion/lookup.
+        const raw_type = el_block.getAttribute('type');
+        const block_type = LEGACY_BLOCK_TYPE_ALIASES[raw_type] ?? raw_type;
         const is_old_block = Object.keys(conversions).includes(block_type);
         let block = null;
 

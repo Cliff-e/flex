@@ -69,6 +69,109 @@ export default Engine =>
             this._rebuildProposals();
         }
 
+        // ── Runtime mode ─────────────────────────────────────────────────────
+
+        /**
+         * Set a named execution mode shared across all blocks in the current run.
+         * Called by Bot.setMode(mode).
+         *
+         * @param {string} mode  e.g. 'NORMAL' | 'RECOVERY' | 'WAIT' | 'PAUSE' | 'CUSTOM'
+         */
+        setMode(mode) {
+            this.activeMode = typeof mode === 'string' ? mode : 'NORMAL';
+        }
+
+        /**
+         * Return the current execution mode.  Defaults to 'NORMAL' if never set.
+         * Called by Bot.getMode().
+         *
+         * @returns {string}
+         */
+        getMode() {
+            return this.activeMode || 'NORMAL';
+        }
+
+        // ── Prediction helpers ────────────────────────────────────────────────
+
+        /**
+         * Pick a random digit in [min, max] (inclusive) and set it as the
+         * active prediction override.
+         * Called by Bot.setRandomPrediction(min, max).
+         *
+         * @param {number} min  Lower bound (0–9)
+         * @param {number} max  Upper bound (0–9)
+         */
+        setRandomPrediction(min, max) {
+            const lo = Math.ceil(Number(min));
+            const hi = Math.floor(Number(max));
+            const prediction = lo + Math.floor(Math.random() * (hi - lo + 1));
+            this.setActivePredictionOverride(prediction);
+        }
+
+        // ── Symbol helpers ────────────────────────────────────────────────────
+
+        /**
+         * Symbol groups used by setRandomSymbol and rotateSymbol.
+         * Keys mirror the GROUP dropdown values defined in the Blockly blocks.
+         */
+        static SYMBOL_GROUPS = {
+            volatility:    ['R_10', 'R_25', 'R_50', 'R_75', 'R_100'],
+            volatility_1s: ['1HZ10V', '1HZ25V', '1HZ50V', '1HZ75V', '1HZ100V'],
+            boom_crash:    ['BOOM300N', 'BOOM500', 'BOOM1000', 'CRASH300N', 'CRASH500', 'CRASH1000'],
+            step_index:    ['stpRNG'],
+            jump:          ['JD10', 'JD25', 'JD50', 'JD75', 'JD100'],
+        };
+
+        /**
+         * Pick a random symbol from the given group and apply it as the
+         * active symbol override.
+         * Called by Bot.setRandomSymbol(group).
+         *
+         * @param {string} group  Key from SYMBOL_GROUPS
+         */
+        setRandomSymbol(group) {
+            const symbols =
+                ActiveContract.SYMBOL_GROUPS[group] ??
+                ActiveContract.SYMBOL_GROUPS.volatility;
+            const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+            this.setActiveSymbolOverride(symbol);
+        }
+
+        /**
+         * Rotate to the next symbol in the given group (wraps around) and apply
+         * it as the active symbol override.
+         * Called by Bot.rotateSymbol(group).
+         *
+         * @param {string} group  Key from SYMBOL_GROUPS
+         */
+        rotateSymbol(group) {
+            const symbols =
+                ActiveContract.SYMBOL_GROUPS[group] ??
+                ActiveContract.SYMBOL_GROUPS.volatility;
+            if (!this._rotationIndices) this._rotationIndices = {};
+            const idx = (this._rotationIndices[group] ?? 0) % symbols.length;
+            this._rotationIndices[group] = idx + 1;
+            this.setActiveSymbolOverride(symbols[idx]);
+        }
+
+        // ── Smart purchase ────────────────────────────────────────────────────
+
+        /**
+         * Purchase using the currently effective contract type — respects any
+         * active contract override without the caller needing to know it.
+         * Falls back to the first available proposal type if no override is set.
+         * Called by Bot.purchaseCurrentContract().
+         */
+        purchaseCurrentContract() {
+            const type =
+                this.activeContractOverride ??
+                (this.data?.proposals?.[0]?.contract_type ?? null);
+            if (!type) {
+                throw new Error('purchaseCurrentContract: no contract type available.');
+            }
+            return this.purchase(type);
+        }
+
         // ── Virtual Hook delegation (BotInterface-facing API) ─────────────────
 
         /**

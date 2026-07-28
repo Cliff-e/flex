@@ -56,6 +56,47 @@ const getBotInterface = tradeEngine => {
          *
          * @param {boolean} enabled
          */
+        /**
+         * Set the current execution mode string (e.g. 'NORMAL', 'RECOVERY', 'WAIT').
+         * Called by the Set Mode Blockly block.
+         * @param {string} mode
+         */
+        setMode: mode => tradeEngine.setMode(mode),
+        /**
+         * Get the current execution mode string.
+         * Called by the Get Mode / If Mode Equals Blockly blocks.
+         * @returns {string}
+         */
+        getMode: () => tradeEngine.getMode(),
+        /**
+         * Purchase the currently effective contract type, respecting any active
+         * contract override. Equivalent to Bot.purchase(currentType) but without
+         * requiring the caller to know the active type.
+         * Called by the Purchase Current Contract Blockly block.
+         */
+        purchaseCurrentContract: () => tradeEngine.purchaseCurrentContract(),
+        /**
+         * Pick a random digit between min and max (inclusive) and set it as the
+         * active prediction override.
+         * Called by the Random Prediction Blockly block.
+         * @param {number} min
+         * @param {number} max
+         */
+        setRandomPrediction: (min, max) => tradeEngine.setRandomPrediction(min, max),
+        /**
+         * Pick a random symbol from the given group and set it as the active
+         * symbol override.
+         * Called by the Random Symbol Blockly block.
+         * @param {string} group  e.g. 'volatility' | 'volatility_1s' | 'boom_crash' | 'jump'
+         */
+        setRandomSymbol: group => tradeEngine.setRandomSymbol(group),
+        /**
+         * Rotate to the next symbol in the given group and set it as the active
+         * symbol override.  Wraps around after the last symbol.
+         * Called by the Symbol Rotation Blockly block.
+         * @param {string} group
+         */
+        rotateSymbol: group => tradeEngine.rotateSymbol(group),
         setVirtualHookEnabled: enabled => tradeEngine.setVirtualHookEnabled(enabled),
         /**
          * Configure the Virtual Hook engine.
