@@ -4,8 +4,9 @@ import { modifyContextMenu } from '../../../utils';
 /**
  * get_exit_digit_at — value block
  *
- * Returns a single digit from the rolling buffer by position.
+ * Returns a single digit from the global exit-digit history by position.
  * Position 1 = most recent, 2 = second most recent, etc.
+ * Reads from the automatic global history — no "Store exit digit" block needed.
  */
 window.Blockly.Blocks.get_exit_digit_at = {
     init() {
@@ -20,7 +21,7 @@ window.Blockly.Blocks.get_exit_digit_at = {
                     name: 'POSITION',
                     value: 1,
                     min: 1,
-                    max: 500,
+                    max: 25,
                     precision: 1,
                 },
             ],
@@ -30,8 +31,9 @@ window.Blockly.Blocks.get_exit_digit_at = {
             colourSecondary: window.Blockly.Colours.Base.colourSecondary,
             colourTertiary: window.Blockly.Colours.Base.colourTertiary,
             tooltip: localize(
-                'Returns the exit digit at the given position from the rolling buffer. ' +
-                'Position 1 is the most recent digit, 2 is the one before that, and so on.'
+                'Returns the exit digit at the given position from the global history. ' +
+                'Position 1 is the most recent digit, 2 is the one before that, and so on. ' +
+                'Populated automatically — no "Store exit digit" block needed.'
             ),
             category: window.Blockly.Categories.After_Purchase,
         };
@@ -40,8 +42,8 @@ window.Blockly.Blocks.get_exit_digit_at = {
         return {
             display_name: localize('Exit digit at position'),
             description: localize(
-                'Reads a specific digit from the rolling buffer. ' +
-                'Position 1 returns the latest stored exit digit.'
+                'Reads a specific digit from the automatic global exit digit history. ' +
+                'Position 1 returns the most recent exit digit (max position: 25).'
             ),
         };
     },

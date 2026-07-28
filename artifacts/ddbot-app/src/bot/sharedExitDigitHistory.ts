@@ -20,7 +20,7 @@ export interface ExitDigitEntry {
     ts: number;
 }
 
-const MAX_HISTORY = 20;
+const MAX_HISTORY = 25;
 
 let _history: ExitDigitEntry[] = [];
 

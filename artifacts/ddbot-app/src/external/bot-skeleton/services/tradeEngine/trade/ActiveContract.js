@@ -1,6 +1,10 @@
 import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
 import { tradeOptionToProposal } from '../utils/helpers';
 import { OPPOSITE_CONTRACT_MAP } from './Purchase';
+import {
+    getExitDigitHistory,
+    resetExitDigitHistory,
+} from '../../../../../bot/sharedExitDigitHistory';
 
 /**
  * ActiveContract mixin
@@ -91,51 +95,49 @@ export default Engine =>
             return this.activeMode || 'NORMAL';
         }
 
-        // ── Exit digit rolling buffer ─────────────────────────────────────────
+        // ── Global exit digit history (read-only delegates to sharedExitDigitHistory) ──
 
         /**
-         * Read the last contract's exit digit (last digit of exit_tick price)
-         * and push it into a rolling buffer.  When the buffer exceeds maxSize
-         * the oldest entry is dropped automatically.
-         * Called by Bot.storeExitDigit(maxSize).
-         * @param {number} maxSize  Maximum entries to keep (default 25)
-         */
-        storeExitDigit(maxSize = 25) {
-            const contract = this.data && this.data.contract;
-            if (!contract || contract.exit_tick == null) return;
-            const tickStr = contract.exit_tick.toString();
-            const digit = +tickStr[tickStr.length - 1];
-            if (!Array.isArray(this.exitDigitBuffer)) this.exitDigitBuffer = [];
-            this.exitDigitBuffer.push(digit);
-            const limit = Math.max(1, Math.floor(Number(maxSize)));
-            while (this.exitDigitBuffer.length > limit) {
-                this.exitDigitBuffer.shift();
-            }
-        }
-
-        /**
-         * Return a copy of the rolling exit-digit buffer.
+         * Return the digit values from the global exit-digit history as a plain number[].
          * Index 0 = oldest, last index = most recent.
-         * Called by Bot.getExitDigitList().
+         * Called by Bot.getExitDigitList() (via BotInterface).
          * @returns {number[]}
          */
-        getExitDigitList() {
-            return Array.isArray(this.exitDigitBuffer) ? this.exitDigitBuffer.slice() : [];
+        getGlobalExitDigitList() {
+            return getExitDigitHistory().map(e => e.digit);
         }
 
         /**
-         * Return the exit digit at position index (1 = most recent).
+         * Return the exit digit at position index (1 = most recent) from the global history.
          * Returns null when the position is out of range.
-         * Called by Bot.getExitDigitAt(index).
+         * Called by Bot.getExitDigitAt(index) (via BotInterface).
          * @param {number} index  1-based (1 = most recent)
          * @returns {number|null}
          */
-        getExitDigitAt(index = 1) {
-            if (!Array.isArray(this.exitDigitBuffer) || !this.exitDigitBuffer.length) return null;
+        getGlobalExitDigitAt(index = 1) {
+            const history = getExitDigitHistory();
+            if (!history.length) return null;
             const i = Math.floor(Number(index));
-            const pos = this.exitDigitBuffer.length - i;
-            if (pos < 0 || pos >= this.exitDigitBuffer.length) return null;
-            return this.exitDigitBuffer[pos];
+            const pos = history.length - i;
+            if (pos < 0 || pos >= history.length) return null;
+            return history[pos].digit;
+        }
+
+        /**
+         * Return how many digits are currently in the global history (0–25).
+         * Called by Bot.getExitDigitCount() (via BotInterface).
+         * @returns {number}
+         */
+        getGlobalExitDigitCount() {
+            return getExitDigitHistory().length;
+        }
+
+        /**
+         * Clear the global exit digit history.
+         * Called by Bot.clearExitDigitHistory() (via BotInterface).
+         */
+        clearGlobalExitDigitHistory() {
+            resetExitDigitHistory();
         }
 
         // ── Prediction helpers ────────────────────────────────────────────────

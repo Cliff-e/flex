@@ -75,9 +75,11 @@ const getBotInterface = tradeEngine => {
          * Called by the Purchase Current Contract Blockly block.
          */
         purchaseCurrentContract: () => tradeEngine.purchaseCurrentContract(),
-        storeExitDigit: maxSize => tradeEngine.storeExitDigit(maxSize),
-        getExitDigitList: () => tradeEngine.getExitDigitList(),
-        getExitDigitAt: index => tradeEngine.getExitDigitAt(index),
+        getExitDigitList: () => tradeEngine.getGlobalExitDigitList(),
+        getExitDigitAt: index => tradeEngine.getGlobalExitDigitAt(index),
+        getExitDigitCount: () => tradeEngine.getGlobalExitDigitCount(),
+        getLastExitDigit: () => tradeEngine.getGlobalExitDigitAt(1),
+        clearExitDigitHistory: () => tradeEngine.clearGlobalExitDigitHistory(),
         /**
          * Pick a random digit between min and max (inclusive) and set it as the
          * active prediction override.
