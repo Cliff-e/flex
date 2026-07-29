@@ -20,6 +20,13 @@ export const stripNullish = obj => {
     return obj;
 };
 
+// Contract types that do NOT accept a barrier field.
+// DIGITODD and DIGITEVEN are parity contracts — the Deriv API rejects any
+// request that includes a `barrier` or `selected_tick` for these types.
+// TICKLOW / TICKHIGH use `selected_tick` instead of `barrier`.
+const NO_BARRIER_TYPES = ['DIGITODD', 'DIGITEVEN'];
+const NO_BARRIER_OR_SELECTED_TICK_TYPES = ['DIGITODD', 'DIGITEVEN', 'TICKLOW', 'TICKHIGH'];
+
 export const tradeOptionToProposal = (trade_option, purchase_reference) =>
     trade_option.contractTypes.map(type => {
         const proposal = {
@@ -39,12 +46,14 @@ export const tradeOptionToProposal = (trade_option, purchase_reference) =>
             // with InputValidationFailed: "Properties not allowed: symbol"
             underlying_symbol: trade_option.symbol,
         };
-        if (trade_option.prediction !== undefined) {
+        // DIGITODD and DIGITEVEN are barrier-free parity contracts — never set
+        // selected_tick or barrier for them. TICKHIGH/TICKLOW use selected_tick only.
+        if (!NO_BARRIER_OR_SELECTED_TICK_TYPES.includes(type) && trade_option.prediction !== undefined) {
             proposal.selected_tick = trade_option.prediction;
         }
-        if (!['TICKLOW', 'TICKHIGH'].includes(type) && trade_option.prediction !== undefined) {
+        if (!NO_BARRIER_OR_SELECTED_TICK_TYPES.includes(type) && trade_option.prediction !== undefined) {
             proposal.barrier = trade_option.prediction;
-        } else if (trade_option.barrierOffset !== undefined) {
+        } else if (!NO_BARRIER_TYPES.includes(type) && trade_option.barrierOffset !== undefined) {
             proposal.barrier = trade_option.barrierOffset;
         }
         if (trade_option.secondBarrierOffset !== undefined) {
@@ -75,12 +84,14 @@ export const tradeOptionToBuy = (contract_type, trade_option) => {
             symbol: trade_option.symbol,
         },
     };
-    if (trade_option.prediction !== undefined) {
+    // DIGITODD and DIGITEVEN are barrier-free parity contracts — never set
+    // selected_tick or barrier for them. TICKHIGH/TICKLOW use selected_tick only.
+    if (!NO_BARRIER_OR_SELECTED_TICK_TYPES.includes(contract_type) && trade_option.prediction !== undefined) {
         buy.parameters.selected_tick = trade_option.prediction;
     }
-    if (!['TICKLOW', 'TICKHIGH'].includes(contract_type) && trade_option.prediction !== undefined) {
+    if (!NO_BARRIER_OR_SELECTED_TICK_TYPES.includes(contract_type) && trade_option.prediction !== undefined) {
         buy.parameters.barrier = trade_option.prediction;
-    } else if (trade_option.barrierOffset !== undefined) {
+    } else if (!NO_BARRIER_TYPES.includes(contract_type) && trade_option.barrierOffset !== undefined) {
         buy.parameters.barrier = trade_option.barrierOffset;
     }
     if (trade_option.secondBarrierOffset !== undefined) {
