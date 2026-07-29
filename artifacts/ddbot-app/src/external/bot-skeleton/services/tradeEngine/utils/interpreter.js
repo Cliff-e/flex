@@ -143,11 +143,6 @@ const Interpreter = () => {
         );
         js_interpreter.setProperty(
             pseudo_bot_interface,
-            'storeExitDigit',
-            createAsync(js_interpreter, bot_interface.storeExitDigit)
-        );
-        js_interpreter.setProperty(
-            pseudo_bot_interface,
             'getExitDigitList',
             createAsync(js_interpreter, bot_interface.getExitDigitList)
         );
@@ -155,6 +150,21 @@ const Interpreter = () => {
             pseudo_bot_interface,
             'getExitDigitAt',
             createAsync(js_interpreter, bot_interface.getExitDigitAt)
+        );
+        js_interpreter.setProperty(
+            pseudo_bot_interface,
+            'getLastExitDigit',
+            createAsync(js_interpreter, bot_interface.getLastExitDigit)
+        );
+        js_interpreter.setProperty(
+            pseudo_bot_interface,
+            'getExitDigitCount',
+            createAsync(js_interpreter, bot_interface.getExitDigitCount)
+        );
+        js_interpreter.setProperty(
+            pseudo_bot_interface,
+            'clearExitDigitHistory',
+            createAsync(js_interpreter, bot_interface.clearExitDigitHistory)
         );
         js_interpreter.setProperty(scope, 'Bot', pseudo_bot_interface);
         js_interpreter.setProperty(

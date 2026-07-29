@@ -7,6 +7,7 @@ import { contract_stages, TContractStage } from '@/constants/contract-stage';
 import { run_panel } from '@/constants/run-panel';
 import { ErrorTypes, MessageTypes, observer, unrecoverable_errors } from '@/external/bot-skeleton';
 import { getSelectedTradeType } from '@/external/bot-skeleton/scratch/utils';
+import { resetExitDigitHistory } from '@/bot/sharedExitDigitHistory';
 // import { journalError, switch_account_notification } from '@/utils/bot-notifications';
 import GTM from '@/utils/gtm';
 import { helpers } from '@/utils/store-helpers';
@@ -522,6 +523,9 @@ export default class RunPanelStore {
     };
 
     onBotRunningEvent = () => {
+        // Clear the rolling exit-digit history at the start of every bot run
+        // so each session begins with a clean slate.
+        resetExitDigitHistory();
         this.setHasOpenContract(true);
 
         // prevent new version update

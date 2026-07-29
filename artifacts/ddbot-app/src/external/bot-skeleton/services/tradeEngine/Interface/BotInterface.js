@@ -1,5 +1,11 @@
 import { observer as globalObserver } from '../../../utils/observer';
 import { createDetails } from '../utils/helpers';
+import {
+    getExitDigitHistory,
+    getLastExitDigit,
+    getExitDigitCount,
+    clearExitDigitHistory,
+} from '../../../../../bot/sharedExitDigitHistory';
 
 const getBotInterface = tradeEngine => {
     const getDetail = i => createDetails(tradeEngine.data.contract)[i];
@@ -75,11 +81,34 @@ const getBotInterface = tradeEngine => {
          * Called by the Purchase Current Contract Blockly block.
          */
         purchaseCurrentContract: () => tradeEngine.purchaseCurrentContract(),
-        getExitDigitList: () => tradeEngine.getGlobalExitDigitList(),
-        getExitDigitAt: index => tradeEngine.getGlobalExitDigitAt(index),
-        getExitDigitCount: () => tradeEngine.getGlobalExitDigitCount(),
-        getLastExitDigit: () => tradeEngine.getGlobalExitDigitAt(1),
-        clearExitDigitHistory: () => tradeEngine.clearGlobalExitDigitHistory(),
+        /**
+         * Return all exit digits in the global rolling history as a plain
+         * number array (oldest → newest).  No "Store" block required —
+         * the runtime records every settled contract automatically.
+         */
+        getExitDigitList: () => getExitDigitHistory().map(e => e.digit),
+        /**
+         * Return the exit digit at position index (1 = most recent).
+         * Returns null when the position is out of range.
+         * @param {number} index  1-based (1 = most recent)
+         */
+        getExitDigitAt: index => {
+            const h = getExitDigitHistory();
+            const pos = h.length - Math.floor(Number(index));
+            return pos >= 0 && pos < h.length ? h[pos].digit : null;
+        },
+        /**
+         * Return the digit of the most recently settled contract, or null.
+         */
+        getLastExitDigit: () => getLastExitDigit(),
+        /**
+         * Return the number of digits currently in the rolling history (0–25).
+         */
+        getExitDigitCount: () => getExitDigitCount(),
+        /**
+         * Wipe the rolling exit-digit history immediately.
+         */
+        clearExitDigitHistory: () => clearExitDigitHistory(),
         /**
          * Pick a random digit between min and max (inclusive) and set it as the
          * active prediction override.

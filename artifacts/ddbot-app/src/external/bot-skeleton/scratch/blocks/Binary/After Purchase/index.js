@@ -1,5 +1,6 @@
 import './after_purchase';
 import './check_result';
+import './clear_exit_digit_history';
 import './get_exit_digit_at';
 import './get_exit_digit_count';
 import './get_exit_digit_list';

@@ -4,8 +4,9 @@ import { modifyContextMenu } from '../../../utils';
 /**
  * get_last_exit_digit — value block
  *
- * Returns the most recent digit from the global exit-digit history service.
- * This is a convenience shortcut for "Exit digit at position 1".
+ * Returns the most recent exit digit from the global rolling history.
+ * No "Store" block needed — the runtime records every settled contract
+ * automatically.
  */
 window.Blockly.Blocks.get_last_exit_digit = {
     init() {
@@ -20,8 +21,8 @@ window.Blockly.Blocks.get_last_exit_digit = {
             colourSecondary: window.Blockly.Colours.Base.colourSecondary,
             colourTertiary: window.Blockly.Colours.Base.colourTertiary,
             tooltip: localize(
-                'Returns the last digit (0–9) of the most recently settled contract. ' +
-                'Reads from the global exit digit history — no "Store exit digit" block needed.'
+                'Returns the exit digit of the most recently completed contract. ' +
+                'Returns null when no trades have settled yet this session.'
             ),
             category: window.Blockly.Categories.After_Purchase,
         };
@@ -30,8 +31,7 @@ window.Blockly.Blocks.get_last_exit_digit = {
         return {
             display_name: localize('Last exit digit'),
             description: localize(
-                'Returns the exit digit of the most recently completed trade ' +
-                'from the automatic global history.'
+                'Reads the last digit of the exit tick from the most recently settled contract.'
             ),
         };
     },

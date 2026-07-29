@@ -4,8 +4,8 @@ import { modifyContextMenu } from '../../../utils';
 /**
  * get_exit_digit_count — value block
  *
- * Returns the number of digits currently stored in the global exit-digit history.
- * Useful for guarding strategy logic until enough history has accumulated.
+ * Returns how many digits are currently stored in the global rolling history
+ * (0 – 25).
  */
 window.Blockly.Blocks.get_exit_digit_count = {
     init() {
@@ -20,8 +20,8 @@ window.Blockly.Blocks.get_exit_digit_count = {
             colourSecondary: window.Blockly.Colours.Base.colourSecondary,
             colourTertiary: window.Blockly.Colours.Base.colourTertiary,
             tooltip: localize(
-                'Returns the number of exit digits currently stored in the global history (0–25). ' +
-                'Use this to wait until enough history has built up before applying a strategy.'
+                'Returns the number of exit digits currently in the rolling history (0 – 25). ' +
+                'Useful for guarding blocks that need a minimum sample size.'
             ),
             category: window.Blockly.Categories.After_Purchase,
         };
@@ -29,10 +29,7 @@ window.Blockly.Blocks.get_exit_digit_count = {
     meta() {
         return {
             display_name: localize('Exit digit count'),
-            description: localize(
-                'Returns how many digits are in the global exit digit history. ' +
-                'Maximum is 25; the oldest digit is dropped automatically once the buffer is full.'
-            ),
+            description: localize('Returns how many exit digits are stored in the rolling history.'),
         };
     },
     customContextMenu(menu) {

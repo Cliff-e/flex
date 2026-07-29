@@ -78,6 +78,28 @@ export function getLastNDigits(n: number): number[] {
  * to derive an exit digit from a tick value should call this function rather
  * than re-implementing the logic locally.
  */
+/**
+ * Return the digit value of the most recently recorded entry, or null when
+ * the history is empty.
+ */
+export function getLastExitDigit(): number | null {
+    return _history.length ? _history[_history.length - 1].digit : null;
+}
+
+/**
+ * Return the number of entries currently stored in the history.
+ */
+export function getExitDigitCount(): number {
+    return _history.length;
+}
+
+/**
+ * Alias for resetExitDigitHistory — exposed as a Blockly-callable action.
+ */
+export function clearExitDigitHistory(): void {
+    _history = [];
+}
+
 export function extractLastDigit(raw: string | number): number {
     return Number(String(raw).replace('.', '').slice(-1));
 }
