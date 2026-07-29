@@ -1,0 +1,55 @@
+Investigate and fix the **"undefined is not a function"** error that occurs when **Bulk Purchase** is enabled and the user selects **Yes** to execute more than one trade.
+
+### Current Behaviour
+
+* Single trade execution works correctly.
+* Recovery logic works correctly.
+* Odd/Even recovery barrier issue has already been resolved.
+* The error only appears when Bulk Purchase attempts to execute multiple trades.
+
+### Your Task
+
+Perform a root-cause investigation instead of applying a workaround.
+
+### Investigation Checklist
+
+1. Trace the complete Bulk Purchase execution flow from the Blocks Menu to the trading engine.
+2. Identify exactly where `undefined is not a function` is thrown.
+3. Produce the full stack trace and determine:
+
+   * which object is undefined,
+   * which function is being called,
+   * why it is undefined only during multi-trade execution.
+4. Compare the execution path for:
+
+   * Single Purchase (working)
+   * Bulk Purchase (failing)
+5. Verify whether:
+
+   * callbacks are being lost,
+   * `this` context is incorrect,
+   * an async function is not awaited,
+   * a promise is resolving to `undefined`,
+   * a cloned trade object is missing methods,
+   * recovery or martingale state is overwriting required functions,
+   * the loop executing bulk trades is using stale or incomplete state.
+
+### Requirements
+
+* Do **not** rewrite the trading engine.
+* Do **not** refactor unrelated modules.
+* Do **not** break the existing recovery logic or barrier fixes.
+* Preserve all current Blockly behaviour.
+* Apply the smallest targeted fix necessary.
+
+### Validation
+
+Before finishing, verify:
+
+* Single Purchase still works.
+* Bulk Purchase executes 2, 3, 5, and 10 consecutive trades without errors.
+* Recovery still functions correctly during bulk execution.
+* Journal, Transactions, Summary, and statistics continue updating correctly.
+* No regressions are introduced.
+
+If the root cause is in shared helper functions or execution state, fix it at the source instead of adding defensive checks that only hide the error.
