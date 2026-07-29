@@ -15,6 +15,7 @@ const getBotInterface = tradeEngine => {
         start: (...args) => tradeEngine.start(...args),
         stop: (...args) => tradeEngine.stop(...args),
         purchase: contract_type => tradeEngine.purchase(contract_type),
+        purchaseMultiple: (contract_type, count) => tradeEngine.purchaseMultiple(contract_type, count),
         /**
          * Execute a hedge trade — automatically purchases the opposite contract
          * of whatever is currently selected (via Trade Definition or active
