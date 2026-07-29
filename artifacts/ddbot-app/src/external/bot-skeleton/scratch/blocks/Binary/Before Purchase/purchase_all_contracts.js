@@ -1,25 +1,32 @@
 import { localize } from '@deriv-com/translations';
-import { getContractTypeOptions } from '../../../shared';
 import { excludeOptionFromContextMenu, modifyContextMenu } from '../../../utils';
+import { ALL_CONTRACT_TYPE_OPTIONS } from './contract-registry';
 
 /**
- * Purchase (All Contract Types)
+ * Purchase (Advanced) block — block type id: `purchase_all_contracts`
  *
- * Identical behaviour to the standard `purchase` block — dynamic dropdown,
- * same onchange/populatePurchaseList logic, same Bot.purchase() generator.
+ * Adds two fields on top of the standard Purchase block:
+ *   • Allow Bulk Purchase (Yes / No)
+ *   • No. of Trades       (number, active only when Bulk = Yes)
  *
- * The only difference is that it always passes 'both' as the contract_type
- * filter to getContractTypeOptions, exposing every contract available for the
- * current trade type rather than only the one selected in Trade Definition.
- * This lets users build strategies that explicitly buy any supported contract.
+ * The contract dropdown uses the same shared registry as every other
+ * Purchase-related block and is never filtered by Trade Parameters.
  *
- * No purchase logic is duplicated — this block shares the same execution path.
+ * Backward compatibility
+ * ──────────────────────
+ * Old XML that only contains a PURCHASE_LIST field will load correctly —
+ * ALLOW_BULK defaults to 'no' and NUM_TRADES defaults to 1, preserving the
+ * original single-purchase behaviour.
+ *
+ * Old XML with a PURCHASE_LIST value that no longer exists in the registry
+ * (e.g. an empty string or "NOT_AVAILABLE") will fall back to the first
+ * registry entry ("Disable (Use Runtime)") because DISABLE is listed first.
  */
 window.Blockly.Blocks.purchase_all_contracts = {
     init() {
         this.jsonInit(this.definition());
 
-        // One purchase leaf per branch — same constraint as the standard block.
+        // Only one purchase leaf per statement stack.
         this.setNextStatement(false);
     },
     definition() {
@@ -29,67 +36,56 @@ window.Blockly.Blocks.purchase_all_contracts = {
                 {
                     type: 'field_dropdown',
                     name: 'PURCHASE_LIST',
-                    options: [['', '']],
+                    options: ALL_CONTRACT_TYPE_OPTIONS.map(([label, value]) => [localize(label), value]),
+                },
+            ],
+            message1: localize('Allow Bulk Purchase: {{ allow }}', { allow: '%1' }),
+            args1: [
+                {
+                    type: 'field_dropdown',
+                    name: 'ALLOW_BULK',
+                    options: [
+                        [localize('No'),  'no'],
+                        [localize('Yes'), 'yes'],
+                    ],
+                },
+            ],
+            message2: localize('No. of Trades: {{ num }}', { num: '%1' }),
+            args2: [
+                {
+                    type: 'field_number',
+                    name: 'NUM_TRADES',
+                    value: 1,
+                    min: 1,
+                    max: 100,
+                    precision: 1,
                 },
             ],
             previousStatement: null,
             colour: window.Blockly.Colours.Special1.colour,
             colourSecondary: window.Blockly.Colours.Special1.colourSecondary,
             colourTertiary: window.Blockly.Colours.Special1.colourTertiary,
-            tooltip: localize('This block purchases any available contract type for the current trade type.'),
+            tooltip: localize(
+                'Advanced purchase block. "Disable (Use Runtime)" defers to the Contract Changer ' +
+                'block or Trade Parameters. Any other selection overrides the contract for this ' +
+                'purchase only. Enable Bulk Purchase to execute the same contract multiple times ' +
+                'in one cycle. The full contract list is always shown regardless of Trade Parameters.'
+            ),
             category: window.Blockly.Categories.Before_Purchase,
         };
     },
     meta() {
         return {
-            display_name: localize('Purchase (All Contract Types)'),
+            display_name: localize('Purchase (Advanced)'),
             description: localize(
-                'Use this block to purchase the specific contract you want. You may add multiple Purchase blocks together with conditional blocks to define your purchase conditions. This block can only be used within the Purchase conditions block.'
+                'Advanced purchase block with optional bulk execution. ' +
+                '"Disable (Use Runtime)" uses the active contract from Trade Parameters or the ' +
+                'Contract Changer block. Enable "Allow Bulk Purchase" and set "No. of Trades" to ' +
+                'buy the same contract multiple times per cycle. The complete contract list is ' +
+                'always available — never filtered by Trade Parameters.'
             ),
-            key_words: localize('buy, all, contracts, purchase'),
+            key_words: localize('buy, all, contracts, purchase, bulk, advanced, rise, fall, even, odd, over, under'),
         };
-    },
-    // Identical to purchase.js — single source of truth is getContractTypeOptions.
-    onchange(event) {
-        if (!this.workspace || window.Blockly.derivWorkspace.isFlyoutVisible || this.workspace.isDragging()) {
-            return;
-        }
-
-        if (event.type === window.Blockly.Events.BLOCK_CREATE && event.ids.includes(this.id)) {
-            this.populatePurchaseList(event);
-        } else if (event.type === window.Blockly.Events.BLOCK_CHANGE) {
-            if (event.name === 'TYPE_LIST' || event.name === 'TRADETYPE_LIST') {
-                this.populatePurchaseList(event);
-            }
-        } else if (event.type === window.Blockly.Events.BLOCK_DRAG && !event.isStart && event.blockId === this.id) {
-            const purchase_type_list = this.getField('PURCHASE_LIST');
-            const purchase_options = purchase_type_list.menuGenerator_; // eslint-disable-line
-
-            if (purchase_options[0][0] === '') {
-                this.populatePurchaseList(event);
-            }
-        }
-    },
-    // Always fetches 'both' sides so all contract types are available.
-    populatePurchaseList(event) {
-        const trade_definition_block = this.workspace.getTradeDefinitionBlock();
-
-        if (trade_definition_block) {
-            const trade_type_block = trade_definition_block.getChildByType('trade_definition_tradetype');
-            const trade_type = trade_type_block.getFieldValue('TRADETYPE_LIST');
-            const purchase_type_list = this.getField('PURCHASE_LIST');
-            const purchase_type = purchase_type_list.getValue();
-
-            // Pass 'both' to retrieve every contract type for this trade type,
-            // not just the one currently selected in the Contract Type block.
-            const contract_type_options = getContractTypeOptions('both', trade_type);
-
-            purchase_type_list.updateOptions(contract_type_options, {
-                default_value: purchase_type,
-                event_group: event.group,
-                should_pretend_empty: true,
-            });
-        }
     },
     customContextMenu(menu) {
         const menu_items = [localize('Enable Block'), localize('Disable Block')];
@@ -99,8 +95,15 @@ window.Blockly.Blocks.purchase_all_contracts = {
     restricted_parents: ['before_purchase'],
 };
 
-// Reuses Bot.purchase() — identical generator to the standard purchase block.
 window.Blockly.JavaScript.javascriptGenerator.forBlock.purchase_all_contracts = block => {
     const purchaseList = block.getFieldValue('PURCHASE_LIST');
+    const allowBulk   = block.getFieldValue('ALLOW_BULK');
+    const numTrades   = Math.max(1, parseInt(block.getFieldValue('NUM_TRADES'), 10) || 1);
+
+    if (allowBulk === 'yes' && numTrades > 1) {
+        // Emit N sequential purchase calls — the interpreter awaits each one.
+        return Array.from({ length: numTrades }, () => `Bot.purchase('${purchaseList}');`).join('\n') + '\n';
+    }
+
     return `Bot.purchase('${purchaseList}');\n`;
 };

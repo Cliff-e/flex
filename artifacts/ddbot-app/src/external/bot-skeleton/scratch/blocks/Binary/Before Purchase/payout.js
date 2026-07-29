@@ -1,6 +1,15 @@
 import { localize } from '@deriv-com/translations';
 import { modifyContextMenu } from '../../../utils';
+import { CONTRACT_TYPE_OPTIONS_NO_DISABLE } from './contract-registry';
 
+/**
+ * Payout block.
+ *
+ * Returns the potential payout for the selected contract type.  Uses the
+ * shared contract registry — static, never filtered by Trade Parameters.
+ * DISABLE is excluded because "payout of the runtime contract" is not a
+ * meaningful query at the Blockly level.
+ */
 window.Blockly.Blocks.payout = {
     init() {
         this.jsonInit(this.definition());
@@ -12,7 +21,7 @@ window.Blockly.Blocks.payout = {
                 {
                     type: 'field_dropdown',
                     name: 'PURCHASE_LIST',
-                    options: [['', '']],
+                    options: CONTRACT_TYPE_OPTIONS_NO_DISABLE.map(([label, value]) => [localize(label), value]),
                 },
             ],
             output: 'Number',
@@ -20,7 +29,7 @@ window.Blockly.Blocks.payout = {
             colour: window.Blockly.Colours.Base.colour,
             colourSecondary: window.Blockly.Colours.Base.colourSecondary,
             colourTertiary: window.Blockly.Colours.Base.colourTertiary,
-            tooltip: localize('This block returns the potential payout for the selected trade type'),
+            tooltip: localize('Returns the potential payout for the selected contract type.'),
             category: window.Blockly.Categories.Before_Purchase,
         };
     },
@@ -28,21 +37,18 @@ window.Blockly.Blocks.payout = {
         return {
             display_name: localize('Potential payout'),
             description: localize(
-                'This block returns the potential payout for the selected trade type. This block can be used only in the "Purchase conditions" root block.'
+                'Returns the potential payout for the selected contract type. ' +
+                'Can only be used inside the Purchase conditions block.'
             ),
         };
     },
     customContextMenu(menu) {
         modifyContextMenu(menu);
     },
-    onchange: window.Blockly.Blocks.purchase.onchange,
-    populatePurchaseList: window.Blockly.Blocks.purchase.populatePurchaseList,
-    enforceLimitations: window.Blockly.Blocks.purchase.enforceLimitations,
 };
 
 window.Blockly.JavaScript.javascriptGenerator.forBlock.payout = block => {
     const purchaseList = block.getFieldValue('PURCHASE_LIST');
-
     const code = `Bot.getPayout('${purchaseList}')`;
     return [code, window.Blockly.JavaScript.javascriptGenerator.ORDER_ATOMIC];
 };
