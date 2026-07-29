@@ -1,5 +1,6 @@
 import { localize } from '@deriv-com/translations';
 import { modifyContextMenu } from '../../../utils';
+import { ALL_CONTRACT_TYPE_OPTIONS } from '../Before Purchase/contract-registry';
 
 /**
  * Recovery Config block — atomically sets contract type, prediction, and symbol
@@ -21,17 +22,16 @@ window.Blockly.Blocks.recovery_config = {
                 {
                     type: 'field_dropdown',
                     name: 'CONTRACT',
+                    // Recovery-specific sentinel values prepended; the full
+                    // contract list comes from the shared registry so this
+                    // block never drifts out of sync with the rest of the
+                    // purchase system.  DISABLE is already in ALL_CONTRACT_TYPE_OPTIONS
+                    // so it is filtered out to avoid a duplicate entry.
                     options: [
                         [localize('(unchanged)'), 'KEEP'],
-                        [localize('Disable'),     'DISABLE'],
-                        [localize('Rise'),        'CALL'],
-                        [localize('Fall'),        'PUT'],
-                        [localize('Even'),        'DIGITEVEN'],
-                        [localize('Odd'),         'DIGITODD'],
-                        [localize('Matches'),     'DIGITMATCH'],
-                        [localize('Differs'),     'DIGITDIFF'],
-                        [localize('Over'),        'DIGITOVER'],
-                        [localize('Under'),       'DIGITUNDER'],
+                        ...ALL_CONTRACT_TYPE_OPTIONS
+                            .filter(([, value]) => value !== 'DISABLE')
+                            .map(([label, value]) => [localize(label), value]),
                     ],
                 },
                 {

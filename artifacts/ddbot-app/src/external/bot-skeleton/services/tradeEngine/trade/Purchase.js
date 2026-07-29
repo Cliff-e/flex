@@ -307,6 +307,143 @@ export default Engine =>
             return result;
         }
 
+        /**
+         * Execute the same contract type N times in one before_purchase phase.
+         *
+         * Design constraints:
+         *   • The scope guard (BEFORE_PURCHASE) is checked once at entry — it is
+         *     never bypassed or weakened.
+         *   • The _purchaseInProgress flag is held for the entire batch so no
+         *     concurrent purchase() or hedge() call can slip in between buys.
+         *   • purchaseSuccessful() (which transitions scope → DURING_PURCHASE) is
+         *     dispatched only after the final buy in the batch.
+         *   • The effective contract type is resolved once from the priority chain
+         *     (explicit type > activeContractOverride > Trade Parameters).
+         *   • Between intermediate buys, renewProposalsOnPurchase() is called and
+         *     this method waits for proposalsReady before selecting the next proposal.
+         *   • When count === 1 the method delegates to the standard purchase() path
+         *     so non-bulk bots are completely unaffected.
+         *
+         * @param {string} contract_type  - Raw value from the Blockly dropdown
+         *                                  (e.g. 'CALL', 'PUT', 'DISABLE').
+         * @param {number} count          - Number of contracts to buy (≥ 1).
+         * @returns {Promise<void>}
+         */
+        async purchaseMultiple(contract_type, count) {
+            const totalBuys = Math.max(1, Math.floor(count) || 1);
+
+            // Single-buy: delegate entirely to the standard purchase() pipeline
+            // (timeMachineEnabled / recoverFromError support is preserved).
+            if (totalBuys === 1) {
+                return this.purchase(contract_type);
+            }
+
+            // ── Guards (same semantics as purchase()) ──────────────────────────
+            if (this.store.getState().scope !== BEFORE_PURCHASE) {
+                return;
+            }
+            if (this._purchaseInProgress) {
+                return;
+            }
+            this._purchaseInProgress = true;
+
+            // ── Resolve effective contract type once ───────────────────────────
+            const effective_type =
+                contract_type === 'DISABLE'
+                    ? (this.activeContractOverride ?? this.tradeOptions?.contractTypes?.[0] ?? null)
+                    : contract_type;
+
+            // eslint-disable-next-line no-console
+            console.log(
+                `[VH] Purchase.purchaseMultiple() ENTER | count=${totalBuys}` +
+                ` | effective_type=${effective_type}` +
+                ` | scope=${this.store.getState().scope}`
+            );
+
+            /**
+             * Resolves once store.proposalsReady is true.
+             * Used between intermediate bulk buys to ensure a fresh proposal is
+             * available before the next selectProposal() call.
+             */
+            const waitForProposals = () =>
+                new Promise(resolve => {
+                    if (this.store.getState().proposalsReady) { resolve(); return; }
+                    const unsub = this.store.subscribe(() => {
+                        if (this.store.getState().proposalsReady) { unsub(); resolve(); }
+                    });
+                });
+
+            // ── Batch loop ─────────────────────────────────────────────────────
+            for (let i = 0; i < totalBuys; i++) {
+                const isLast = i === totalBuys - 1;
+
+                if (this.is_proposal_subscription_required) {
+                    const { id, askPrice } = this.selectProposal(effective_type);
+
+                    this.isSold = false;
+                    contractStatus({ id: 'contract.purchase_sent', data: askPrice });
+
+                    // eslint-disable-next-line no-await-in-loop
+                    const response = await doUntilDone(() =>
+                        api_base.api.send({ buy: id, price: askPrice })
+                    );
+                    const { buy } = response;
+
+                    contractStatus({ id: 'contract.purchase_received', data: buy.transaction_id, buy });
+                    this.contractId = buy.contract_id;
+                    log(LogTypes.PURCHASE, { longcode: buy.longcode, transaction_id: buy.transaction_id });
+                    info({
+                        accountID: this.accountInfo.loginid,
+                        totalRuns: this.updateAndReturnTotalRuns(),
+                        transaction_ids: { buy: buy.transaction_id },
+                        contract_type: effective_type,
+                        buy_price: buy.buy_price,
+                    });
+
+                    if (isLast) {
+                        this._purchaseInProgress = false;
+                        delayIndex = 0;
+                        this.store.dispatch(purchaseSuccessful());
+                        this.renewProposalsOnPurchase();
+                    } else {
+                        // Renew subscriptions and wait for fresh proposals before
+                        // the next selectProposal() call in the loop.
+                        this.renewProposalsOnPurchase();
+                        // eslint-disable-next-line no-await-in-loop
+                        await waitForProposals();
+                    }
+                } else {
+                    const trade_option = tradeOptionToBuy(effective_type, this.tradeOptions);
+
+                    this.isSold = false;
+                    contractStatus({ id: 'contract.purchase_sent', data: this.tradeOptions.amount });
+
+                    // eslint-disable-next-line no-await-in-loop
+                    const response = await doUntilDone(() =>
+                        api_base.api.send(trade_option)
+                    );
+                    const { buy } = response;
+
+                    contractStatus({ id: 'contract.purchase_received', data: buy.transaction_id, buy });
+                    this.contractId = buy.contract_id;
+                    log(LogTypes.PURCHASE, { longcode: buy.longcode, transaction_id: buy.transaction_id });
+                    info({
+                        accountID: this.accountInfo.loginid,
+                        totalRuns: this.updateAndReturnTotalRuns(),
+                        transaction_ids: { buy: buy.transaction_id },
+                        contract_type: effective_type,
+                        buy_price: buy.buy_price,
+                    });
+
+                    if (isLast) {
+                        this._purchaseInProgress = false;
+                        delayIndex = 0;
+                        this.store.dispatch(purchaseSuccessful());
+                    }
+                }
+            }
+        }
+
         getPurchaseReference = () => purchase_reference;
         regeneratePurchaseReference = () => {
             purchase_reference = getUUID();

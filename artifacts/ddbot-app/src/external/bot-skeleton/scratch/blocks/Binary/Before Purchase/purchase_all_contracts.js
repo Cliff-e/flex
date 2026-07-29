@@ -101,8 +101,12 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.purchase_all_contracts = 
     const numTrades   = Math.max(1, parseInt(block.getFieldValue('NUM_TRADES'), 10) || 1);
 
     if (allowBulk === 'yes' && numTrades > 1) {
-        // Emit N sequential purchase calls — the interpreter awaits each one.
-        return Array.from({ length: numTrades }, () => `Bot.purchase('${purchaseList}');`).join('\n') + '\n';
+        // Delegate to the engine-level bulk method which holds the scope guard
+        // open for the entire batch and only dispatches purchaseSuccessful()
+        // after the final buy — fixing the bug where only the first purchase
+        // executed because every subsequent Bot.purchase() call saw scope ===
+        // DURING_PURCHASE and returned early.
+        return `Bot.purchaseMultiple('${purchaseList}', ${numTrades});\n`;
     }
 
     return `Bot.purchase('${purchaseList}');\n`;
