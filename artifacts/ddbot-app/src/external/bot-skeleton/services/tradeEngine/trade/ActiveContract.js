@@ -1,5 +1,6 @@
 import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
 import { tradeOptionToProposal } from '../utils/helpers';
+import { notify } from '../utils/broadcast';
 import { OPPOSITE_CONTRACT_MAP } from './Purchase';
 
 /**
@@ -184,6 +185,8 @@ export default Engine =>
         setVirtualHookEnabled(enabled) {
             if (Boolean(enabled)) {
                 this.virtualHookRuntime.enable();
+                notify('notify-virtual-hook', 'Virtual Hook Enabled');
+                notify('notify-virtual-hook', 'Virtual Hook Authorized');
             } else {
                 this.virtualHookRuntime.disable();
             }

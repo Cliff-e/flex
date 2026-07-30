@@ -195,12 +195,27 @@ export const load = async ({
     }
 
     // Check if all block types in XML are allowed.
-    const has_invalid_blocks = Array.from(blockly_xml).some(block => {
-        const block_type = block.getAttribute('type');
-        return !Object.keys(window.Blockly.Blocks).includes(block_type);
-    });
-    if (has_invalid_blocks) {
-        return showInvalidStrategyError();
+    // Check if all block types in XML are allowed.
+    // Instead of hard-rejecting the whole file, strip unknown blocks and
+    // continue so that strategies saved from other versions or tools can
+    // still load their compatible blocks.
+    const registered_block_types = Object.keys(window.Blockly.Blocks);
+    const unknown_blocks = Array.from(blockly_xml).filter(
+        block => !registered_block_types.includes(block.getAttribute('type'))
+    );
+    if (unknown_blocks.length) {
+        const unknown_types = [...new Set(unknown_blocks.map(b => b.getAttribute('type')))];
+        // eslint-disable-next-line no-console
+        console.warn('[DBot] Removing unsupported block types from strategy:', unknown_types);
+        globalObserver.emit(
+            'ui.log.notify',
+            { message: `Removed unsupported block type(s): ${unknown_types.join(', ')}`, className: 'warn' }
+        );
+        unknown_blocks.forEach(b => b.parentNode?.removeChild(b));
+        // After removal, re-query to check that at least one block still exists.
+        if (!xml.querySelectorAll('block').length) {
+            return showInvalidStrategyError();
+        }
     }
 
     try {

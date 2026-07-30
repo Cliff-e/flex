@@ -94,7 +94,7 @@ export default Engine =>
                             if (error?.error?.code === 'ContractBuyValidationError') {
                                 this.data.proposals.push({
                                     ...error.error.echo_req,
-                                    ...error.echo_req.passthrough,
+                                    ...(error?.error?.echo_req?.passthrough ?? {}),
                                     error,
                                 });
 
