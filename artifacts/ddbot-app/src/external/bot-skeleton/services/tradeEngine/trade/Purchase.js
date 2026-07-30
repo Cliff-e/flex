@@ -105,12 +105,28 @@ export default Engine =>
             // activeContractOverride is read synchronously at the top of both this
             // method and _executeVirtualTrade — the comment is therefore correct
             // once this implementation exists.
-            if (this.virtualHookRuntime.isVirtualMode()) {
-                return this._executeVirtualTrade(effective_type).then(() => {
-                    // Virtual sequence complete — real mode is now active.
-                    // Clear the in-progress guard and re-enter purchase() so the
-                    // real trade flows through the normal proposal/buy path.
+            // ── Virtual Hook pre-trade filter ─────────────────────────────────
+            // When VH is enabled, observe live market ticks and count virtual
+            // outcomes before deciding whether to place a real trade.
+            //
+            // PROCEED  → real trade is allowed; fall through to the buy path.
+            // DISCARD  → conditions not met within max steps; drop this signal.
+            //
+            // The real purchase (if allowed) uses the stake already determined
+            // by the trading engine — vh_stake never modifies real trade sizing.
+            if (this.virtualHookRuntime.isEnabled()) {
+                return this._runVirtualFilter(effective_type).then(allowed => {
                     this._purchaseInProgress = false;
+                    if (!allowed) {
+                        // Signal discarded — VH conditions were not met.
+                        // Do NOT place any real trade for this signal.
+                        // eslint-disable-next-line no-console
+                        console.log('[VH] Signal DISCARDED — real trade skipped. Waiting for next signal.');
+                        return Promise.resolve();
+                    }
+                    // Signal approved — proceed to real purchase.
+                    // eslint-disable-next-line no-console
+                    console.log('[VH] Signal APPROVED — executing real trade.');
                     return this.purchase(contract_type);
                 });
             }
@@ -489,34 +505,37 @@ export default Engine =>
         }
 
         /**
-         * Run tick-based virtual simulations until isVirtualMode() returns false.
+         * Pre-trade filter — evaluates live market ticks to decide whether a
+         * real trade should be placed or discarded.
          *
-         * Each round:
-         *   1. Waits for the next live market tick.
-         *   2. Reads the last digit of that tick's price.
-         *   3. Calls VirtualHookRuntime.determineOutcome() with the contract type,
-         *      last digit, and active prediction to derive a simulated win/loss.
-         *   4. Records the result via onVirtualTradeComplete(), which advances the
-         *      virtual counter and automatically transitions to real mode when the
-         *      configured limit is reached.
+         * Flow per signal:
+         *   1. startSignal() resets per-signal counters.
+         *   2. For each live tick:
+         *        a. Wait for a distinct tick.
+         *        b. Simulate the contract outcome (no API buy — zero real money).
+         *        c. Call recordTick(won) → PROCEED | DISCARD | CONTINUE.
+         *   3. Return true  (PROCEED) → caller executes the real trade.
+         *      Return false (DISCARD) → caller drops this signal entirely.
          *
-         * No Deriv API buy is issued during virtual rounds — zero real money is
-         * spent.  The result is purely derived from live tick data.
+         * The real purchase that follows uses the stake already determined by the
+         * trading engine.  vh_stake never influences real trade sizing.
          *
          * @param {string} contract_type  Effective contract type (already resolved).
-         * @returns {Promise<void>}       Resolves when the virtual sequence ends.
+         * @returns {Promise<boolean>}    true = execute real trade, false = drop signal.
          */
-        async _executeVirtualTrade(contract_type) {
+        async _runVirtualFilter(contract_type) {
+            this.virtualHookRuntime.startSignal();
             // eslint-disable-next-line no-console
             console.log(
-                `[VH] _executeVirtualTrade() START | contractType=${contract_type}` +
-                ` | round=${this.virtualHookRuntime.virtualTradeCounter + 1}` +
-                `/${this.virtualHookRuntime.virtualTradeLimit}`
+                `[VH] _runVirtualFilter() START | contractType=${contract_type}` +
+                ` | maxSteps=${this.virtualHookRuntime.maxSteps}` +
+                ` | minWins=${this.virtualHookRuntime.minWins}`
             );
 
-            while (this.virtualHookRuntime.isVirtualMode()) {
-                // Wait for the next live tick so consecutive rounds observe
-                // distinct market data.
+            let step = 0;
+            // eslint-disable-next-line no-constant-condition
+            for (;;) {
+                // Wait for a distinct market tick before sampling.
                 // eslint-disable-next-line no-await-in-loop
                 await this._waitForNextTick();
 
@@ -525,38 +544,41 @@ export default Engine =>
                 // eslint-disable-next-line no-await-in-loop
                 const lastDigit = await this.getLastDigit();
 
-                // Resolve the active prediction: override takes precedence over
-                // the Trade Parameters prediction (same priority as real trades).
+                // Resolve the active prediction (same priority as real trades).
                 const prediction =
                     this.activePredictionOverride !== null &&
                     this.activePredictionOverride !== undefined
                         ? this.activePredictionOverride
                         : (this.tradeOptions?.prediction ?? null);
 
-                // Simulate the contract outcome using the shared pure function.
+                // Simulate the contract outcome — pure tick-based, no API call.
                 const won = VirtualHookRuntime.determineOutcome(contract_type, lastDigit, prediction);
+
+                step++;
+                const result = this.virtualHookRuntime.recordTick(won);
 
                 // eslint-disable-next-line no-console
                 console.log(
-                    `[VH] Virtual round ${this.virtualHookRuntime.virtualTradeCounter + 1}` +
-                    `/${this.virtualHookRuntime.virtualTradeLimit}` +
+                    `[VH] Step ${step}/${this.virtualHookRuntime.maxSteps}` +
                     ` | contractType=${contract_type}` +
                     ` | lastDigit=${lastDigit}` +
                     ` | prediction=${prediction}` +
                     ` | won=${won}` +
-                    ` | phase=${this.virtualHookRuntime.currentPhase}`
+                    ` | result=${result}`
                 );
 
-                // Record the result.  This advances the counter and transitions
-                // to real mode automatically when the limit is reached.
-                this.virtualHookRuntime.onVirtualTradeComplete(won);
+                if (result === 'PROCEED') {
+                    // eslint-disable-next-line no-console
+                    console.log(`[VH] PROCEED after ${step} steps — real trade authorized.`);
+                    return true;
+                }
+                if (result === 'DISCARD') {
+                    // eslint-disable-next-line no-console
+                    console.log(`[VH] DISCARD after ${step} steps — signal dropped.`);
+                    return false;
+                }
+                // 'CONTINUE' — keep observing
             }
-
-            // eslint-disable-next-line no-console
-            console.log(
-                `[VH] _executeVirtualTrade() COMPLETE | virtualHistory=${JSON.stringify(this.virtualHookRuntime.virtualHistory)}` +
-                ` | switching to real trade mode.`
-            );
         }
 
         getPurchaseReference = () => purchase_reference;

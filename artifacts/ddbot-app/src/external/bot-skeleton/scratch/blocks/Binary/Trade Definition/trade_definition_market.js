@@ -38,24 +38,34 @@ window.Blockly.Blocks.trade_definition_market = {
                     class: 'blocklyCheckbox',
                 },
             ],
-            message2: localize('No. of Virtual losses {{ num }}', { num: '%1' }),
+            message2: localize('Max Steps {{ num }}', { num: '%1' }),
             args2: [
                 {
                     type: 'field_number',
                     name: 'VH_VIRTUAL_TRADES',
+                    value: 5,
+                    min: 1,
+                    precision: 1,
+                },
+            ],
+            message3: localize('Min Wins Required {{ num }}', { num: '%1' }),
+            args3: [
+                {
+                    type: 'field_number',
+                    name: 'VH_REAL_WINS',
                     value: 3,
                     min: 1,
                     precision: 1,
                 },
             ],
-            message3: localize('No. of Wins on Real Trades {{ num }}', { num: '%1' }),
-            args3: [
+            message4: localize('Virtual Stake {{ num }}', { num: '%1' }),
+            args4: [
                 {
                     type: 'field_number',
-                    name: 'VH_REAL_WINS',
-                    value: 1,
-                    min: 1,
-                    precision: 1,
+                    name: 'VH_STAKE',
+                    value: 1.0,
+                    min: 0,
+                    precision: 0.01,
                 },
             ],
             colour: window.Blockly.Colours.Special1.colour,
@@ -67,6 +77,46 @@ window.Blockly.Blocks.trade_definition_market = {
 
         this.setMovable(false);
         this.setDeletable(false);
+    },
+    /**
+     * Serialize Virtual Hook settings into a <mutation> XML element.
+     * This prevents "XML file contains unsupported elements" errors when loading
+     * bots that were saved with VH settings, and ensures all four VH attributes
+     * are persisted even if Blockly's standard field serialization changes.
+     *
+     * Saved attributes: vh_enabled, vh_max_steps, vh_min_wins, vh_stake
+     */
+    mutationToDom() {
+        const container = document.createElement('mutation');
+        container.setAttribute('vh_enabled',   this.getFieldValue('VH_ENABLED') ?? 'FALSE');
+        container.setAttribute('vh_max_steps', this.getFieldValue('VH_VIRTUAL_TRADES') ?? '5');
+        container.setAttribute('vh_min_wins',  this.getFieldValue('VH_REAL_WINS') ?? '3');
+        container.setAttribute('vh_stake',     this.getFieldValue('VH_STAKE') ?? '1');
+        return container;
+    },
+    /**
+     * Restore Virtual Hook settings from a <mutation> XML element.
+     * Handles both new XML (vh_max_steps / vh_min_wins) and any legacy XML that
+     * stored these values under older attribute names — silently ignoring any
+     * unrecognised attributes so old bots never fail to load.
+     */
+    domToMutation(xmlElement) {
+        const getBool = attr =>
+            xmlElement.getAttribute(attr)?.toUpperCase() === 'TRUE' ? 'TRUE' : 'FALSE';
+        const getNum  = (attr, fallback) => {
+            const v = parseFloat(xmlElement.getAttribute(attr));
+            return isNaN(v) ? fallback : String(v);
+        };
+
+        const enabled   = getBool('vh_enabled');
+        const max_steps = getNum('vh_max_steps', '5');
+        const min_wins  = getNum('vh_min_wins',  '3');
+        const stake     = getNum('vh_stake',     '1');
+
+        this.getField('VH_ENABLED')?.setValue(enabled);
+        this.getField('VH_VIRTUAL_TRADES')?.setValue(max_steps);
+        this.getField('VH_REAL_WINS')?.setValue(min_wins);
+        this.getField('VH_STAKE')?.setValue(stake);
     },
     customContextMenu(menu) {
         const menu_items = [localize('Enable Block'), localize('Disable Block')];

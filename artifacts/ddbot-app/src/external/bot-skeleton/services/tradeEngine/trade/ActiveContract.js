@@ -193,14 +193,16 @@ export default Engine =>
         }
 
         /**
-         * Configure virtual trade count and real-wins threshold.
-         * Called by Bot.setVirtualHookSettings() from the VH Settings Blockly block.
+         * Configure the Virtual Hook pre-trade filter.
+         * Called by Bot.setVirtualHookSettings() from the Trade Parameters block
+         * and the Virtual Hook Settings Blockly block.
          *
-         * @param {number} virtualTradeCount    Virtual trades per sequence (default 21).
-         * @param {number} realWinsBeforeReset  Real wins before reset (default 1).
+         * @param {number} maxSteps  Maximum virtual observations per signal (default 5).
+         * @param {number} minWins   Minimum wins required to permit a real trade (default 3).
+         * @param {number} [stake]   Virtual stake — display only, never affects real trades.
          */
-        setVirtualHookSettings(virtualTradeCount, realWinsBeforeReset) {
-            this.virtualHookRuntime.configure(virtualTradeCount, realWinsBeforeReset);
+        setVirtualHookSettings(maxSteps, minWins, stake) {
+            this.virtualHookRuntime.configure(maxSteps, minWins, stake);
         }
 
         /**

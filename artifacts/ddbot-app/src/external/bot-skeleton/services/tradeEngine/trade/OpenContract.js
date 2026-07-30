@@ -47,31 +47,10 @@ export default Engine =>
                             contract,
                         });
 
-                        // Route settlement to the correct VirtualHookRuntime callback.
-                        // In virtual mode, the trade counts toward the warm-up sequence
-                        // (onVirtualTradeComplete advances the virtual counter and
-                        // transitions to real mode when the limit is reached).
-                        // In real mode, onRealTradeComplete tracks consecutive wins and
-                        // re-enters virtual mode when the configured threshold is met.
-                        const isVirtual = this.virtualHookRuntime.isVirtualMode();
-                        const won = contract.status === 'won';
-                        // eslint-disable-next-line no-console
-                        console.log(
-                            `[VH] Contract settled | status=${contract.status}` +
-                            ` | isVirtualMode=${isVirtual}` +
-                            ` | routing to ${isVirtual ? 'onVirtualTradeComplete' : 'onRealTradeComplete'}`
-                        );
-                        if (isVirtual) {
-                            this.virtualHookRuntime.onVirtualTradeComplete(won);
-                            // eslint-disable-next-line no-console
-                            console.log(
-                                `[VH] onVirtualTradeComplete() called | counter=${this.virtualHookRuntime.virtualTradeCounter}` +
-                                ` | limit=${this.virtualHookRuntime.virtualTradeLimit}` +
-                                ` | phase=${this.virtualHookRuntime.currentPhase}`
-                            );
-                        } else {
-                            this.virtualHookRuntime.onRealTradeComplete(won);
-                        }
+                        // VH does not use real contract settlements — virtual outcomes
+                        // are derived purely from tick data inside _runVirtualFilter()
+                        // in Purchase.js.  Real contract settlements go straight to
+                        // afterPromise() so the interpreter can continue normally.
 
                         if (this.afterPromise) {
                             // eslint-disable-next-line no-console

@@ -190,9 +190,13 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
 
     // Virtual Hook configuration — read from the Market block where the VH fields live.
     // Falls back gracefully when the market block predates VH (old bots).
-    const vh_enabled = market_block ? market_block.getFieldValue('VH_ENABLED') === 'TRUE' : false;
-    const vh_virtual_trades = market_block ? parseInt(market_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 3 : 3;
-    const vh_real_wins = market_block ? parseInt(market_block.getFieldValue('VH_REAL_WINS'), 10) || 1 : 1;
+    // VH_VIRTUAL_TRADES → vh_max_steps (max virtual observations per signal)
+    // VH_REAL_WINS      → vh_min_wins  (min wins required to permit a real trade)
+    // VH_STAKE          → vh_stake     (virtual stake — display only, never affects real trades)
+    const vh_enabled   = market_block ? market_block.getFieldValue('VH_ENABLED') === 'TRUE' : false;
+    const vh_max_steps = market_block ? parseInt(market_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 5 : 5;
+    const vh_min_wins  = market_block ? parseInt(market_block.getFieldValue('VH_REAL_WINS'), 10) || 3 : 3;
+    const vh_stake     = market_block ? parseFloat(market_block.getFieldValue('VH_STAKE')) || 1.0 : 1.0;
 
     const initialization = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'INITIALIZATION');
     const trade_options_statement = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'SUBMARKET');
@@ -206,7 +210,7 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
           shouldRestartOnError: ${should_restart_on_error},
           timeMachineEnabled  : ${should_restart_on_buy_sell},
         });
-        Bot.setVirtualHookSettings(${vh_virtual_trades}, ${vh_real_wins});
+        Bot.setVirtualHookSettings(${vh_max_steps}, ${vh_min_wins}, ${vh_stake});
         Bot.setVirtualHookEnabled(${vh_enabled});
         ${initialization.trim()}
     };

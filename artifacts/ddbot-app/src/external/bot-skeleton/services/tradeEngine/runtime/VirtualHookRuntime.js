@@ -1,224 +1,209 @@
 /**
  * VirtualHookRuntime
  *
- * Single source of truth for all Virtual Hook state.
- * Zero dependencies on the trade engine, Blockly, or the DOM — pure runtime
- * logic that can be imported and consumed by any future system.
+ * Pre-trade filter. Decides whether a real trade is allowed based on
+ * simulated (virtual) tick observations against live market data.
  *
- * Lifecycle
- * ─────────
- *   configure()   → set warm-up parameters before enabling
- *   enable()      → enter virtual mode; bot runs simulated trades
- *   [virtual trades complete] → enterRealMode() called automatically
- *   [real wins accumulate]    → enterVirtualMode() called automatically
- *   disable()     → exit virtual hook; bot runs real trades only
- *   reset()       → clear counters / history (hook stays enabled/disabled)
+ * This is NOT a delay, NOT a timer, and NOT a warm-up cycler.
+ * It is a trade filter: each trade signal is independently evaluated,
+ * and the real trade is either permitted or discarded based on the
+ * virtual outcomes observed.
  *
- * Future consumers
- * ────────────────
- *   Exit Digit History Engine, Recovery Engine, AI Strategy Engine,
- *   Statistics Engine, Analytics Blocks — import this module and read
- *   state through the public API.  No duplicate tracking needed.
+ * Spec
+ * ────
+ *   vh_max_steps — maximum virtual observations allowed per signal
+ *   vh_min_wins  — minimum virtual wins required to permit the real trade
+ *   vh_stake     — stake used only for virtual simulation display (never touches real trades)
+ *
+ * Per-signal flow
+ * ───────────────
+ *   1. Trade signal arrives → Purchase._runVirtualFilter() is called
+ *   2. startSignal()        → reset per-signal counters
+ *   3. For each live tick:
+ *        recordTick(won) → 'PROCEED' | 'DISCARD' | 'CONTINUE'
+ *        PROCEED  — vh_min_wins reached → execute real trade
+ *        DISCARD  — vh_max_steps reached without enough wins → drop signal
+ *        CONTINUE — keep observing
+ *   4. After either outcome, counters are reset automatically.
+ *      VH is ready for the next independent trade signal.
+ *
+ * Example (vh_max_steps=5, vh_min_wins=3)
+ * ────────────────────────────────────────
+ *   Tick 1 → Loss  (wins=0, steps=1) → CONTINUE
+ *   Tick 2 → Win   (wins=1, steps=2) → CONTINUE
+ *   Tick 3 → Win   (wins=2, steps=3) → CONTINUE
+ *   Tick 4 → Loss  (wins=2, steps=4) → CONTINUE
+ *   Tick 5 → Win   (wins=3, steps=5) → PROCEED  ← real trade executed
+ *
+ * Example (vh_max_steps=5, vh_min_wins=4)
+ * ────────────────────────────────────────
+ *   Tick 1 → Win   (wins=1, steps=1) → CONTINUE
+ *   Tick 2 → Loss  (wins=1, steps=2) → CONTINUE
+ *   Tick 3 → Win   (wins=2, steps=3) → CONTINUE
+ *   Tick 4 → Loss  (wins=2, steps=4) → CONTINUE
+ *   Tick 5 → Win   (wins=3, steps=5) → DISCARD  ← signal dropped (3 < 4)
  */
 export class VirtualHookRuntime {
-    // ── Configuration (set via configure(), safe before or after enable()) ───
+    // ── Configuration ────────────────────────────────────────────────────────
 
-    /** Virtual trades required per warm-up sequence before real mode. */
-    virtualTradeLimit = 21;
+    /** Maximum number of virtual observations allowed per signal. */
+    _maxSteps = 5;
 
-    /** Consecutive real wins required to trigger a new virtual sequence. */
-    realWinLimit = 1;
+    /** Minimum virtual wins required to allow the real trade. */
+    _minWins = 3;
 
-    // ── Runtime state (private by convention — use the public API) ───────────
+    /**
+     * Virtual stake — used only for display/reference purposes.
+     * NEVER modifies trade stake, recovery stake, martingale stake,
+     * or bulk purchase stake.
+     */
+    _stake = 1.0;
+
+    // ── Runtime state ────────────────────────────────────────────────────────
 
     _enabled = false;
-    _virtualMode = false;
-    _virtualTradeCounter = 0;
-    _realWinCounter = 0;
-    _virtualHistory = [];
-    _lastVirtualResult = null;
-    _currentPhase = 'real'; // 'virtual' | 'real'
+    _active  = false;  // true while a signal is actively being evaluated
+    _steps   = 0;      // virtual observations in the current signal
+    _wins    = 0;      // virtual wins in the current signal
 
-    // ── Configuration API ─────────────────────────────────────────────────────
+    // ── Configuration API ────────────────────────────────────────────────────
 
     /**
-     * Set warm-up parameters.  May be called before or after enable().
-     * If called mid-sequence the new limits take effect on the next boundary.
+     * Set filter parameters.  Safe to call before or after enable().
+     * Takes effect from the next signal evaluation.
      *
-     * @param {number} virtualTradeLimit  Trades per virtual sequence (min 1).
-     * @param {number} realWinLimit       Consecutive real wins before reset (min 1).
+     * @param {number} maxSteps  Maximum observations per signal (min 1).
+     * @param {number} minWins   Minimum wins required to permit the trade (min 1).
+     * @param {number} [stake]   Virtual stake — display only, never affects real purchases.
      */
-    configure(virtualTradeLimit, realWinLimit) {
-        this.virtualTradeLimit = Math.max(1, Number(virtualTradeLimit) || 21);
-        this.realWinLimit = Math.max(1, Number(realWinLimit) || 1);
+    configure(maxSteps, minWins, stake) {
+        this._maxSteps = Math.max(1, Number(maxSteps) || 5);
+        this._minWins  = Math.max(1, Number(minWins)  || 3);
+        if (stake !== undefined && stake !== null) {
+            this._stake = Number(stake) || 1.0;
+        }
     }
 
-    // ── Lifecycle API ─────────────────────────────────────────────────────────
+    // ── Lifecycle API ────────────────────────────────────────────────────────
 
-    /**
-     * Enable the Virtual Hook and immediately enter virtual mode.
-     * If already enabled this is a no-op — existing state is preserved.
-     */
+    /** Enable the Virtual Hook. */
     enable() {
-        if (this._enabled) return;
         this._enabled = true;
-        this.enterVirtualMode();
     }
 
-    /**
-     * Disable the Virtual Hook and clear all runtime state.
-     * The bot reverts immediately to unconditional real trading.
-     */
+    /** Disable the Virtual Hook and abort any running signal evaluation. */
     disable() {
         this._enabled = false;
-        this._clearState();
+        this._resetSignal();
     }
 
     /**
-     * Transition into virtual (simulated-trade) mode.
-     * Called automatically by enable() and by onRealTradeComplete() when the
-     * real-wins threshold is reached.  May also be called externally.
-     */
-    enterVirtualMode() {
-        this._virtualMode = true;
-        this._virtualTradeCounter = 0;
-        this._virtualHistory = [];
-        this._lastVirtualResult = null;
-        this._currentPhase = 'virtual';
-    }
-
-    /**
-     * Transition into real-trade mode.
-     * Called automatically when the virtual trade limit is reached.
-     * The real-win counter is reset so accumulation starts fresh.
-     */
-    enterRealMode() {
-        this._virtualMode = false;
-        this._realWinCounter = 0;
-        this._currentPhase = 'real';
-    }
-
-    /**
-     * Reset all counters and history without changing the enabled state.
-     * Useful for external systems that need to restart a sequence mid-run.
-     */
-    reset() {
-        this._clearState();
-    }
-
-    // ── Trade event API ───────────────────────────────────────────────────────
-
-    /**
-     * Record the outcome of a completed virtual trade and advance the counter.
-     * Transitions to real mode automatically when the limit is reached.
-     * Must only be called for confirmed-valid virtual evaluations — never for
-     * market-closed or error cases.
-     *
-     * @param {boolean} won  Whether the simulated trade would have been a win.
-     */
-    onVirtualTradeComplete(won) {
-        const result = won ? 'win' : 'loss';
-        this._virtualHistory.push(result);
-        this._lastVirtualResult = result;
-        this._virtualTradeCounter++;
-
-        if (this._virtualTradeCounter >= this.virtualTradeLimit) {
-            this.enterRealMode();
-        }
-    }
-
-    /**
-     * Record the outcome of a completed real trade and update the win counter.
-     * Re-enters virtual mode automatically when the configured threshold is met.
-     * No-op when the hook is disabled.
-     *
-     * @param {boolean} won  Whether the real trade was a win.
-     */
-    onRealTradeComplete(won) {
-        if (!this._enabled) return;
-
-        if (won) {
-            this._realWinCounter++;
-            if (this._realWinCounter >= this.realWinLimit) {
-                this.enterVirtualMode();
-            }
-        } else {
-            // A loss resets the consecutive win streak.
-            this._realWinCounter = 0;
-        }
-    }
-
-    // ── Query API (primary interface for all consumers) ───────────────────────
-
-    /**
-     * Returns true when the hook is enabled AND actively in virtual mode.
-     * This is the primary gate checked before each purchase.
-     *
-     * @returns {boolean}
-     */
-    isVirtualMode() {
-        return this._enabled && this._virtualMode;
-    }
-
-    /**
-     * Returns true when the hook has been enabled (regardless of phase).
-     *
-     * @returns {boolean}
+     * Returns true when the hook has been enabled.
+     * Use this to decide whether _runVirtualFilter() should run.
      */
     isEnabled() {
         return this._enabled;
     }
 
     /**
-     * Status value exposed to the Virtual Hook Status Blockly block and
-     * any future strategy/analytics block.
-     * Equivalent to isVirtualMode() — kept as a named alias for clarity.
+     * Abort any in-progress signal evaluation without changing enabled state.
+     * Useful for external systems that need to cancel a running sequence.
+     */
+    reset() {
+        this._resetSignal();
+    }
+
+    // ── Per-signal API ───────────────────────────────────────────────────────
+
+    /**
+     * Called once when a new trade signal arrives and VH is enabled.
+     * Resets per-signal counters so each signal is evaluated independently.
+     */
+    startSignal() {
+        this._steps  = 0;
+        this._wins   = 0;
+        this._active = true;
+    }
+
+    /**
+     * Record one virtual tick observation and decide the next action.
      *
-     * @returns {boolean}
+     * Must be called after startSignal() and once per distinct market tick.
+     *
+     * @param {boolean} won  Whether the simulated contract would have been a win.
+     * @returns {'PROCEED'|'DISCARD'|'CONTINUE'}
+     *   PROCEED  — vh_min_wins reached → execute the real trade immediately
+     *   DISCARD  — vh_max_steps exhausted without enough wins → drop this signal
+     *   CONTINUE — neither threshold met yet → keep observing
+     */
+    recordTick(won) {
+        this._steps++;
+        if (won) this._wins++;
+
+        if (this._wins >= this._minWins) {
+            this._resetSignal();
+            return 'PROCEED';
+        }
+        if (this._steps >= this._maxSteps) {
+            this._resetSignal();
+            return 'DISCARD';
+        }
+        return 'CONTINUE';
+    }
+
+    // ── Query API ────────────────────────────────────────────────────────────
+
+    /**
+     * Returns true while a signal is actively being evaluated.
+     * Called by the Virtual Hook Status Blockly block.
      */
     getStatus() {
-        return this.isVirtualMode();
+        return this._active;
     }
 
-    // ── Read-only state for future consumers ──────────────────────────────────
+    /** Current step count within the active signal (or 0 if idle). */
+    get steps()    { return this._steps; }
 
-    /** Immutable snapshot of the virtual trade history: ('win' | 'loss')[]. */
-    get virtualHistory() {
-        return [...this._virtualHistory];
+    /** Current win count within the active signal (or 0 if idle). */
+    get wins()     { return this._wins; }
+
+    /** Configured maximum steps. */
+    get maxSteps() { return this._maxSteps; }
+
+    /** Configured minimum wins. */
+    get minWins()  { return this._minWins; }
+
+    /** Virtual stake (display only — never used for real trade sizing). */
+    get stake()    { return this._stake; }
+
+    // ── Backward-compatibility stubs ─────────────────────────────────────────
+    // The old implementation was a warm-up cycler with virtual/real phases.
+    // These stubs ensure any remaining callers do not throw.  They are no-ops.
+
+    /** @deprecated VH is now a per-signal filter. Use isEnabled() instead. */
+    isVirtualMode() { return false; }
+
+    /** @deprecated No longer needed — virtual outcomes are evaluated in _runVirtualFilter. */
+    onVirtualTradeComplete() {}
+
+    /** @deprecated No longer needed — VH does not cycle on real trade outcomes. */
+    onRealTradeComplete() {}
+
+    /** @deprecated Phase transitions are handled internally by recordTick(). */
+    enterVirtualMode() {}
+
+    /** @deprecated Phase transitions are handled internally by recordTick(). */
+    enterRealMode() {}
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    _resetSignal() {
+        this._steps  = 0;
+        this._wins   = 0;
+        this._active = false;
     }
 
-    /** Result of the most recently completed virtual trade, or null. */
-    get lastVirtualResult() {
-        return this._lastVirtualResult;
-    }
-
-    /** Current execution phase: 'virtual' | 'real'. */
-    get currentPhase() {
-        return this._currentPhase;
-    }
-
-    /** Number of virtual trades completed in the current sequence. */
-    get virtualTradeCounter() {
-        return this._virtualTradeCounter;
-    }
-
-    /** Consecutive real wins since the last virtual sequence ended. */
-    get realWinCounter() {
-        return this._realWinCounter;
-    }
-
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    _clearState() {
-        this._virtualMode = false;
-        this._virtualTradeCounter = 0;
-        this._realWinCounter = 0;
-        this._virtualHistory = [];
-        this._lastVirtualResult = null;
-        this._currentPhase = 'real';
-    }
-
-    // ── Static helpers (pure functions, no state) ─────────────────────────────
+    // ── Static helpers ───────────────────────────────────────────────────────
 
     /**
      * Determine whether a virtual trade would have been a win based on the
