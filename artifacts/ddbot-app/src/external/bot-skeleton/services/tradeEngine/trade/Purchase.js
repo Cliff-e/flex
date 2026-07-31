@@ -73,9 +73,10 @@ export default Engine =>
 
             // eslint-disable-next-line no-console
             console.log(
-                `[VH] Purchase.purchase() ENTER | scope=${this.store.getState().scope}` +
-                ` | isVirtualMode=${this.virtualHookRuntime.isVirtualMode()}` +
-                ` | contract_type=${contract_type}`
+                `[BUY TRACE] Purchase.purchase ENTER | scope=${this.store.getState().scope}` +
+                ` | contract_type=${contract_type}` +
+                ` | vhEnabled=${this.virtualHookRuntime.isEnabled()}` +
+                ` | vhAuthorizedOnce=${!!this._vhAuthorizedOnce}`
             );
 
             // Resolve the effective contract type.
@@ -93,43 +94,41 @@ export default Engine =>
                     ? (this.activeContractOverride ?? this.tradeOptions?.contractTypes?.[0] ?? null)
                     : contract_type;
 
-            // ── Virtual Hook intercept ─────────────────────────────────────────
-            // When the hook is in virtual mode, run tick-based simulations rather
-            // than placing a real trade.  Each simulation waits for a live market
-            // tick, samples the last digit, and calls determineOutcome() to derive
-            // a win/loss without any API buy.  Once the configured sequence is
-            // complete, isVirtualMode() returns false and we fall through to the
-            // real purchase below.
-            //
-            // _executeVirtualTrade is referenced in the hedge() comment because
-            // activeContractOverride is read synchronously at the top of both this
-            // method and _executeVirtualTrade — the comment is therefore correct
-            // once this implementation exists.
             // ── Virtual Hook pre-trade filter ─────────────────────────────────
             // When VH is enabled, observe live market ticks and count virtual
             // outcomes before deciding whether to place a real trade.
             //
-            // PROCEED  → real trade is allowed; fall through to the buy path.
-            // DISCARD  → conditions not met within max steps; drop this signal.
+            // PROCEED  → set _vhAuthorizedOnce=true and re-call purchase().
+            //            The re-entrant call sees the flag, clears it, and skips
+            //            VH to execute the real buy.  Without this flag the
+            //            re-entry loops forever because isEnabled() stays true.
+            // DISCARD  → return without placing any trade.
             //
-            // The real purchase (if allowed) uses the stake already determined
-            // by the trading engine — vh_stake never modifies real trade sizing.
-            if (this.virtualHookRuntime.isEnabled()) {
+            // The real purchase uses the stake already determined by the trading
+            // engine — vh_stake never modifies real trade sizing.
+            if (this.virtualHookRuntime.isEnabled() && !this._vhAuthorizedOnce) {
                 return this._runVirtualFilter(effective_type).then(allowed => {
                     this._purchaseInProgress = false;
                     if (!allowed) {
-                        // Signal discarded — VH conditions were not met.
-                        // Do NOT place any real trade for this signal.
                         // eslint-disable-next-line no-console
-                        console.log('[VH] Signal DISCARDED — real trade skipped. Waiting for next signal.');
+                        console.log('[BUY TRACE] EXIT reason=VH_DISCARDED — signal dropped, no trade placed.');
                         return Promise.resolve();
                     }
-                    // Signal approved — proceed to real purchase.
+                    // Set one-shot flag so the re-entrant call bypasses VH and
+                    // goes straight to the real buy logic.
+                    this._vhAuthorizedOnce = true;
                     // eslint-disable-next-line no-console
-                    console.log('[VH] Signal APPROVED — executing real trade.');
+                    console.log('[BUY TRACE] VH APPROVED — re-entering purchase() with bypass flag set.');
                     return this.purchase(contract_type);
                 });
             }
+
+            // Clear the one-shot bypass flag immediately (covers both the VH
+            // bypass path above and any non-VH call where the flag was never set).
+            this._vhAuthorizedOnce = false;
+
+            // eslint-disable-next-line no-console
+            console.log('[BUY TRACE] Guard checks passed — proceeding to proposal/buy.');
 
             const onSuccess = response => {
                 // Buy acknowledged — scope transitions to DURING_PURCHASE via
