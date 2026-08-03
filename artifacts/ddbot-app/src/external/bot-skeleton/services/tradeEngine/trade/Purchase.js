@@ -107,20 +107,97 @@ export default Engine =>
             // The real purchase uses the stake already determined by the trading
             // engine — vh_stake never modifies real trade sizing.
             if (this.virtualHookRuntime.isEnabled() && !this._vhAuthorizedOnce) {
-                return this._runVirtualFilter(effective_type).then(allowed => {
-                    this._purchaseInProgress = false;
-                    if (!allowed) {
+                // ── VH: snapshot proposal state before evaluation ─────────
+                // Save the effective contract type and purchase reference that
+                // existed when the signal arrived.  During VH evaluation (which
+                // spans multiple ticks), overrides may fire and call
+                // _rebuildProposals(), invalidating the proposals.  After VH
+                // authorises, we use this snapshot to verify — and if necessary
+                // rebuild — the correct proposals for the authorised trade.
+                const vhContractType = effective_type;
+                const vhPurchaseRef  = this.getPurchaseReference();
+                // eslint-disable-next-line no-console
+                console.log(
+                    `[BUY TRACE] VH SNAPSHOT | contractType=${vhContractType}` +
+                    ` | purchaseRef=${vhPurchaseRef}` +
+                    ` | proposalsCount=${this.data.proposals.length}`
+                );
+
+                return this._runVirtualFilter(effective_type)
+                    .then(allowed => {
+                        this._purchaseInProgress = false;
+                        if (!allowed) {
+                            // eslint-disable-next-line no-console
+                            console.log('[BUY TRACE] EXIT reason=VH_DISCARDED — signal dropped, no trade placed.');
+                            return Promise.resolve();
+                        }
+                        // Set one-shot flag so the re-entrant call bypasses VH and
+                        // goes straight to the real buy logic.
+                        this._vhAuthorizedOnce = true;
+
+                        // ── VH: validate proposals before re-entering ──────
+                        // The purchase_reference may have been regenerated
+                        // (by _rebuildProposals) during VH evaluation, or
+                        // proposals may have been cleared entirely.  Verify
+                        // that a proposal matching the original signal's
+                        // contract type exists with the CURRENT reference.
+                        // If not, rebuild proposals now so selectProposal()
+                        // succeeds in the re-entrant call.
+                        const currentRef = this.getPurchaseReference();
+                        const hasValidProposal =
+                            this.data.proposals.length > 0 &&
+                            this.data.proposals.some(
+                                p =>
+                                    p.contract_type === vhContractType &&
+                                    p.purchase_reference === currentRef
+                            );
+
                         // eslint-disable-next-line no-console
-                        console.log('[BUY TRACE] EXIT reason=VH_DISCARDED — signal dropped, no trade placed.');
+                        console.log(
+                            `[BUY TRACE] VH PROPOSAL CHECK | vhContractType=${vhContractType}` +
+                            ` | vhPurchaseRef=${vhPurchaseRef}` +
+                            ` | currentRef=${currentRef}` +
+                            ` | refsMatch=${vhPurchaseRef === currentRef}` +
+                            ` | hasValidProposal=${hasValidProposal}` +
+                            ` | proposalsCount=${this.data.proposals.length}`
+                        );
+
+                        if (!hasValidProposal) {
+                            // Proposals invalidated during VH evaluation —
+                            // rebuild them now and WAIT for proposals to be
+                            // ready before the re-entrant call.  _rebuildProposals()
+                            // sends async WS requests; the proposals arrive
+                            // via observeProposals() which dispatches
+                            // proposalsReady() when all templates match.
+                            // eslint-disable-next-line no-console
+                            console.log(
+                                '[BUY TRACE] VH PROPOSAL STALE — rebuilding proposals and awaiting readiness.' +
+                                ` | oldRef=${vhPurchaseRef} | newRef=${currentRef}`
+                            );
+                            this._rebuildProposals();
+                            // Wait for the store to signal proposalsReady before
+                            // proceeding.  Without this wait, selectProposal()
+                            // runs synchronously on an empty proposals array.
+                            return this._waitForProposalsReady().then(() => {
+                                // eslint-disable-next-line no-console
+                                console.log('[BUY TRACE] VH PROPOSAL REBUILT — proposals ready, re-entering purchase().');
+                                return this.purchase(contract_type);
+                            });
+                        }
+
+                        // eslint-disable-next-line no-console
+                        console.log('[BUY TRACE] VH APPROVED — re-entering purchase() with bypass flag set.');
+                        return this.purchase(contract_type);
+                    })
+                    .catch(err => {
+                        // VH filter failed (e.g. tick service error).
+                        // Clear the in-progress guard so future purchases are
+                        // not permanently blocked.
+                        this._purchaseInProgress = false;
+                        // eslint-disable-next-line no-console
+                        console.error('[BUY TRACE] VH filter error:', err);
                         return Promise.resolve();
-                    }
-                    // Set one-shot flag so the re-entrant call bypasses VH and
-                    // goes straight to the real buy logic.
-                    this._vhAuthorizedOnce = true;
-                    // eslint-disable-next-line no-console
-                    console.log('[BUY TRACE] VH APPROVED — re-entering purchase() with bypass flag set.');
-                    return this.purchase(contract_type);
-                });
+                    });
             }
 
             // Clear the one-shot bypass flag immediately (covers both the VH
@@ -483,6 +560,28 @@ export default Engine =>
         }
 
         // ── Virtual Hook implementation ────────────────────────────────────────
+
+        /**
+         * Waits for the store to signal `proposalsReady === true`.
+         * Used after _rebuildProposals() to ensure proposals have arrived
+         * from the WebSocket before calling selectProposal().
+         *
+         * @returns {Promise<void>}
+         */
+        _waitForProposalsReady() {
+            return new Promise(resolve => {
+                if (this.store.getState().proposalsReady) {
+                    resolve();
+                    return;
+                }
+                const unsub = this.store.subscribe(() => {
+                    if (this.store.getState().proposalsReady) {
+                        unsub();
+                        resolve();
+                    }
+                });
+            });
+        }
 
         /**
          * Wait for the next market tick.

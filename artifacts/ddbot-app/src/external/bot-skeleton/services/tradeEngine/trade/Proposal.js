@@ -21,9 +21,32 @@ export default Engine =>
         selectProposal(contract_type) {
             const { proposals } = this.data;
 
+            // eslint-disable-next-line no-console
+            console.log(
+                `[BUY TRACE] selectProposal() CALLED` +
+                ` | contractType=${contract_type}` +
+                ` | proposalsCount=${proposals.length}` +
+                ` | purchaseRef=${this.getPurchaseReference()}`
+            );
+
             if (proposals.length === 0) {
+                // eslint-disable-next-line no-console
+                console.error('[BUY TRACE] selectProposal() FAILED — proposals array is empty.');
                 throw Error(localize('Proposals are not ready'));
             }
+
+            // Log every proposal for diagnostics
+            proposals.forEach((p, i) => {
+                // eslint-disable-next-line no-console
+                console.log(
+                    `[BUY TRACE] selectProposal() proposal[${i}]` +
+                    ` | id=${p.id}` +
+                    ` | contract_type=${p.contract_type}` +
+                    ` | purchase_reference=${p.purchase_reference}` +
+                    ` | ask_price=${p.ask_price}` +
+                    ` | hasError=${!!p.error}`
+                );
+            });
 
             const to_buy = proposals.find(proposal => {
                 if (
@@ -45,8 +68,22 @@ export default Engine =>
             });
 
             if (!to_buy) {
+                // eslint-disable-next-line no-console
+                console.error(
+                    `[BUY TRACE] selectProposal() FAILED — no matching proposal` +
+                    ` | wanted contractType=${contract_type}` +
+                    ` | wanted purchaseRef=${this.getPurchaseReference()}` +
+                    ` | available proposals=${proposals.length}`
+                );
                 throw new Error(localize('Selected proposal does not exist'));
             }
+
+            // eslint-disable-next-line no-console
+            console.log(
+                `[BUY TRACE] selectProposal() OK` +
+                ` | id=${to_buy.id}` +
+                ` | askPrice=${to_buy.ask_price}`
+            );
 
             return {
                 id: to_buy.id,

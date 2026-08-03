@@ -270,10 +270,44 @@ export default Engine =>
          * Flush and rebuild proposals using the current effective options.
          * No-ops if the engine has not yet started (trade_option not set).
          *
+         * ── VH PROTECTION ──────────────────────────────────────────────────────
+         * When the Virtual Hook is actively evaluating a signal
+         * (virtualHookRuntime.getStatus() returns true, meaning _active is true
+         * inside the runtime), proposals must NOT be invalidated.  VH is
+         * observing market ticks via the store, not via proposals, so stale
+         * proposals do not affect its decision.  Invalidating proposals mid-
+         * evaluation would cause the re-entrant purchase() call to fail with
+         * "Selected proposal does not exist".
+         *
+         * Instead, when VH is active:
+         *   • Defer the rebuild until VH completes.
+         *   • Store the override request so it is applied after
+         *     the authorised trade goes through.
+         *
+         * This ensures that _rebuildProposals() called from a Contract Changer,
+         * Symbol Changer, or Prediction Changer block while VH is evaluating
+         * does NOT break the in-flight trade.
+         *
          * @private
          */
         _rebuildProposals() {
             if (!this.trade_option) return;
+
+            // ── VH guard: defer if Virtual Hook is evaluating ──────────
+            if (this.virtualHookRuntime?.getStatus()) {
+                // eslint-disable-next-line no-console
+                console.log(
+                    '[VH][_rebuildProposals] DEFERRED — Virtual Hook is actively evaluating.' +
+                    ' The rebuild will apply on the next purchase cycle.'
+                );
+                // Mark that a deferred rebuild is pending.  The re-entrant
+                // purchase() path in Purchase.js already handles stale
+                // proposals by calling _rebuildProposals() again (this time
+                // VH won't be active because we are past the filter).  After
+                // that, any deferred override will have been applied.
+                this._pendingRebuild = true;
+                return;
+            }
 
             const overridden_trade_option = this._applyActiveOverrides(this.trade_option);
 
@@ -289,5 +323,8 @@ export default Engine =>
             );
 
             this.renewProposalsOnPurchase();
+
+            // Clear the pending flag — the rebuild has been applied.
+            this._pendingRebuild = false;
         }
     };
