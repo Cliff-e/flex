@@ -7,16 +7,16 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-// Trust the first proxy hop (DigitalOcean App Platform's load balancer
-// terminates TLS at the edge and forwards plain HTTP internally). Without
-// this, req.ip/req.protocol/req.secure would reflect the internal LB hop
-// instead of the real client — breaking IP-based rate limiting, request
-// logging, and any HTTPS-aware logic.
+// Trust proxy hops for correct client IPs / protocol behind an edge load
+// balancer (e.g. DigitalOcean App Platform, NLB/ALB, Caddy reverse proxy).
 //
-// `1` = trust exactly one hop in front of us. App Platform's edge is the
-// only proxy between the internet and this single-instance service, so
-// this is safe without also trusting arbitrary spoofed X-Forwarded-* chains.
-app.set("trust proxy", 1);
+// On plain EC2 the server binds directly to the public interface, so no
+// proxy hop exists — trusting one hop there would let any client forge
+// X-Forwarded-For and bypass IP-based rate limiting. `TRUST_PROXY` is
+// therefore opt-in: set `TRUST_PROXY=1` only when deploying behind a proxy
+// that strips/overwrites X-Forwarded-* headers at the edge.
+const TRUST_PROXY = Number(process.env["TRUST_PROXY"] ?? "0");
+app.set("trust proxy", TRUST_PROXY > 0 ? TRUST_PROXY : false);
 
 // Fix 4: Security headers via Helmet (recommended defaults).
 app.use(helmet());
