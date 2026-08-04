@@ -1,7 +1,7 @@
 import { LogTypes } from '../../../constants/messages';
 import { api_base } from '../../api/api-base';
 import { contractStatus, info, log } from '../utils/broadcast';
-import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
+import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy, tradeOptionToProposal } from '../utils/helpers';
 import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
 import { openContractReceived, purchaseSuccessful, sell } from './state/actions';
 import { BEFORE_PURCHASE } from './state/constants';
@@ -191,9 +191,11 @@ export default Engine =>
                     })
                     .catch(err => {
                         // VH filter failed (e.g. tick service error).
-                        // Clear the in-progress guard so future purchases are
-                        // not permanently blocked.
                         this._purchaseInProgress = false;
+                        // Hard-reset the runtime so _active can never stay true.
+                        // If _active leaked, ActiveContract._rebuildProposals() would
+                        // incorrectly defer every subsequent rebuild (VH guard).
+                        this.virtualHookRuntime.reset();
                         // eslint-disable-next-line no-console
                         console.error('[BUY TRACE] VH filter error:', err);
                         return Promise.resolve();
@@ -602,21 +604,251 @@ export default Engine =>
             });
         }
 
+        // ── Virtual Hook — contract-based virtual trade executor ──────────────
+        // The Virtual Hook now evaluates signals by executing REAL virtual
+        // contracts through the same proposal / buy / proposal_open_contract
+        // infrastructure used for real trades.  The only difference is that the
+        // buy uses vh_stake and the virtual contract's actual settlement
+        // outcome feeds the PROCEED/DISCARD state machine.
+
+        /**
+         * Build and submit a virtual proposal for a single contract type.
+         * Reuses tradeOptionToProposal() + _applyActiveOverrides() so the
+         * virtual proposal is priced exactly like a real one, except that the
+         * amount is vh_stake.  Uses a virtual-only purchase reference so the
+         * virtual proposal can never collide with the real proposal cache.
+         *
+         * @param {string} contract_type  Effective contract type being evaluated.
+         * @returns {Promise<{id: string, askPrice: number}|null>}
+         */
+        async _submitVirtualProposal(contract_type) {
+            if (!this.tradeOptions) {
+                console.error('[VH] _submitVirtualProposal() aborted — tradeOptions not set.');
+                return null;
+            }
+
+            const overridden = this._applyActiveOverrides(this.tradeOptions);
+            overridden.contractTypes = [contract_type];
+            overridden.amount = this.virtualHookRuntime.stake;
+
+            // Virtual-only purchase reference — guarantees full isolation from
+            // the real proposal cache matching in selectProposal()/checkProposalReady().
+            const virtual_ref = `VH-${getUUID()}`;
+            const [virtual_proposal] = tradeOptionToProposal(overridden, virtual_ref);
+
+            // eslint-disable-next-line no-console
+            console.log(
+                '[VH] submitVirtualProposal()' +
+                ` | contractType=${contract_type}` +
+                ` | vhStake=${overridden.amount}` +
+                ` | virtualRef=${virtual_ref}`
+            );
+
+            try {
+                const response = await api_base.api.send(virtual_proposal);
+                const proposal_data = response?.proposal ?? response?.data?.proposal;
+                if (!proposal_data?.id) {
+                    console.error('[VH] Virtual proposal response missing id:', JSON.stringify(response));
+                    return null;
+                }
+                return {
+                    id: proposal_data.id,
+                    askPrice: proposal_data.ask_price,
+                };
+            } catch (error) {
+                console.error('[VH] Virtual proposal request failed:', JSON.stringify(error));
+                return null;
+            }
+        }
+
+        /**
+         * Submit the virtual buy request for an already-priced virtual proposal.
+         * Same payload shape as the real buy path ({ buy, price }).
+         *
+         * @param {string} proposal_id  Proposal id returned by _submitVirtualProposal.
+         * @param {number} ask_price    Proposal ask price (reflects vh_stake).
+         * @returns {Promise<string|null>}  Virtual contract id, or null on failure.
+         */
+        async _submitVirtualBuy(proposal_id, ask_price) {
+            const buy_request = { buy: proposal_id, price: ask_price };
+            // eslint-disable-next-line no-console
+            console.log('[VH] submitVirtualBuy() | proposalId=' + proposal_id + ' | price=' + ask_price);
+
+            try {
+                const response = await api_base.api.send(buy_request);
+                const buy = response?.buy ?? response?.data?.buy;
+                if (!buy?.contract_id) {
+                    console.error('[VH] Virtual buy response missing contract_id:', JSON.stringify(response));
+                    return null;
+                }
+                // eslint-disable-next-line no-console
+                console.log(
+                    '[VH] Virtual buy accepted' +
+                    ` | contract_id=${buy.contract_id}` +
+                    ` | transaction_id=${buy.transaction_id}`
+                );
+                return buy.contract_id;
+            } catch (error) {
+                console.error('[VH] Virtual buy request failed:', JSON.stringify(error));
+                return null;
+            }
+        }
+
+        /**
+         * Wait for the virtual contract to settle via the shared
+         * proposal_open_contract message stream.  The existing OpenContract
+         * observer ignores this contract because this.contractId is not set
+         * for virtual contracts — so real trade tracking is never disturbed.
+         *
+         * @param {string}  contract_id  Virtual contract id.
+         * @param {number}  timeout_ms   Max time to wait for settlement.
+         * @returns {Promise<{won: boolean, timedOut: boolean, contract: object|null}>}
+         */
+        _waitForVirtualSettlement(contract_id, timeout_ms) {
+            return new Promise(resolve => {
+                let subscription;
+                const timer = setTimeout(() => {
+                    subscription?.unsubscribe();
+                    // eslint-disable-next-line no-console
+                    console.warn(
+                        `[VH] Virtual contract ${contract_id} settlement timed out after ${timeout_ms}ms` +
+                        ' — counted as a loss.'
+                    );
+                    resolve({ won: false, timedOut: true, contract: null });
+                }, timeout_ms);
+
+                subscription = api_base.api.onMessage().subscribe(({ data }) => {
+                    if (data?.msg_type !== 'proposal_open_contract') return;
+                    const contract = data.proposal_open_contract;
+                    if (!contract || Number(contract.contract_id) !== Number(contract_id)) return;
+
+                    const settled =
+                        contract.is_sold === true ||
+                        contract.status === 'won' ||
+                        contract.status === 'lost';
+                    if (!settled) return;
+
+                    clearTimeout(timer);
+                    subscription.unsubscribe();
+
+                    let won;
+                    if (contract.status === 'won') won = true;
+                    else if (contract.status === 'lost') won = false;
+                    else won = Number(contract.sell_price ?? 0) > Number(contract.buy_price ?? 0);
+
+                    resolve({ won, timedOut: false, contract });
+                });
+                api_base.pushSubscription(subscription);
+            });
+        }
+
+        /**
+         * Compute a safe settlement timeout based on the configured contract
+         * duration so virtual rounds can never hang the VH filter.
+         * @returns {number}  Timeout in milliseconds.
+         */
+        _getVirtualSettlementTimeoutMs() {
+            const { duration, duration_unit } = this.tradeOptions ?? {};
+            const n = Number(duration) || 1;
+            const unit_multiplier = { t: 1000, s: 1000, m: 60000, h: 3600000, d: 86400000 };
+            const raw_ms = n * (unit_multiplier[duration_unit] ?? 60000);
+            // Clamp between 30s and 30min, plus a 10s margin for API latency.
+            return Math.min(Math.max(raw_ms, 30000), 1800000) + 10000;
+        }
+
+        /**
+         * Orchestrates one full virtual contract round:
+         *   submitVirtualProposal → submitVirtualBuy → waitForVirtualSettlement
+         *
+         * The actual API settlement outcome is returned — VH no longer uses a
+         * local digit heuristic.
+         *
+         * @param {string} contract_type  Effective contract type being evaluated.
+         * @returns {Promise<{won: boolean, contractId: string}|null>}
+         *   null when any API step fails (retry without consuming a step).
+         */
+        async _runVirtualContractRound(contract_type) {
+            // 1) Price the virtual contract (same infra as real proposals).
+            const proposal = await this._submitVirtualProposal(contract_type);
+            if (!proposal) return null;
+            // eslint-disable-next-line no-console
+            console.log(
+                '[VH] Virtual proposal received' +
+                ` | id=${proposal.id}` +
+                ` | askPrice=${proposal.askPrice}`
+            );
+
+            // 2) Buy the virtual contract (same infra as the real buy path).
+            const contract_id = await this._submitVirtualBuy(proposal.id, proposal.askPrice);
+            if (!contract_id) return null;
+            // eslint-disable-next-line no-console
+            console.log('[VH] Virtual contract open | contractId=' + contract_id);
+
+            // 3) Wait for the virtual contract to actually settle.
+            const timeout_ms = this._getVirtualSettlementTimeoutMs();
+            // eslint-disable-next-line no-console
+            console.log(
+                '[VH] waitForVirtualSettlement()' +
+                ` | contractId=${contract_id}` +
+                ` | timeoutMs=${timeout_ms}`
+            );
+            const settlement = await this._waitForVirtualSettlement(contract_id, timeout_ms);
+
+            // eslint-disable-next-line no-console
+            console.log(
+                '[VH] Virtual contract settled' +
+                ` | contractId=${contract_id}` +
+                ` | won=${settlement.won}` +
+                ` | timedOut=${settlement.timedOut}` +
+                ` | status=${settlement.contract?.status ?? 'n/a'}`
+            );
+
+            // 4) Return the actual API outcome to the recordVirtualOutcome step.
+            return { won: settlement.won, contractId: contract_id };
+        }
+
+        /**
+         * Feed one virtual outcome into the existing VH state machine.
+         * recordTick() decides PROCEED / DISCARD / CONTINUE exactly as before —
+         * only the source of `won` changed (real contract settlement instead of
+         * a digit heuristic).
+         *
+         * @param {boolean} won         Actual virtual contract outcome.
+         * @param {string}  contract_id Virtual contract id (for logging).
+         * @returns {'PROCEED'|'DISCARD'|'CONTINUE'}
+         */
+        _recordVirtualOutcome(won, contract_id) {
+            const result = this.virtualHookRuntime.recordTick(won);
+            // eslint-disable-next-line no-console
+            console.log(
+                '[VH] recordVirtualOutcome()' +
+                ` | contractId=${contract_id}` +
+                ` | won=${won}` +
+                ` | steps=${this.virtualHookRuntime.steps}` +
+                ` | wins=${this.virtualHookRuntime.wins}` +
+                ` | result=${result}`
+            );
+            return result;
+        }
+
         /**
          * Pre-trade filter — evaluates live market ticks to decide whether a
          * real trade should be placed or discarded.
          *
-         * Flow per signal:
+         * Flow per signal (CONTRACT-BASED):
          *   1. startSignal() resets per-signal counters.
-         *   2. For each live tick:
-         *        a. Wait for a distinct tick.
-         *        b. Simulate the contract outcome (no API buy — zero real money).
-         *        c. Call recordTick(won) → PROCEED | DISCARD | CONTINUE.
+         *   2. For each virtual round:
+         *        a. submitVirtualProposal()    — price a virtual contract (vh_stake).
+         *        b. submitVirtualBuy()         — buy the virtual contract via the API.
+         *        c. waitForVirtualSettlement() — wait for the actual contract close.
+         *        d. recordVirtualOutcome()     — feed the real API outcome into
+         *                                       recordTick() → PROCEED | DISCARD | CONTINUE.
          *   3. Return true  (PROCEED) → caller executes the real trade.
          *      Return false (DISCARD) → caller drops this signal entirely.
          *
          * The real purchase that follows uses the stake already determined by the
-         * trading engine.  vh_stake never influences real trade sizing.
+         * trading engine.  vh_stake is used only for the virtual contracts, never
+         * for real trade sizing.
          *
          * @param {string} contract_type  Effective contract type (already resolved).
          * @returns {Promise<boolean>}    true = execute real trade, false = drop signal.
@@ -627,41 +859,55 @@ export default Engine =>
             console.log(
                 `[VH] _runVirtualFilter() START | contractType=${contract_type}` +
                 ` | maxSteps=${this.virtualHookRuntime.maxSteps}` +
-                ` | minWins=${this.virtualHookRuntime.minWins}`
+                ` | minWins=${this.virtualHookRuntime.minWins}` +
+                ` | vhStake=${this.virtualHookRuntime.stake}` +
+                ` | MODE=CONTRACT-BASED`
             );
 
             let step = 0;
+            let failed_rounds = 0;
             // eslint-disable-next-line no-constant-condition
             for (;;) {
-                // Wait for a distinct market tick before sampling.
+                // Execute one complete virtual contract round through the API:
+                //   submitVirtualProposal → submitVirtualBuy → waitForVirtualSettlement.
+                // The actual API settlement determines won/lost — no local heuristic.
                 // eslint-disable-next-line no-await-in-loop
-                await this._waitForNextTick();
+                const outcome = await this._runVirtualContractRound(contract_type);
 
-                // Sample the last digit of the current tick price.
-                // getLastDigit() is provided by the Ticks mixin in the class chain.
-                // eslint-disable-next-line no-await-in-loop
-                const lastDigit = await this.getLastDigit();
+                if (outcome === null) {
+                    // Transient API/network error. Do NOT consume a step — wait for
+                    // the next tick and retry so rate-limit or market-closed hiccups
+                    // never artificially DISCARD a signal.  However the retry is
+                    // strictly bounded: once consecutive failures reach maxSteps,
+                    // discard the signal so _purchaseInProgress is always released
+                    // and the next trade signal can still execute.  Without this cap,
+                    // a persistently unavailable API would spin forever inside the
+                    // VH filter and block the bot permanently.
+                    failed_rounds++;
+                    if (failed_rounds >= this.virtualHookRuntime.maxSteps) {
+                        // eslint-disable-next-line no-console
+                        console.warn(
+                            `[VH] ${failed_rounds} consecutive virtual rounds failed` +
+                            ' — DISCARD signal to release the purchase pipeline.'
+                        );
+                        return false;
+                    }
+                    // eslint-disable-next-line no-console
+                    console.warn('[VH] Virtual contract round failed — retrying without consuming a step.');
+                    // eslint-disable-next-line no-await-in-loop
+                    await this._waitForNextTick();
+                    continue;
+                }
 
-                // Resolve the active prediction (same priority as real trades).
-                const prediction =
-                    this.activePredictionOverride !== null &&
-                    this.activePredictionOverride !== undefined
-                        ? this.activePredictionOverride
-                        : (this.tradeOptions?.prediction ?? null);
-
-                // Simulate the contract outcome — pure tick-based, no API call.
-                const won = VirtualHookRuntime.determineOutcome(contract_type, lastDigit, prediction);
-
+                failed_rounds = 0;
                 step++;
-                const result = this.virtualHookRuntime.recordTick(won);
+                const result = this._recordVirtualOutcome(outcome.won, outcome.contractId);
 
                 // eslint-disable-next-line no-console
                 console.log(
                     `[VH] Step ${step}/${this.virtualHookRuntime.maxSteps}` +
                     ` | contractType=${contract_type}` +
-                    ` | lastDigit=${lastDigit}` +
-                    ` | prediction=${prediction}` +
-                    ` | won=${won}` +
+                    ` | contractId=${outcome.contractId}` +
                     ` | result=${result}`
                 );
 

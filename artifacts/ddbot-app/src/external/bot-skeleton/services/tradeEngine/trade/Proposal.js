@@ -156,6 +156,21 @@ export default Engine =>
                     // so matching still works on both endpoints.
                     const { passthrough, proposal, echo_req } = response.data;
                     const passthroughData = passthrough || echo_req?.passthrough || {};
+                    // ── VH ISOLATION ──────────────────────────────────────────
+                    // The Virtual Hook submits its own virtual proposals using a
+                    // dedicated purchase reference (`VH-...`).  Those proposals must
+                    // NEVER enter the real proposal cache — otherwise they could
+                    // interfere with checkProposalReady() matching or be selected
+                    // by selectProposal() for the real trade.  The Virtual Hook
+                    // consumes its own proposal response directly inside
+                    // Purchase._submitVirtualProposal().
+                    const purchase_reference = passthroughData.purchase_reference;
+                    const is_virtual_proposal =
+                        typeof purchase_reference === 'string' &&
+                        purchase_reference.startsWith('VH-');
+                    if (is_virtual_proposal) {
+                        return;
+                    }
                     if (proposal && this.data.proposals.findIndex(p => p.id === proposal.id) === -1) {
                         // Add proposals based on the ID returned by the API.
                         this.data.proposals.push({ ...proposal, ...passthroughData });
