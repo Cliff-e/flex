@@ -1,6 +1,9 @@
-import { VirtualHookRuntime } from '../runtime/VirtualHookRuntime';
+import { VirtualHookEngine, NoopTransactionPipeline } from '@/bot/virtualHook';
+import { XmlProposalAdapter } from '@/bot/virtualHook/adapters/XmlProposalAdapter';
+import { XmlTickObserver } from '@/bot/virtualHook/adapters/XmlTickObserver';
 import { tradeOptionToProposal } from '../utils/helpers';
 import { notify } from '../utils/broadcast';
+import { api_base } from '../../api/api-base';
 import { OPPOSITE_CONTRACT_MAP } from './Purchase';
 
 /**
@@ -12,23 +15,58 @@ import { OPPOSITE_CONTRACT_MAP } from './Purchase';
  *    Each override is applied transparently whenever a new proposal is
  *    requested.  Clearing an override reverts to the Trade Parameters value.
  *
- * 2. Virtual Hook integration — thin delegation layer to VirtualHookRuntime.
- *    All state and logic live in `this.virtualHookRuntime`; this mixin only
+ * 2. Virtual Hook integration — thin delegation layer to VirtualHookEngine.
+ *    All state and logic live in `this.virtualHookEngine`; this mixin only
  *    exposes the engine-facing API expected by BotInterface and Purchase.
  *
  * Bots that contain none of the override/VH blocks are completely unaffected:
- * overrides stay null and VirtualHookRuntime stays disabled throughout the run.
+ * overrides stay null and VirtualHookEngine stays disabled throughout the run.
  */
 export default Engine =>
     class ActiveContract extends Engine {
-        // ── Virtual Hook runtime ──────────────────────────────────────────────
+        // ── Virtual Hook engine ──────────────────────────────────────────────
 
         /**
          * Single source of truth for all Virtual Hook state.
          * Purchase.js, OpenContract.js, and BotInterface.js all read this
-         * instance through `this.virtualHookRuntime`.
+         * instance through `this.virtualHookEngine`.
+         *
+         * Lazily constructed (see _ensureVirtualHookEngine()) so the adapters
+         * can capture live references to tradeOptions, symbol, prediction,
+         * api_base, and ticksService after the engine has started.
          */
-        virtualHookRuntime = new VirtualHookRuntime();
+        virtualHookEngine = null;
+
+        /**
+         * Lazily construct the VirtualHookEngine with XML adapters.
+         * Called on first VH enable or VH status query.
+         */
+        _ensureVirtualHookEngine() {
+            if (this.virtualHookEngine) {
+                return this.virtualHookEngine;
+            }
+
+            const proposalAdapter = new XmlProposalAdapter({
+                send: request => api_base.api.send(request),
+                getTradeOptions: () => this.tradeOptions ?? null,
+                getSymbol: () => this.activeSymbolOverride ?? this.tradeOptions?.symbol ?? '',
+                getPrediction: () => this.activePredictionOverride ?? this.tradeOptions?.prediction ?? null,
+                tradeOptionToProposal,
+            });
+
+            const tickObserver = new XmlTickObserver({
+                ticksService: this.$scope?.ticksService,
+                getSymbol: () => this.activeSymbolOverride ?? this.tradeOptions?.symbol ?? '',
+            });
+
+            this.virtualHookEngine = new VirtualHookEngine(
+                proposalAdapter,
+                tickObserver,
+                new NoopTransactionPipeline()
+            );
+
+            return this.virtualHookEngine;
+        }
 
         // ── Contract type override ────────────────────────────────────────────
 
@@ -184,11 +222,11 @@ export default Engine =>
          */
         setVirtualHookEnabled(enabled) {
             if (Boolean(enabled)) {
-                this.virtualHookRuntime.enable();
+                this._ensureVirtualHookEngine().configure({ enabled: true });
                 notify('notify-virtual-hook', 'Virtual Hook Enabled');
                 notify('notify-virtual-hook', 'Virtual Hook Authorized');
             } else {
-                this.virtualHookRuntime.disable();
+                this._ensureVirtualHookEngine().configure({ enabled: false });
             }
         }
 
@@ -202,7 +240,14 @@ export default Engine =>
          * @param {number} [stake]   Virtual stake — display only, never affects real trades.
          */
         setVirtualHookSettings(maxSteps, minWins, stake) {
-            this.virtualHookRuntime.configure(maxSteps, minWins, stake);
+            const overrides = {
+                maxSteps: Math.max(1, Number(maxSteps) || 5),
+                minWins: Math.max(1, Number(minWins) || 3),
+            };
+            if (stake !== undefined && stake !== null) {
+                overrides.virtualStake = Number(stake) || 1.0;
+            }
+            this._ensureVirtualHookEngine().configure(overrides);
         }
 
         /**
@@ -212,7 +257,7 @@ export default Engine =>
          * @returns {boolean}
          */
         getVirtualHookStatus() {
-            return this.virtualHookRuntime.getStatus();
+            return this._ensureVirtualHookEngine().getStatus().active;
         }
 
         // ── Shared proposal helpers ───────────────────────────────────────────
@@ -272,8 +317,8 @@ export default Engine =>
          *
          * ── VH PROTECTION ──────────────────────────────────────────────────────
          * When the Virtual Hook is actively evaluating a signal
-         * (virtualHookRuntime.getStatus() returns true, meaning _active is true
-         * inside the runtime), proposals must NOT be invalidated.  VH is
+         * (virtualHookEngine.getStatus().active returns true), proposals must
+         * NOT be invalidated.  VH is
          * observing market ticks via the store, not via proposals, so stale
          * proposals do not affect its decision.  Invalidating proposals mid-
          * evaluation would cause the re-entrant purchase() call to fail with
@@ -294,7 +339,7 @@ export default Engine =>
             if (!this.trade_option) return;
 
             // ── VH guard: defer if Virtual Hook is evaluating ──────────
-            if (this.virtualHookRuntime?.getStatus()) {
+            if (this.virtualHookEngine?.getStatus()?.active) {
                 // eslint-disable-next-line no-console
                 console.log(
                     '[VH][_rebuildProposals] DEFERRED — Virtual Hook is actively evaluating.' +
