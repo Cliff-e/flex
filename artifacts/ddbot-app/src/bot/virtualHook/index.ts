@@ -48,6 +48,10 @@ export { NoopTransactionPipeline, VHTransactionPipeline } from './TransactionPip
 export { TransactionsStore, TransactionWriteError } from './TransactionsStore';
 export type { TransactionWriter } from './TransactionsStore';
 
+// Summary (Phase 3)
+export { SummaryStore } from './SummaryStore';
+export type { VHSummary, VHSummaryUpdateEvent } from './SummaryStore';
+
 // Observability
 export type { VHLogger, VHLogContext, VHLogEntry, VHLogLevel } from './VHLogger';
 export { ConsoleVHLogger } from './VHLogger';
