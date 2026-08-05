@@ -52,6 +52,10 @@ export type { TransactionWriter } from './TransactionsStore';
 export { SummaryStore } from './SummaryStore';
 export type { VHSummary, VHSummaryUpdateEvent } from './SummaryStore';
 
+// Journal (Phase 4)
+export { VHJournalStore } from './VHJournalStore';
+export type { VHJournalEntry, VHJournalListener, VHJournalUpdateEvent } from './VHJournalStore';
+
 // Observability
 export type { VHLogger, VHLogContext, VHLogEntry, VHLogLevel } from './VHLogger';
 export { ConsoleVHLogger } from './VHLogger';
