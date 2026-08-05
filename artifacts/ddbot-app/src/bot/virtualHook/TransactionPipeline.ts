@@ -6,22 +6,32 @@
 //   Transactions → Summary → Journal → Shared Exit Digit History
 //
 // This is the SINGLE recording pipeline for VH outcomes.
-// In Phase 1 it is defined as an interface only. Phases 2–5
-// wire it to the real stores.
+// The TransactionRecord schema below is FROZEN (see
+// PHASE2_SCHEMA_FREEZE.md) — downstream phases must not change it
+// without approval.
 // =============================================================
 
 import type { VirtualContract } from './VirtualContract';
 import { TransactionsStore } from './TransactionsStore';
 
 /**
- * A normalized transaction record for one settled virtual contract.
+ * A normalized, immutable transaction record for ONE settled
+ * virtual contract.
+ *
+ * Canonical schema — FROZEN (PHASE2_SCHEMA_FREEZE.md).
+ * Ordering invariant: the store persists records in
+ * settlement-chronological order (settledAt asc; equal settledAt →
+ * roundIndex asc; then contractId asc).
  */
 export interface TransactionRecord {
-    /** Unique transaction id (UUID). */
+    /** Unique transaction id (UUID-derived). */
     transactionId: string;
 
     /** Run id — identifies the TradeCandidate run. */
     runId: string;
+
+    /** Round index within the run (0, 1, 2, ...). */
+    roundIndex: number;
 
     /** Virtual contract id this transaction is for. */
     contractId: string;
@@ -35,16 +45,22 @@ export interface TransactionRecord {
     /** Virtual stake used. */
     stake: number;
 
+    /** Virtual P&L: +stake on win, -stake on loss. */
+    profit: number;
+
     /** Whether the virtual contract was a win. */
     won: boolean;
 
     /** Settled exit digit (0–9), or null for non-digit contracts. */
     exitDigit: number | null;
 
+    /** How the settlement outcome was determined. */
+    settlement: 'api' | 'timeout' | 'error';
+
     /** Always true — Virtual Hook transactions are virtual by definition. */
     isVirtual: true;
 
-    /** Epoch ms when the contract settled. */
+    /** Epoch ms when the contract settled — canonical timestamp / sort key. */
     settledAt: number;
 
     /** Marks the recording source. */
@@ -101,12 +117,15 @@ export class NoopTransactionPipeline implements TransactionPipeline {
         const transactionRecord: TransactionRecord = {
             transactionId: `TX-${contract.contractId}`,
             runId: contract.runId,
+            roundIndex: contract.roundIndex,
             contractId: contract.contractId,
             contractType: contract.candidate.contractType,
             symbol: contract.candidate.symbol,
             stake: contract.virtualStake,
+            profit: contract.settlement?.won ? contract.virtualStake : -contract.virtualStake,
             won: contract.settlement?.won ?? false,
             exitDigit: contract.exitDigit,
+            settlement: contract.settlement?.source ?? 'error',
             isVirtual: true,
             settledAt: contract.settledAt ?? Date.now(),
             source: 'vh_virtual',
@@ -138,6 +157,8 @@ export class NoopTransactionPipeline implements TransactionPipeline {
  *     contracts (idempotent).
  *   • Failed writes retry ONCE inside the store.
  *   • Fatal write failure rolls back — no record is registered.
+ *   • Records are committed in settlement-chronological order and
+ *     are immutable (see TransactionsStore).
  *
  * The Summary, Journal and Shared Exit Digit History stages are
  * intentionally NOT connected in Phase 2 (Phases 3–5) — this
@@ -175,12 +196,15 @@ export class VHTransactionPipeline implements TransactionPipeline {
         return {
             transactionId: `TX-${contract.contractId}`,
             runId: contract.runId,
+            roundIndex: contract.roundIndex,
             contractId: contract.contractId,
             contractType: contract.candidate.contractType,
             symbol: contract.candidate.symbol,
             stake: contract.virtualStake,
+            profit: contract.settlement?.won ? contract.virtualStake : -contract.virtualStake,
             won: contract.settlement?.won ?? false,
             exitDigit: contract.exitDigit,
+            settlement: contract.settlement?.source ?? 'error',
             isVirtual: true,
             settledAt: contract.settledAt ?? Date.now(),
             source: 'vh_virtual',
