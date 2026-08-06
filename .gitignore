@@ -31,11 +31,14 @@ node_modules
 /.sass-cache
 /connect.lock
 /coverage
+coverage/
+**/coverage/
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
 testem.log
 /typings
+tsc_output.txt
 
 # System Files
 .DS_Store
