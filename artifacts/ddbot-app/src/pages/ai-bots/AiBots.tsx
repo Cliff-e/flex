@@ -199,6 +199,12 @@ const AiBots: React.FC = () => {
     const [targetProfit, setTargetProfit] = useState(10);
     const [stopLoss, setStopLoss] = useState(5);
 
+    // Virtual Hook
+    const [vhEnabled, setVhEnabled] = useState(false);
+    const [vhMaxSteps, setVhMaxSteps] = useState(5);
+    const [vhMinWins, setVhMinWins] = useState(3);
+    const [vhVirtualStake, setVhVirtualStake] = useState(1);
+
     // Differ strategy
     const [differDigits, setDifferDigits] = useState<number[]>([0, 2, 8, 5]);
     const [differSubStrat, setDifferSubStrat] = useState<'MANUAL' | 'SEQUENCE'>('MANUAL');
@@ -286,6 +292,9 @@ const AiBots: React.FC = () => {
             targetProfit,
             stopLoss,
             ...(strategy === 'DIFFER' && differSubStrat === 'MANUAL' ? { differDigits } : {}),
+            vhConfig: vhEnabled
+                ? { enabled: true, maxSteps: vhMaxSteps, minWins: vhMinWins, virtualStake: vhVirtualStake }
+                : { enabled: false },
         };
 
         // Register the shared observer listeners (TransactionsStore,
@@ -304,7 +313,7 @@ const AiBots: React.FC = () => {
         } catch {
             // errors surface via logs
         }
-    }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss, store]);
+    }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss, store, vhEnabled, vhMaxSteps, vhMinWins, vhVirtualStake]);
 
     const handleStop = useCallback(() => {
         engineRef.current?.stop();
@@ -578,6 +587,47 @@ const AiBots: React.FC = () => {
                                 <span style={S.hint}>
                                     100–5000 · shared with DCircles &amp; all analytics
                                 </span>
+                            </div>
+                        </div>
+
+                        {/* ══════════════════════════════════════════
+                            Virtual Hook settings
+                        ══════════════════════════════════════════ */}
+                        <div style={{ ...S.differSection, border: `1px solid ${isDark ? '#2a1a3a' : '#c0d0e8'}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <label style={{ ...S.label, flex: 1, marginBottom: 0 }}>
+                                    🛡 Virtual Hook
+                                </label>
+                                <input
+                                    type='checkbox'
+                                    checked={vhEnabled}
+                                    disabled={isRunning}
+                                    onChange={e => setVhEnabled(e.target.checked)}
+                                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: 11, color: vhEnabled ? '#c084fc' : '#666' }}>
+                                    {vhEnabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                            </div>
+                            <div style={S.grid2}>
+                                <div style={S.row}>
+                                    <label style={S.label}>Max Steps</label>
+                                    <input type='number' min='1' max='50' step='1' value={vhMaxSteps} disabled={isRunning}
+                                        onChange={e => setVhMaxSteps(Number(e.target.value))} style={S.input} />
+                                    <span style={S.hint}>Virtual rounds per signal</span>
+                                </div>
+                                <div style={S.row}>
+                                    <label style={S.label}>Min Wins</label>
+                                    <input type='number' min='1' max='50' step='1' value={vhMinWins} disabled={isRunning}
+                                        onChange={e => setVhMinWins(Number(e.target.value))} style={S.input} />
+                                    <span style={S.hint}>Required to authorize trade</span>
+                                </div>
+                                <div style={S.row}>
+                                    <label style={S.label}>Virtual Stake</label>
+                                    <input type='number' min='0.35' step='0.01' value={vhVirtualStake} disabled={isRunning}
+                                        onChange={e => setVhVirtualStake(Number(e.target.value))} style={S.input} />
+                                    <span style={S.hint}>Virtual-only, never real</span>
+                                </div>
                             </div>
                         </div>
 

@@ -17,6 +17,12 @@ import { PublicTickManager } from '../utils/PublicTickManager';
 import { globalTickEngine } from './globalTickEngine';
 import { WebSocketManager } from '../utils/WebSocketManager';
 import { EventBus, EventMap } from '../utils/EventBus';
+import { VirtualHookEngine, VHDecision } from './virtualHook';
+import { getVHTransactionPipeline } from './virtualHook/VHRuntime';
+import type { VHConfig } from './virtualHook/VHConfig';
+import { DEFAULT_VH_CONFIG, resolveVHConfig } from './virtualHook/VHConfig';
+import { AIProposalAdapter } from './virtualHook/adapters/AIProposalAdapter';
+import { AITickObserver } from './virtualHook/adapters/AITickObserver';
 import { RuntimeLogger } from '../runtime/RuntimeLogger';
 import { LogTypes } from '../external/bot-skeleton';
 // observer is the Blockly-compatible global event bus shared with
@@ -82,6 +88,8 @@ export interface TradingConfig {
     targetProfit: number;
     stopLoss: number;
     differDigits?: number[];
+    /** Virtual Hook configuration — when enabled, all trades must pass the VH gate. */
+    vhConfig?: Partial<VHConfig>;
 }
 
 export interface TradeResult {
@@ -136,19 +144,9 @@ export class TradingEngine {
     private currentStake = 0;
 
     // Digit streams
-    // tickDigits removed — TradingEngine reads digit history directly from
-    // globalTickEngine (the single shared source of truth) instead of
-    // maintaining its own private buffer.
     private decimals: number | null = null;
-    // virtualDigits, realDigits, and exitDigitLog removed.
-    // The single shared sharedExitDigitHistory module is the only exit-digit
-    // buffer. Both virtual and real digits are appended there in chronological
-    // order; strategy decisions read from it via getLastNDigits().
 
     // Full trade history — kept locally for PerformanceDashboard/DigitHeatmap.
-    // AI Bot trades are also forwarded to the shared TransactionsStore via
-    // the observer bus, so there is ONE persistent source of truth for the
-    // run-panel Summary / Transactions / Journal panels.
     private tradeHistory: TradeRecord[] = [];
 
     // Execution guards
@@ -160,32 +158,30 @@ export class TradingEngine {
     private inRecovery = false;
     private recoveryConfirmed = false;
     private recoveryOver6Count = 0;
-    // Recovery stats — for EngineStatus reporting and UI labelling.
     private recoveryTradeCount = 0;
     private recoveryWinCount = 0;
 
     // Differ Sequence state
     private differCycleOffset = 0;
 
-    // ── NEW: shared-resource handles (no private WebSocket) ──
+    // ── Shared-resource handles (no private WebSocket) ──
     private _reqId = 0;
     private _tickUnsub: (() => void) | null = null;
     private _currentTradeReject: ((e: Error) => void) | null = null;
 
     // Callback resolved by executeRecoveryTrade when recovery finishes.
-    // Used by runDifferSequenceLoop to await the shared recovery engine
-    // without polling — the same engine used by OVER_1, UNDER_8, and DIFFER.
     private _onRecoveryComplete: (() => void) | null = null;
+
+    // ── Virtual Hook engine (lazy — constructed on first use) ──
+    private _vhEngine: VirtualHookEngine | null = null;
+    private _vhConfig: VHConfig = DEFAULT_VH_CONFIG;
 
     // Logging
     private logs: string[] = [];
     private onStatus: ((s: EngineStatus) => void) | null = null;
 
     // ─────────────────────────────────────────
-    // Journal notify — routes to the shared JournalStore
-    // via the Blockly-compatible observer event bus so that
-    // every AI Bot event (recovery, virtual signal, strategy
-    // transition) is visible in the run-panel Journal tab.
+    // Journal notify
     // ─────────────────────────────────────────
     private _journalNotify(message: string): void {
         observer.emit('ui.log.notify', { message, className: 'ai-bot-event' });
@@ -208,7 +204,7 @@ export class TradingEngine {
         this.tradeCount = 0;
         this.tradeIdCounter = 0;
         this.currentStake = this.config.stake;
-        resetExitDigitHistory();   // clear the shared chronological buffer
+        resetExitDigitHistory();
         this.tradeHistory = [];
         this.executionLock = false;
         this.lastEntryTs = 0;
@@ -222,6 +218,16 @@ export class TradingEngine {
         this.logs = [];
         this.decimals = null;
 
+        // Dispose any previous VH engine before recreating (prevents
+        // leaked observer subscriptions across session restarts).
+        this._disposeVHEngine();
+        this._vhEngine = null;
+        // Initialize VH config from TradingConfig overrides (always safe —
+        // DEFAULT_VH_CONFIG.enabled === false so the gate is inert by default).
+        // resolveVHConfig validates and clamps the merged values, rejecting
+        // impossible combinations (minWins > maxSteps) early.
+        this._vhConfig = resolveVHConfig(this.config.vhConfig ?? {});
+
         RuntimeLogger.start(AI_BOT_RUNTIME_ID, {
             name: 'AI Bot',
             strategy: this.config.strategy,
@@ -229,12 +235,15 @@ export class TradingEngine {
         });
 
         this.log('🤖 Bot starting — virtual monitoring active');
+        if (this._vhConfig.enabled) {
+            this.log(
+                `🛡 Virtual Hook enabled — maxSteps=${this._vhConfig.maxSteps} minWins=${this._vhConfig.minWins} virtualStake=${this._vhConfig.virtualStake}`
+            );
+        }
         const mult = this.config.martingaleMultiplier;
         if (mult > 1) this.log(`📈 Martingale ×${mult} active`);
         this.setState('monitoring');
 
-        // Notify the shared run-panel that a bot is now running so that
-        // has_open_contract is set to true and the UI reacts accordingly.
         observer.emit('bot.running', undefined);
 
         try {
@@ -256,11 +265,12 @@ export class TradingEngine {
             this._currentTradeReject(new Error('Bot stopped'));
             this._currentTradeReject = null;
         }
-        // Notify shared run-panel that the bot has stopped.
+        // Dispose the Virtual Hook engine — releases adapters, tick
+        // subscriptions, timers, and any pending proposal waits so no
+        // VH resources survive the session teardown.
+        this._disposeVHEngine();
         observer.emit('bot.stop', undefined);
         RuntimeLogger.stop(AI_BOT_RUNTIME_ID);
-        // Unblock any DIFFER_SEQUENCE loop that is awaiting recovery so it can
-        // observe the stopped state and exit cleanly rather than hanging.
         const cb = this._onRecoveryComplete;
         this._onRecoveryComplete = null;
         cb?.();
@@ -271,11 +281,9 @@ export class TradingEngine {
     // ─────────────────────────────────────────
 
     private async _connectToManagers(): Promise<void> {
-        // Ensure the ONE shared authenticated WS is available for trade execution.
         await WebSocketManager.connect();
         this.log('🔗 Connected to shared WS — subscribing to ticks via PublicTickManager');
 
-        // Use PublicTickManager (public WS, no auth) for tick monitoring.
         this._tickUnsub = PublicTickManager.subscribe(this.config.symbol, tick => {
             this.handleTick(tick as any);
         });
@@ -284,7 +292,20 @@ export class TradingEngine {
     private _cleanupSubscriptions(): void {
         this._tickUnsub?.();
         this._tickUnsub = null;
-        // WebSocketManager is shared — do NOT disconnect it here.
+    }
+
+    /**
+     * Dispose the Virtual Hook engine if one was constructed.
+     * Safe to call multiple times — dispose is idempotent on null.
+     */
+    private _disposeVHEngine(): void {
+        const engine = this._vhEngine;
+        this._vhEngine = null;
+        if (engine) {
+            engine.dispose().catch(err => {
+                this.log(`⚠️ VH dispose error: ${(err as Error)?.message ?? String(err)}`);
+            });
+        }
     }
 
     // ─────────────────────────────────────────
@@ -330,8 +351,6 @@ export class TradingEngine {
             this.log(`🎯 Entry detected — digit ${digit} | Confirmation ✅`);
             if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Proposal matched — entry digit', digit, '| strategy', this.config.strategy);
             RuntimeLogger.updateSignal(AI_BOT_RUNTIME_ID, `Entry on digit ${digit}`);
-            // Journal: notify the shared JournalStore about this monitoring-phase
-            // signal so virtual activity is visible in the run-panel Journal tab.
             this._journalNotify(`👁 [VIRTUAL] Entry signal — digit ${digit} — strategy ${this.config.strategy} — executing real trade`);
             this.lastEntryTs = now;
             this.currentEntryDigit = entryDigit;
@@ -370,8 +389,6 @@ export class TradingEngine {
     private checkDCirclesConfirmation(): boolean {
         const { strategy } = this.config;
 
-        // Read directly from the shared global engine — always current,
-        // no dependency on any UI component being mounted or visible.
         const digits = globalTickEngine.getDigits(this.config.symbol);
         const total = digits.length;
         if (total < MIN_FREQ_TICKS) return false;
@@ -429,8 +446,6 @@ export class TradingEngine {
                     const result = await this.placeOneTrade('DIGITDIFF', barrier, this.config.stake);
                     this.recordTrade('DIGITDIFF', barrier, this.config.stake, result);
                     this.tradeCount++;
-                    // Use safe addition: result.profit is already a number after _awaitSettlement
-                    // normalises it, but guard again for defence-in-depth.
                     this.profit += safeNum(result.profit);
 
                     if (result.won) {
@@ -446,15 +461,6 @@ export class TradingEngine {
                     this.publishStatus();
                     this.checkTPSL();
 
-                    // ── RECOVERY HOOK ─────────────────────────────────────────
-                    // After a losing trade, pause the sequence and enter the
-                    // same shared recovery engine used by OVER_1, UNDER_8 and
-                    // DIFFER. _awaitRecovery() sets inRecovery=true and returns
-                    // a Promise that resolves only when executeRecoveryTrade()
-                    // completes — so the recovery path (DCircles confirmation +
-                    // 3 OVER-6 digits + recovery trade) is identical for every
-                    // strategy. The while-loop condition is re-checked after the
-                    // await so a stop() during recovery exits cleanly.
                     if (!result.won && !this._isStopped()) {
                         await this._awaitRecovery();
                         if (!this._isStopped()) this.setState('executing');
@@ -462,7 +468,6 @@ export class TradingEngine {
 
                     if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next sequence entry — seq index ${i + 2}/10`);
                 } catch (err) {
-                    // A single trade error must NOT kill the entire sequence.
                     this.log(`❌ Entry ${i + 1}/10 error: ${(err as Error).message}`);
                     console.error('[AI-BOT][LIFECYCLE] Sequence entry error (continuing):', (err as Error).message);
                 }
@@ -552,8 +557,6 @@ export class TradingEngine {
 
                 this.recordTrade(contractType, barrier, stakeForThisTrade, result);
                 this.tradeCount++;
-                // safeNum guard: result.profit is already normalised inside
-                // _awaitSettlement, but this is a defence-in-depth measure.
                 this.profit += safeNum(result.profit);
                 this.applyMartingale(result.won);
 
@@ -572,15 +575,10 @@ export class TradingEngine {
                 this.checkTPSL();
                 if (this._isStopped()) break;
 
-                // Exit the batch immediately on the first loss so the very next
-                // trade is the recovery trade — no further normal strategy trades.
-                // The original strategy must NOT continue while recovery is pending.
                 if (hadLoss) break;
 
                 if (DEBUG_AI_BOT) console.log(`[AI-BOT][LIFECYCLE] Next trade — batch index ${i + 2}/${TRADES_PER_BATCH}`);
             } catch (err) {
-                // A trade error counts as a loss — break immediately so the
-                // very next trade is the recovery trade, not another strategy trade.
                 const msg = (err as Error).message ?? String(err);
                 this.log(`❌ ${label} error: ${msg}`);
                 console.error('[AI-BOT][LIFECYCLE] Trade error in executeBatch (continuing):', msg);
@@ -618,11 +616,8 @@ export class TradingEngine {
         this.executionLock = true;
         this.setState('executing');
 
-        // ── Use currentStake: applyMartingale(false) was already called by
-        // executeBatch (or _awaitRecovery for DIFFER_SEQUENCE) so currentStake
-        // is the martingale-escalated value correct for this recovery attempt.
         const { contractType, barrier } = this.resolveRecoveryContract();
-        const stakeForRecovery = this.currentStake;   // ← FIXED: was always config.stake
+        const stakeForRecovery = this.currentStake;
         this.recoveryTradeCount++;
 
         this.log(
@@ -665,14 +660,11 @@ export class TradingEngine {
             const msg = (err as Error).message ?? String(err);
             this.log(`❌ Recovery error: ${msg}`);
             console.error('[AI-BOT][LIFECYCLE] Recovery trade error:', msg);
-            // Treat API error as a non-win so recovery stays active and the
-            // next tick-based trigger can re-attempt rather than hanging forever.
             recoveryWon = false;
         }
 
         if (!this._isStopped()) {
             if (recoveryWon) {
-                // ── WIN: exit recovery, resume original strategy ──────────────
                 this.inRecovery = false;
                 this.recoveryConfirmed = false;
                 this.recoveryOver6Count = 0;
@@ -682,37 +674,22 @@ export class TradingEngine {
                 this._journalNotify(
                     `↩️ [RECOVERY] Complete — ${this.config.strategy} resumed after ${this.recoveryTradeCount} recovery trade(s)`
                 );
-                // Notify any awaiting DIFFER_SEQUENCE loop that recovery won.
                 const cb = this._onRecoveryComplete;
                 this._onRecoveryComplete = null;
                 cb?.();
             } else {
-                // ── LOSS: stay inside recovery ────────────────────────────────
-                // The original strategy MUST NOT resume. Reset per-trade
-                // condition counters so handleRecoveryTick will re-gate the
-                // next recovery trade on a fresh DCircles + 3×OVER-6 sequence.
-                // inRecovery stays true. _onRecoveryComplete is NOT resolved —
-                // DIFFER_SEQUENCE must keep waiting until recovery wins.
                 this.recoveryConfirmed = false;
                 this.recoveryOver6Count = 0;
                 this.executionLock = false;
                 this.setState('recovery');
             }
         } else {
-            // Bot was stopped during recovery — unblock any waiting loop.
             const cb = this._onRecoveryComplete;
             this._onRecoveryComplete = null;
             cb?.();
         }
     }
 
-    /**
-     * Used exclusively by runDifferSequenceLoop to plug into the shared
-     * recovery engine (handleRecoveryTick → executeRecoveryTrade) without
-     * polling. Sets all recovery state identically to what executeBatch does
-     * for OVER_1, UNDER_8 and DIFFER, then returns a Promise that resolves
-     * when executeRecoveryTrade signals completion via _onRecoveryComplete.
-     */
     private _awaitRecovery(): Promise<void> {
         return new Promise<void>(resolve => {
             this._onRecoveryComplete = resolve;
@@ -749,7 +726,7 @@ export class TradingEngine {
     }
 
     // ─────────────────────────────────────────
-    // Single trade — async, no private WS
+    // Single trade — gate through Virtual Hook
     // ─────────────────────────────────────────
 
     private placeOneTrade(
@@ -758,7 +735,6 @@ export class TradingEngine {
         stake: number
     ): Promise<TradeResult> {
         return new Promise<TradeResult>((resolve, reject) => {
-            // Store reject so stop() can abort immediately.
             this._currentTradeReject = reject;
 
             this._executeTrade(contractType, barrier, stake)
@@ -773,15 +749,92 @@ export class TradingEngine {
         });
     }
 
+    /**
+     * Execute a funded trade, optionally gated by VirtualHookEngine.
+     *
+     * When VH is enabled:
+     *   1. Build a TradeCandidate (source:'ai').
+     *   2. Submit to VirtualHookEngine.start().
+     *   3. AUTHORIZED → proceed to _executeRealTrade.
+     *   4. REJECTED / STOPPED → throw (treated as trade failure by callers).
+     *   5. RETRY → re-submit VH only (bounded loop, never re-runs strategy).
+     *
+     * When VH is disabled: proceeds directly to _executeRealTrade.
+     * This is identical behaviour to Purchase.js running without VH.
+     */
     private async _executeTrade(
+        contractType: string,
+        barrier: string,
+        stake: number
+    ): Promise<TradeResult> {
+        // ── VH disabled → exact legacy behaviour ──
+        if (!this._vhConfig.enabled) {
+            return this._executeRealTrade(contractType, barrier, stake);
+        }
+
+        this.log(
+            `🛡 VH gate — ${contractType} @ ${barrier} stake=${stake}`
+        );
+
+        const engine = this._ensureVHEngine();
+
+        // ── RETRY loop (VH only, strategy never re-evaluated) ──
+        const maxRetries = this._vhConfig.aiMaxRetries;
+        let retries = 0;
+
+        for (;;) {
+            const candidate = this._buildTradeCandidate(contractType, barrier, stake);
+            let result;
+            try {
+                result = await engine.start(candidate);
+            } catch (err) {
+                const reason = err instanceof Error ? err.message : String(err);
+                this.log(`❌ VH engine error: ${reason}`);
+                throw new Error(`VH engine error: ${reason}`);
+            }
+
+            this.log(
+                `🛡 VH decision: ${result.decision} | reason=${result.reason} | rounds=${result.roundsCompleted} wins=${result.wins}`
+            );
+
+            if (result.decision === VHDecision.AUTHORIZED) {
+                return this._executeRealTrade(contractType, barrier, stake);
+            }
+
+            if (result.decision === VHDecision.REJECTED) {
+                this.log(`🚫 VH REJECTED: ${result.reason}`);
+                throw new Error(`VH REJECTED: ${result.reason}`);
+            }
+
+            if (result.decision === VHDecision.STOPPED) {
+                this.log(`⏹ VH STOPPED: ${result.reason}`);
+                throw new Error(`VH STOPPED: ${result.reason}`);
+            }
+
+            // RETRY — retry the VH gate only
+            retries++;
+            if (retries >= maxRetries) {
+                this.log(`⚠️ VH RETRY exhausted (${maxRetries} max)`);
+                throw new Error(`VH RETRY exhausted after ${maxRetries} attempts`);
+            }
+            this.log(`🔄 VH RETRY ${retries}/${maxRetries}`);
+        }
+    }
+
+    /**
+     * The real trade pipeline — proposal → buy → settlement.
+     *
+     * This is the original _executeTrade body extracted intact.
+     * It is invoked directly when VH is disabled, or after VH
+     * returns AUTHORIZED. Zero logic changes.
+     */
+    private async _executeRealTrade(
         contractType: string,
         barrier: string,
         stake: number
     ): Promise<TradeResult> {
         const proposalReqId = ++this._reqId;
 
-        // ── STAGE: purchase_sent ──────────────────────────────────────────────
-        // Notify shared RunPanelStore so the contract-stage indicator updates.
         observer.emit('contract.status', {
             id: 'contract.purchase_sent',
             data: stake,
@@ -799,10 +852,6 @@ export class TradingEngine {
                 currency: 'USD',
                 duration: 1,
                 duration_unit: 't',
-                // api.derivws.com rejects `symbol` on proposal requests with
-                // InputValidationFailed: "Properties not allowed: symbol" — it
-                // requires `underlying_symbol` instead. Same fix already
-                // applied in bot-skeleton's tradeOptionToProposal (helpers.js).
                 underlying_symbol: this.config.symbol,
                 barrier,
             },
@@ -835,9 +884,6 @@ export class TradingEngine {
 
         if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Buy response received — contract_id:', contractId);
 
-        // ── STAGE: purchase_received ──────────────────────────────────────────
-        // The buy was acknowledged by the API. Notify RunPanelStore and feed
-        // bot.info to the shared statistics (mirrors what Purchase.js does).
         const normalizedBuy = {
             contract_id: contractId,
             transaction_id: safeNum(rawBuy?.transaction_id ?? rawBuy?.transactionId),
@@ -888,11 +934,6 @@ export class TradingEngine {
             }, TRADE_TIMEOUT_MS);
 
             const unsub = EventBus.on(eventType, msg => {
-                // The new trading API (api.derivws.com) does not always echo
-                // `req_id` at the top level of the response — same class of
-                // issue already worked around for `passthrough` in
-                // Proposal.js (bot-skeleton). Fall back to `echo_req.req_id`
-                // so matching still works on both endpoint generations.
                 const msgReqId = (msg as any).req_id ?? (msg as any).echo_req?.req_id;
                 if (msgReqId !== reqId) {
                     this.log(
@@ -917,16 +958,6 @@ export class TradingEngine {
 
     /**
      * Await settlement of a specific contract via EventBus.
-     * Resolves when `is_sold` becomes truthy for this contract_id.
-     *
-     * All numeric fields received from the Deriv API are coerced to
-     * numbers via safeNum() immediately after normalizeContractSpots().
-     * This prevents the class of crash where `.toFixed()` is called on
-     * a string value returned by the new trading API endpoint.
-     *
-     * Also emits the same observer events as the Blockly engine so that
-     * TransactionsStore, SummaryCardStore, JournalStore, and RunPanelStore
-     * all receive live updates for AI Bot contracts.
      */
     private _awaitSettlement(contractId: number, _stake: number): Promise<TradeResult> {
         return new Promise((resolve, reject) => {
@@ -939,11 +970,6 @@ export class TradingEngine {
                 const raw_poc = (msg as any).proposal_open_contract;
                 if (!raw_poc || raw_poc.contract_id !== contractId) return;
 
-                // ── NORMALISE: field names + numeric types ────────────────────
-                // normalizeContractSpots handles field-name aliases
-                // (camelCase ↔ snake_case). Then we explicitly coerce every
-                // financial field to a number with safeNum() so arithmetic
-                // operations never silently operate on strings.
                 const poc = normalizeContractSpots(raw_poc) as any;
 
                 poc.profit       = safeNum(poc.profit);
@@ -953,23 +979,18 @@ export class TradingEngine {
                 poc.ask_price    = safeNum(poc.ask_price);
                 poc.payout       = safeNum(poc.payout);
                 poc.stake        = safeNum(poc.stake);
-                poc.barrier      = poc.barrier;          // keep as string (digit barrier)
-                poc.entry_tick   = poc.entry_tick;       // string/number — used for display
-                poc.exit_tick    = poc.exit_tick;        // string/number — used for display
+                poc.barrier      = poc.barrier;
+                poc.entry_tick   = poc.entry_tick;
+                poc.exit_tick    = poc.exit_tick;
                 poc.current_spot = safeNum(poc.current_spot);
 
-                // ── BROADCAST: live updates to shared stores ──────────────────
-                // Mirrors what OpenContract.js does in the Blockly engine.
-                // Every TransactionsStore.onBotContractEvent and
-                // SummaryCardStore.onBotContractEvent listener registered
-                // through run_panel.registerBotListeners() will receive this.
                 observer.emit('bot.contract', { ...poc });
 
                 if (poc.is_sold) {
                     unsub();
                     clearTimeout(timer);
 
-                    const profit = poc.profit;   // already a number after safeNum above
+                    const profit = poc.profit;
 
                     console.log(`[AI-BOT] Trade closed — ${profit >= 0 ? 'Profit' : 'Loss'}: ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}`);
                     if (DEBUG_AI_BOT) console.log('[AI-BOT][LIFECYCLE] Contract closed', {
@@ -981,16 +1002,12 @@ export class TradingEngine {
                         is_sold: poc.is_sold,
                     });
 
-                    // ── STAGE: contract.sold → RunPanelStore contract stage ────
                     observer.emit('contract.status', {
                         id: 'contract.sold',
                         data: poc.transaction_ids?.sell,
                         contract: poc,
                     });
 
-                    // ── STAGE: journal entry via shared JournalStore ──────────
-                    // JournalStore.onLogSuccess is registered in RunPanelStore.onMount
-                    // (always active), so this reliably reaches the Journal panel.
                     observer.emit('ui.log.success', {
                         log_type: profit > 0 ? LogTypes.PROFIT : LogTypes.LOST,
                         extra: { currency: poc.currency || 'USD', profit },
@@ -1005,15 +1022,11 @@ export class TradingEngine {
                     RuntimeLogger.recordTrade(AI_BOT_RUNTIME_ID, poc);
                     RuntimeLogger.updatePosition(AI_BOT_RUNTIME_ID, '--');
 
-                    // Determine exit digit from the exit tick value.
-                    // exit_tick may be a formatted string like "1234.56" or
-                    // a number — extractDigit handles both.
                     const exitTickRaw = poc.exit_tick ?? poc.exit_spot ?? 0;
                     const exitDigit = this.extractDigit(String(exitTickRaw));
 
                     resolve({ won: profit > 0, profit, exitDigit });
                 } else {
-                    // Contract is open (not yet settled).
                     RuntimeLogger.updatePosition(
                         AI_BOT_RUNTIME_ID,
                         `${poc.contract_type ?? ''} @ ${poc.underlying ?? this.config.symbol}`.trim()
@@ -1021,6 +1034,63 @@ export class TradingEngine {
                 }
             });
         });
+    }
+
+    // ─────────────────────────────────────────
+    // Virtual Hook helpers
+    // ─────────────────────────────────────────
+
+    /**
+     * Lazily construct the VirtualHookEngine with AI adapters.
+     */
+    private _ensureVHEngine(): VirtualHookEngine {
+        if (this._vhEngine) return this._vhEngine;
+
+        const proposalAdapter = new AIProposalAdapter({
+            send: payload => WebSocketManager.send(payload),
+            onProposalResponse: (event, cb) => EventBus.on(event as any, cb as any) as any,
+            getSymbol: () => this.config.symbol,
+        });
+
+        const tickObserver = new AITickObserver();
+
+        this._vhEngine = new VirtualHookEngine(
+            proposalAdapter,
+            tickObserver,
+            getVHTransactionPipeline()
+        );
+
+        // Apply config overrides that were set before engine creation.
+        if (this._vhConfig) {
+            this._vhEngine.configure(this._vhConfig);
+        }
+
+        return this._vhEngine;
+    }
+
+    /**
+     * Build a TradeCandidate from the current AI trade context.
+     * Uses exactly the same model consumed by VirtualHookEngine.
+     */
+    private _buildTradeCandidate(
+        contractType: string,
+        barrier: string,
+        stake: number
+    ): import('./virtualHook/TradeCandidate').TradeCandidate {
+        return {
+            signalId: `ai-${++this._reqId}-${Date.now()}`,
+            source: 'ai',
+            contractType,
+            symbol: this.config.symbol,
+            realStake: stake,
+            duration: 1,
+            durationUnit: 't',
+            currency: 'USD',
+            basis: 'stake',
+            prediction: barrier ? Number(barrier) : null,
+            tradeParams: { barrier },
+            generatedAt: Date.now(),
+        };
     }
 
     // ─────────────────────────────────────────
@@ -1055,6 +1125,8 @@ export class TradingEngine {
             );
             this.setState('stopped');
             this._cleanupSubscriptions();
+            // Release the Virtual Hook engine resources on the TP stop path.
+            this._disposeVHEngine();
             observer.emit('bot.stop', undefined);
             return;
         }
@@ -1063,6 +1135,8 @@ export class TradingEngine {
             this.log(`🛑 Stop Loss hit (${this.profit.toFixed(2)} / -${this.config.stopLoss})`);
             this.setState('stopped');
             this._cleanupSubscriptions();
+            // Release the Virtual Hook engine resources on the SL stop path.
+            this._disposeVHEngine();
             observer.emit('bot.stop', undefined);
         }
     }
@@ -1072,26 +1146,10 @@ export class TradingEngine {
     // ─────────────────────────────────────────
 
     private addVirtualExitDigit(d: number): void {
-        // Write to the single shared chronological history only.
-        // Virtual (monitoring-phase) digits are NOT settled contracts so they
-        // never flow through pushTransaction — this remains the sole writer
-        // for virtual digits.
         appendExitDigit({ digit: d, source: 'virtual', ts: Date.now() });
     }
 
-    // NOTE: addRealExitDigit has been intentionally removed.
-    // Real trade exit digits are now appended by TransactionsStore.pushTransaction,
-    // which is the single authoritative write point for all settled contracts
-    // (AI Bot, Blockly, recovery, recovered contracts).  This prevents the
-    // duplicate-append bug that would have occurred when both TradingEngine and
-    // TransactionsStore wrote the same contract's digit independently.
-
     private getLast20Digits(): number[] {
-        // Read the last 20 digit values from the shared chronological history.
-        // This is guaranteed to be in arrival order (virtual and real interleaved)
-        // because sharedExitDigitHistory appends each entry as it occurs.
-        // The old implementation incorrectly concatenated two separate arrays
-        // (all virtual first, then all real) which broke chronological order.
         return getLastNDigits(20);
     }
 
@@ -1132,12 +1190,6 @@ export class TradingEngine {
         this.publishStatus();
     }
 
-    /**
-     * Returns whether the engine is stopped.
-     * Using a method (instead of direct property comparison inside while loops)
-     * prevents TypeScript from narrowing `this.state` based on loop conditions
-     * and incorrectly flagging post-await state checks as unreachable.
-     */
     private _isStopped(): boolean {
         return this.state === 'stopped';
     }

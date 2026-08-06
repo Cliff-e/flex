@@ -42,11 +42,31 @@ export type { TickObserver, VHTick } from './TickObserver';
 
 // Transaction pipeline
 export type { TransactionPipeline, TransactionRecord, TransactionResult } from './TransactionPipeline';
-export { NoopTransactionPipeline } from './TransactionPipeline';
+export { NoopTransactionPipeline, VHTransactionPipeline } from './TransactionPipeline';
+
+// TransactionsStore (Phase 2)
+export { TransactionsStore, TransactionWriteError } from './TransactionsStore';
+export type { TransactionWriter } from './TransactionsStore';
+
+// Summary (Phase 3)
+export { SummaryStore } from './SummaryStore';
+export type { VHSummary, VHSummaryUpdateEvent } from './SummaryStore';
+
+// Journal (Phase 4)
+export { VHJournalStore } from './VHJournalStore';
+export type { VHJournalEntry, VHJournalListener, VHJournalUpdateEvent } from './VHJournalStore';
 
 // Observability
 export type { VHLogger, VHLogContext, VHLogEntry, VHLogLevel } from './VHLogger';
 export { ConsoleVHLogger } from './VHLogger';
+
+// Runtime wiring (Phases 2–5 production pipeline)
+export {
+    getVHTransactionPipeline,
+    getVHStore,
+    resetVHRuntime,
+    isVHRuntimeWired,
+} from './VHRuntime';
 
 // Errors
 export {
