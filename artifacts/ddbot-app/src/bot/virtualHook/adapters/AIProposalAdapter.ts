@@ -61,6 +61,14 @@ export class AIProposalAdapter implements ProposalAdapter {
     private readonly _getSymbol: () => string;
     private _aborted = false;
 
+    // ── In-flight request tracking (for clean abort/dispose) ──
+    /** Resolve function of the in-flight request, if any. Used to cancel on abort(). */
+    private _pendingResolve: ((result: ProposalResult) => void) | null = null;
+    /** Unsubscribe function of the in-flight request, if any. */
+    private _pendingUnsub: (() => void) | null = null;
+    /** Timer handle of the in-flight request, if any. */
+    private _pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
     constructor(options: AIProposalAdapterOptions) {
         this._send = options.send;
         this._onProposalResponse = options.onProposalResponse;
@@ -110,10 +118,22 @@ export class AIProposalAdapter implements ProposalAdapter {
         return new Promise<ProposalResult>(resolve => {
             let resolved = false;
 
-            const timer = setTimeout(() => {
+            // Track the in-flight request so abort() can cancel it cleanly
+            // instead of leaving a dangling subscription / timer.
+            this._pendingResolve = result => {
+                if (resolved) return;
+                resolved = true;
+                resolve(result);
+            };
+            this._pendingUnsub = () => {
+                unsub();
+                this._pendingUnsub = null;
+            };
+            this._pendingTimer = setTimeout(() => {
                 if (resolved) return;
                 resolved = true;
                 unsub();
+                this._clearPending();
                 resolve({
                     ok: false,
                     retryable: true,
@@ -153,7 +173,8 @@ export class AIProposalAdapter implements ProposalAdapter {
                         errorMessage.includes('Unauthorized');
 
                     resolved = true;
-                    clearTimeout(timer);
+                    if (this._pendingTimer) clearTimeout(this._pendingTimer);
+                    this._clearPending();
                     unsub();
                     resolve({
                         ok: false,
@@ -175,7 +196,8 @@ export class AIProposalAdapter implements ProposalAdapter {
 
                 if (!p.id || typeof p.id !== 'string') {
                     resolved = true;
-                    clearTimeout(timer);
+                    if (this._pendingTimer) clearTimeout(this._pendingTimer);
+                    this._clearPending();
                     unsub();
                     resolve({
                         ok: false,
@@ -195,7 +217,8 @@ export class AIProposalAdapter implements ProposalAdapter {
                 };
 
                 resolved = true;
-                clearTimeout(timer);
+                if (this._pendingTimer) clearTimeout(this._pendingTimer);
+                this._clearPending();
                 unsub();
                 resolve({ ok: true, proposal: vhProposal });
             });
@@ -205,7 +228,8 @@ export class AIProposalAdapter implements ProposalAdapter {
             } catch (err) {
                 if (resolved) return;
                 resolved = true;
-                clearTimeout(timer);
+                if (this._pendingTimer) clearTimeout(this._pendingTimer);
+                this._clearPending();
                 unsub();
                 const reason = err instanceof Error ? err.message : String(err);
                 resolve({
@@ -220,9 +244,37 @@ export class AIProposalAdapter implements ProposalAdapter {
 
     /**
      * Abort any in-flight proposal request.
-     * Sets a flag that causes future requestProposal() calls to fail fast.
+     * Sets a flag that causes future requestProposal() calls to fail fast,
+     * and immediately cancels a pending request by resolving it as aborted
+     * (releasing its timer and EventBus subscription).
      */
     abort(): void {
         this._aborted = true;
+
+        const resolve = this._pendingResolve;
+        const unsub = this._pendingUnsub;
+        const timer = this._pendingTimer;
+
+        this._pendingResolve = null;
+        this._pendingUnsub = null;
+        this._pendingTimer = null;
+
+        if (timer) clearTimeout(timer);
+        if (unsub) unsub();
+
+        // Resolve the pending promise as a terminal non-retryable failure so
+        // the engine's await completes instead of hanging indefinitely.
+        if (resolve) {
+            resolve({ ok: false, retryable: false, reason: 'Adapter aborted.' });
+        }
+    }
+
+    /**
+     * Internal — clear the tracked pending request state.
+     */
+    private _clearPending(): void {
+        this._pendingResolve = null;
+        this._pendingUnsub = null;
+        this._pendingTimer = null;
     }
 }

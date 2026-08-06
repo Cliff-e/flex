@@ -244,8 +244,13 @@ export default Engine =>
                 maxSteps: Math.max(1, Number(maxSteps) || 5),
                 minWins: Math.max(1, Number(minWins) || 3),
             };
+            // minWins can never exceed maxSteps — clamp so the engine
+            // never receives an impossible configuration (resolveVHConfig
+            // would otherwise reject it and break the block runtime).
+            overrides.minWins = Math.min(overrides.minWins, overrides.maxSteps);
             if (stake !== undefined && stake !== null) {
-                overrides.virtualStake = Number(stake) || 1.0;
+                // Clamp to the Deriv minimum so virtualStake is always valid.
+                overrides.virtualStake = Math.max(Number(stake) || 1.0, 0.35);
             }
             this._ensureVirtualHookEngine().configure(overrides);
         }

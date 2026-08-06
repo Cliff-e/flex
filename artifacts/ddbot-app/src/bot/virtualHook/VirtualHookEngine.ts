@@ -88,6 +88,13 @@ interface RoundResult {
  *
  * This is the ONLY Virtual Hook implementation in the repository.
  * Every trading engine reuses it.
+ *
+ * Lifecycle:
+ *   construct → configure (optional) → start (0..N times) → dispose
+ *
+ * dispose() is terminal — the engine cannot be reused after it is
+ * called. This guarantees no lingering adapters, observers, timers,
+ * or subscriptions survive a bot session teardown.
  */
 export class VirtualHookEngine {
     private readonly _config: VHConfig;
@@ -100,6 +107,14 @@ export class VirtualHookEngine {
     private _currentRunId: string | null = null;
     private _busy = false;
     private _runAbortRequested = false;
+    private _disposed = false;
+
+    // Observability — last settled contract reference for run-completion logs.
+    private _lastContractId: string | null = null;
+    private _lastRoundIndex: number | null = null;
+
+    // Total proposal retries across the run (for run-completion logs).
+    private _proposalRetriesTotal = 0;
 
     /**
      * Construct the engine with explicit dependencies.
@@ -137,21 +152,39 @@ export class VirtualHookEngine {
     /**
      * Update configuration after construction.
      * Safe to call between runs (never mid-run).
+     *
+     * Overrides are merged over the CURRENT configuration — not the
+     * defaults — so a partial update never resets fields that were
+     * previously configured.
      */
     configure(overrides: Partial<VHConfig>): void {
+        if (this._disposed) {
+            this._logger.error('vh.configure_rejected', {
+                runId: this._currentRunId ?? 'none',
+                currentState: VHState.IDLE,
+                expectedState: VHState.IDLE,
+                reason: 'Cannot reconfigure a disposed engine.',
+                timeout: null,
+                retryCount: null,
+                recoveryAction: 'Create a new engine instance.',
+            });
+            return;
+        }
         if (this._busy) {
             this._logger.error('vh.configure_rejected', {
                 runId: this._currentRunId ?? 'none',
                 currentState: VHState.ACTIVE,
-                reason: 'Cannot reconfigure while a run is in progress.',
                 expectedState: VHState.IDLE,
+                reason: 'Cannot reconfigure while a run is in progress.',
                 timeout: null,
                 retryCount: null,
                 recoveryAction: 'Configure after the current run completes.',
             });
             return;
         }
-        Object.assign(this._config, resolveVHConfig(overrides));
+        // Merge over the current config so partial overrides never
+        // reset previously-set fields back to defaults.
+        Object.assign(this._config, resolveVHConfig({ ...this._config, ...overrides }));
         Object.assign(this._policy, { _config: this._config });
     }
 
@@ -183,13 +216,24 @@ export class VirtualHookEngine {
      * @returns The authorization decision.
      */
     async start(candidate: TradeCandidate): Promise<VHStartResult> {
+        if (this._disposed) {
+            throw new VirtualHookError('VirtualHookEngine has been disposed.', {
+                currentState: VHState.IDLE,
+                expectedState: VHState.TRADE_CANDIDATE_RECEIVED,
+                recoveryAction: 'Create a new engine instance.',
+            });
+        }
         if (this._busy) {
             throw new VirtualHookBusyError();
         }
         this._busy = true;
         this._runAbortRequested = false;
         this._policy.reset();
+        this._proposalRetriesTotal = 0;
+        this._lastContractId = null;
+        this._lastRoundIndex = null;
 
+        const runStartedAt = Date.now();
         const runId = candidate.signalId;
         this._currentRunId = runId;
 
@@ -211,6 +255,18 @@ export class VirtualHookEngine {
             });
             sm.stop('Invalid TradeCandidate.');
             await this._finishRun(sm, runId);
+            this._logRunCompleted({
+                runId,
+                startedAt: runStartedAt,
+                decision: VHDecision.STOPPED,
+                reason: err.message,
+                roundsCompleted: 0,
+                wins: 0,
+                losses: 0,
+                retryCount: this._proposalRetriesTotal,
+                contractId: this._lastContractId,
+                roundIndex: this._lastRoundIndex,
+            });
             return {
                 decision: VHDecision.STOPPED,
                 reason: err.message,
@@ -230,6 +286,18 @@ export class VirtualHookEngine {
                 if (this._runAbortRequested) {
                     sm.stop('Abort requested by caller.');
                     await this._finishRun(sm, runId);
+                    this._logRunCompleted({
+                        runId,
+                        startedAt: runStartedAt,
+                        decision: VHDecision.STOPPED,
+                        reason: 'Abort requested by caller.',
+                        roundsCompleted: this._policy.roundsCompleted,
+                        wins: this._policy.wins,
+                        losses: this._policy.losses,
+                        retryCount: this._proposalRetriesTotal,
+                        contractId: this._lastContractId,
+                        roundIndex: this._lastRoundIndex,
+                    });
                     return {
                         decision: VHDecision.STOPPED,
                         reason: 'Abort requested by caller.',
@@ -262,6 +330,18 @@ export class VirtualHookEngine {
                 if (policyResult.decision === VHDecision.AUTHORIZED) {
                     sm.transition(VHState.AUTHORIZE_REAL_TRADE, policyResult.reason);
                     await this._finishRun(sm, runId);
+                    this._logRunCompleted({
+                        runId,
+                        startedAt: runStartedAt,
+                        decision: VHDecision.AUTHORIZED,
+                        reason: policyResult.reason,
+                        roundsCompleted: this._policy.roundsCompleted,
+                        wins: this._policy.wins,
+                        losses: this._policy.losses,
+                        retryCount: this._proposalRetriesTotal,
+                        contractId: this._lastContractId,
+                        roundIndex: this._lastRoundIndex,
+                    });
                     return {
                         decision: VHDecision.AUTHORIZED,
                         reason: policyResult.reason,
@@ -273,6 +353,18 @@ export class VirtualHookEngine {
                 if (policyResult.decision === VHDecision.REJECTED) {
                     sm.transition(VHState.REJECT, policyResult.reason);
                     await this._finishRun(sm, runId);
+                    this._logRunCompleted({
+                        runId,
+                        startedAt: runStartedAt,
+                        decision: VHDecision.REJECTED,
+                        reason: policyResult.reason,
+                        roundsCompleted: this._policy.roundsCompleted,
+                        wins: this._policy.wins,
+                        losses: this._policy.losses,
+                        retryCount: this._proposalRetriesTotal,
+                        contractId: this._lastContractId,
+                        roundIndex: this._lastRoundIndex,
+                    });
                     return {
                         decision: VHDecision.REJECTED,
                         reason: policyResult.reason,
@@ -284,6 +376,18 @@ export class VirtualHookEngine {
                 if (policyResult.decision === VHDecision.STOPPED) {
                     sm.stop(policyResult.reason);
                     await this._finishRun(sm, runId);
+                    this._logRunCompleted({
+                        runId,
+                        startedAt: runStartedAt,
+                        decision: VHDecision.STOPPED,
+                        reason: policyResult.reason,
+                        roundsCompleted: this._policy.roundsCompleted,
+                        wins: this._policy.wins,
+                        losses: this._policy.losses,
+                        retryCount: this._proposalRetriesTotal,
+                        contractId: this._lastContractId,
+                        roundIndex: this._lastRoundIndex,
+                    });
                     return {
                         decision: VHDecision.STOPPED,
                         reason: policyResult.reason,
@@ -312,6 +416,18 @@ export class VirtualHookEngine {
             });
             sm.stop(reason);
             await this._finishRun(sm, runId);
+            this._logRunCompleted({
+                runId,
+                startedAt: runStartedAt,
+                decision: VHDecision.STOPPED,
+                reason,
+                roundsCompleted: this._policy.roundsCompleted,
+                wins: this._policy.wins,
+                losses: this._policy.losses,
+                retryCount: this._proposalRetriesTotal,
+                contractId: this._lastContractId,
+                roundIndex: this._lastRoundIndex,
+            });
             return {
                 decision: VHDecision.STOPPED,
                 reason,
@@ -378,6 +494,7 @@ export class VirtualHookEngine {
                         recoveryAction: `Retry proposal (attempt ${proposalRetries + 1}).`,
                     });
                     proposalRetries++;
+                    this._proposalRetriesTotal++;
                     await this._sleep(this._getRetryDelayMs(proposalRetries));
                 }
             } catch (err) {
@@ -402,6 +519,7 @@ export class VirtualHookEngine {
                     });
                 }
                 proposalRetries++;
+                this._proposalRetriesTotal++;
                 await this._sleep(this._getRetryDelayMs(proposalRetries));
             }
         }
@@ -525,6 +643,10 @@ export class VirtualHookEngine {
 
         sm.transition(VHState.UPDATE_SHARED_EXIT_HISTORY, 'Transaction recorded.');
 
+        // Track the last settled contract reference for run-completion logs.
+        this._lastContractId = settledContract.contractId;
+        this._lastRoundIndex = settledContract.roundIndex;
+
         this._logger.info('vh.round_completed', {
             runId,
             currentState: VHState.UPDATE_SHARED_EXIT_HISTORY,
@@ -639,6 +761,102 @@ export class VirtualHookEngine {
      */
     private _sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Emit a structured run-completion log for every terminal decision.
+     *
+     * Provides full observability:
+     *   decision, reason, rounds/wins/losses, duration, retry count,
+     *   and the last settled contract/round reference.
+     */
+    private _logRunCompleted(params: {
+        runId: string;
+        startedAt: number;
+        decision: VHDecision;
+        reason: string;
+        roundsCompleted: number;
+        wins: number;
+        losses: number;
+        retryCount: number;
+        contractId: string | null;
+        roundIndex: number | null;
+    }): void {
+        this._logger.info('vh.run_completed', {
+            runId: params.runId,
+            currentState: VHState.IDLE,
+            expectedState: VHState.IDLE,
+            reason: params.reason,
+            timeout: null,
+            retryCount: params.retryCount,
+            recoveryAction: null,
+            decision: params.decision,
+            roundsCompleted: params.roundsCompleted,
+            wins: params.wins,
+            losses: params.losses,
+            durationMs: Date.now() - params.startedAt,
+            contractId: params.contractId,
+            roundIndex: params.roundIndex,
+        });
+    }
+
+    /**
+     * Dispose the engine — release adapters, subscriptions, timers, and
+     * pending run state. Safe to call at any point (idle or mid-run).
+     *
+     * After dispose():
+     *   • start() fails fast with VirtualHookError.
+     *   • configure() is rejected.
+     *   • The engine cannot be reused — create a new instance.
+     */
+    async dispose(): Promise<void> {
+        // Abort any in-progress run so its awaits short-circuit.
+        this._runAbortRequested = true;
+
+        try {
+            await this._tickObserver.stop();
+        } catch (err) {
+            this._logger.warn('vh.dispose_observer_stop_failed', {
+                runId: this._currentRunId ?? 'none',
+                currentState: VHState.IDLE,
+                expectedState: VHState.IDLE,
+                reason: err instanceof Error ? err.message : String(err),
+                timeout: null,
+                retryCount: null,
+                recoveryAction: 'Ignored — observer stop is best-effort.',
+            });
+        }
+
+        try {
+            this._proposalAdapter.abort();
+        } catch (err) {
+            this._logger.warn('vh.dispose_adapter_abort_failed', {
+                runId: this._currentRunId ?? 'none',
+                currentState: VHState.IDLE,
+                expectedState: VHState.IDLE,
+                reason: err instanceof Error ? err.message : String(err),
+                timeout: null,
+                retryCount: null,
+                recoveryAction: 'Ignored — adapter abort is best-effort.',
+            });
+        }
+
+        this._disposed = true;
+        this._busy = false;
+        this._currentRunId = null;
+        this._runAbortRequested = false;
+        this._lastContractId = null;
+        this._lastRoundIndex = null;
+
+        this._logger.info('vh.disposed', {
+            runId: 'none',
+            currentState: VHState.IDLE,
+            expectedState: VHState.IDLE,
+            reason: 'Engine disposed.',
+            timeout: null,
+            retryCount: null,
+            recoveryAction: null,
+        });
     }
 
     /**

@@ -19,7 +19,7 @@ import { WebSocketManager } from '../utils/WebSocketManager';
 import { EventBus, EventMap } from '../utils/EventBus';
 import { VirtualHookEngine, VHDecision, NoopTransactionPipeline } from './virtualHook';
 import type { VHConfig } from './virtualHook/VHConfig';
-import { DEFAULT_VH_CONFIG } from './virtualHook/VHConfig';
+import { DEFAULT_VH_CONFIG, resolveVHConfig } from './virtualHook/VHConfig';
 import { AIProposalAdapter } from './virtualHook/adapters/AIProposalAdapter';
 import { AITickObserver } from './virtualHook/adapters/AITickObserver';
 import { RuntimeLogger } from '../runtime/RuntimeLogger';
@@ -217,10 +217,15 @@ export class TradingEngine {
         this.logs = [];
         this.decimals = null;
 
+        // Dispose any previous VH engine before recreating (prevents
+        // leaked observer subscriptions across session restarts).
+        this._disposeVHEngine();
+        this._vhEngine = null;
         // Initialize VH config from TradingConfig overrides (always safe —
         // DEFAULT_VH_CONFIG.enabled === false so the gate is inert by default).
-        this._vhEngine = null;
-        this._vhConfig = { ...DEFAULT_VH_CONFIG, ...(this.config.vhConfig ?? {}) };
+        // resolveVHConfig validates and clamps the merged values, rejecting
+        // impossible combinations (minWins > maxSteps) early.
+        this._vhConfig = resolveVHConfig(this.config.vhConfig ?? {});
 
         RuntimeLogger.start(AI_BOT_RUNTIME_ID, {
             name: 'AI Bot',
@@ -259,6 +264,10 @@ export class TradingEngine {
             this._currentTradeReject(new Error('Bot stopped'));
             this._currentTradeReject = null;
         }
+        // Dispose the Virtual Hook engine — releases adapters, tick
+        // subscriptions, timers, and any pending proposal waits so no
+        // VH resources survive the session teardown.
+        this._disposeVHEngine();
         observer.emit('bot.stop', undefined);
         RuntimeLogger.stop(AI_BOT_RUNTIME_ID);
         const cb = this._onRecoveryComplete;
@@ -282,6 +291,20 @@ export class TradingEngine {
     private _cleanupSubscriptions(): void {
         this._tickUnsub?.();
         this._tickUnsub = null;
+    }
+
+    /**
+     * Dispose the Virtual Hook engine if one was constructed.
+     * Safe to call multiple times — dispose is idempotent on null.
+     */
+    private _disposeVHEngine(): void {
+        const engine = this._vhEngine;
+        this._vhEngine = null;
+        if (engine) {
+            engine.dispose().catch(err => {
+                this.log(`⚠️ VH dispose error: ${(err as Error)?.message ?? String(err)}`);
+            });
+        }
     }
 
     // ─────────────────────────────────────────
@@ -1101,6 +1124,8 @@ export class TradingEngine {
             );
             this.setState('stopped');
             this._cleanupSubscriptions();
+            // Release the Virtual Hook engine resources on the TP stop path.
+            this._disposeVHEngine();
             observer.emit('bot.stop', undefined);
             return;
         }
@@ -1109,6 +1134,8 @@ export class TradingEngine {
             this.log(`🛑 Stop Loss hit (${this.profit.toFixed(2)} / -${this.config.stopLoss})`);
             this.setState('stopped');
             this._cleanupSubscriptions();
+            // Release the Virtual Hook engine resources on the SL stop path.
+            this._disposeVHEngine();
             observer.emit('bot.stop', undefined);
         }
     }
