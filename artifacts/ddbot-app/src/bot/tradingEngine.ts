@@ -37,7 +37,7 @@ import {
     appendExitDigit,
     resetExitDigitHistory,
     getExitDigitHistory,
-    getLastNDigits,
+    getLastNConfirmedDigits,
     type ExitDigitEntry,
 } from './sharedExitDigitHistory';
 
@@ -127,6 +127,10 @@ export interface EngineStatus {
     recoveryTradeCount: number;
     /** Total number of recovery trades that resulted in a win. */
     recoveryWinCount: number;
+    /** Whether the Virtual Hook gate is currently enabled (AI session). */
+    vhEnabled: boolean;
+    /** Whether the Virtual Hook engine is actively evaluating a signal. */
+    vhActive: boolean;
 }
 
 // ─────────────────────────────────────────────
@@ -140,7 +144,7 @@ export class TradingEngine {
     private tradeCount = 0;
     private tradeIdCounter = 0;
 
-    // Martingale
+    // Martingale — recovery-scoped. Strategy trades always use config.stake.
     private currentStake = 0;
 
     // Digit streams
@@ -172,7 +176,7 @@ export class TradingEngine {
     // Callback resolved by executeRecoveryTrade when recovery finishes.
     private _onRecoveryComplete: (() => void) | null = null;
 
-    // ── Virtual Hook engine (lazy — constructed on first use) ──
+    // ── Virtual Hook engine (single lazy instance per session) ──
     private _vhEngine: VirtualHookEngine | null = null;
     private _vhConfig: VHConfig = DEFAULT_VH_CONFIG;
 
@@ -195,6 +199,41 @@ export class TradingEngine {
 
     setStatusCallback(cb: (s: EngineStatus) => void): void {
         this.onStatus = cb;
+    }
+
+    /**
+     * Enable or disable the Virtual Hook gate for this AI session.
+     *
+     * Reuses the existing single VirtualHookEngine instance via the frozen
+     * `configure({ enabled })` API — no new VH instance, no duplicated
+     * configuration state, AI-Bot only (the XML engine is a separate
+     * instance and is unaffected).
+     *
+     * The change is applied ONLY while the engine is idle/monitoring and
+     * the VH engine is not mid-evaluation. During an active run the toggle
+     * is rejected and logged rather than risking an in-flight authorization
+     * with a changed policy.
+     *
+     * @returns true when the toggle was applied, false otherwise.
+     */
+    setVHEnabled(enabled: boolean): boolean {
+        if (this.state === 'executing' || this.state === 'recovery') {
+            this.log(`⚠️ VH toggle rejected — session is ${this.state}; allow change while idle/monitoring`);
+            return false;
+        }
+
+        const engine = this._ensureVHEngine();
+        const active = engine.getStatus().active;
+        if (active) {
+            this.log('⚠️ VH toggle rejected — Virtual Hook is actively evaluating a signal');
+            return false;
+        }
+
+        engine.configure({ enabled });
+        this._vhConfig = resolveVHConfig({ ...this._vhConfig, enabled });
+        this.log(`🛡 Virtual Hook ${enabled ? 'ENABLED' : 'DISABLED'} (live toggle)`);
+        this.publishStatus();
+        return true;
     }
 
     async start(): Promise<void> {
@@ -241,7 +280,7 @@ export class TradingEngine {
             );
         }
         const mult = this.config.martingaleMultiplier;
-        if (mult > 1) this.log(`📈 Martingale ×${mult} active`);
+        if (mult > 1) this.log(`📈 Recovery martingale ×${mult} active`);
         this.setState('monitoring');
 
         observer.emit('bot.running', undefined);
@@ -546,7 +585,11 @@ export class TradingEngine {
         for (let i = 0; i < TRADES_PER_BATCH; i++) {
             if (this._isStopped()) break;
 
-            const stakeForThisTrade = this.currentStake;
+            // Normal strategy trades ALWAYS use the configured base stake.
+            // Martingale progression applies ONLY while recovery mode is
+            // active (see _enterRecoveryMode / executeRecoveryTrade), so it
+            // can never leak back into normal strategy trading.
+            const stakeForThisTrade = this.config.stake;
             const label = `Trade ${i + 1}/${TRADES_PER_BATCH}`;
 
             try {
@@ -558,7 +601,6 @@ export class TradingEngine {
                 this.recordTrade(contractType, barrier, stakeForThisTrade, result);
                 this.tradeCount++;
                 this.profit += safeNum(result.profit);
-                this.applyMartingale(result.won);
 
                 if (result.won) {
                     this.log(
@@ -598,13 +640,30 @@ export class TradingEngine {
                 this._journalNotify(
                     `🔄 [RECOVERY] Activated — original strategy (${this.config.strategy}) suspended — waiting for DCircles + 3×OVER-6`
                 );
-                this.inRecovery = true;
-                this.recoveryConfirmed = false;
-                this.recoveryOver6Count = 0;
+                this._enterRecoveryMode();
             }
             this.executionLock = false;
             this.setState(this.inRecovery ? 'recovery' : 'monitoring');
         }
+    }
+
+    // ─────────────────────────────────────────
+    // Recovery mode
+    // ─────────────────────────────────────────
+
+    /**
+     * Enter recovery mode: strategy pauses immediately, recovery stays active
+     * until a win, and the martingale progression begins from the base stake.
+     * Recovery is a temporary override — a win resets martingale and resumes
+     * the original strategy.
+     */
+    private _enterRecoveryMode(): void {
+        this.inRecovery = true;
+        this.recoveryConfirmed = false;
+        this.recoveryOver6Count = 0;
+        // Martingale starts from the configured base stake on the first
+        // recovery attempt, then escalates per loss until a recovery win.
+        this.currentStake = this.config.stake;
     }
 
     // ─────────────────────────────────────────
@@ -668,6 +727,7 @@ export class TradingEngine {
                 this.inRecovery = false;
                 this.recoveryConfirmed = false;
                 this.recoveryOver6Count = 0;
+                this.currentStake = this.config.stake;
                 this.executionLock = false;
                 this.setState('monitoring');
                 this.log(`↩️ Recovery complete (${this.recoveryTradeCount} trade(s)) — back to monitoring`);
@@ -693,9 +753,7 @@ export class TradingEngine {
     private _awaitRecovery(): Promise<void> {
         return new Promise<void>(resolve => {
             this._onRecoveryComplete = resolve;
-            this.inRecovery = true;
-            this.recoveryConfirmed = false;
-            this.recoveryOver6Count = 0;
+            this._enterRecoveryMode();
             this.setState('recovery');
             this.log('🔄 Loss detected — entering shared recovery engine');
             this._journalNotify(
@@ -1041,7 +1099,7 @@ export class TradingEngine {
     // ─────────────────────────────────────────
 
     /**
-     * Lazily construct the VirtualHookEngine with AI adapters.
+     * Lazily construct the single VirtualHookEngine for this AI session.
      */
     private _ensureVHEngine(): VirtualHookEngine {
         if (this._vhEngine) return this._vhEngine;
@@ -1094,9 +1152,14 @@ export class TradingEngine {
     }
 
     // ─────────────────────────────────────────
-    // Martingale
+    // Martingale — recovery-scoped only
     // ─────────────────────────────────────────
 
+    /**
+     * Apply the martingale progression. Called ONLY from recovery trades.
+     * A recovery win resets to the base stake (recovery ends); a recovery
+     * loss escalates for the next recovery attempt.
+     */
     private applyMartingale(won: boolean): void {
         const mult = this.config.martingaleMultiplier;
         if (mult <= 1) return;
@@ -1149,8 +1212,15 @@ export class TradingEngine {
         appendExitDigit({ digit: d, source: 'virtual', ts: Date.now() });
     }
 
+    /**
+     * Recovery reads ONLY confirmed exit digits committed through the
+     * canonical Transactions panel pipeline (`source: 'real'`). Monitoring
+     * ticks (`source: 'virtual'`) and VH-virtual (`source: 'vh_virtual'`)
+     * digits are NEVER used for recovery decisions — recovery must never
+     * operate on speculative or unconfirmed data.
+     */
     private getLast20Digits(): number[] {
-        return getLastNDigits(20);
+        return getLastNConfirmedDigits(20);
     }
 
     private recordTrade(
@@ -1220,6 +1290,8 @@ export class TradingEngine {
             logs: [...this.logs],
             recoveryTradeCount: this.recoveryTradeCount,
             recoveryWinCount: this.recoveryWinCount,
+            vhEnabled: this._vhConfig.enabled,
+            vhActive: this._vhEngine?.getStatus().active ?? false,
         });
     }
 
@@ -1234,6 +1306,8 @@ export class TradingEngine {
             logs: [...this.logs],
             recoveryTradeCount: this.recoveryTradeCount,
             recoveryWinCount: this.recoveryWinCount,
+            vhEnabled: this._vhConfig.enabled,
+            vhActive: this._vhEngine?.getStatus().active ?? false,
         };
     }
 }

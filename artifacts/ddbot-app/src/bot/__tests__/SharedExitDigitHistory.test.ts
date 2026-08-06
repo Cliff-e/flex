@@ -539,3 +539,56 @@ describe('SharedExitDigitHistory — scale and determinism', () => {
         expect(logger.events).toHaveLength(2);
     });
 });
+
+// ── getLastNConfirmedDigits: recovery consumes only confirmed digits ──────
+
+import { getLastNConfirmedDigits } from '../sharedExitDigitHistory';
+
+describe('getLastNConfirmedDigits — recovery consumes only confirmed exit digits', () => {
+    beforeEach(() => {
+        resetExitDigitHistory();
+    });
+
+    test('returns only source=real digits, excluding virtual monitoring and vh_virtual', () => {
+        for (let i = 0; i < 5; i++) {
+            appendExitDigit({ digit: 1, source: 'virtual', ts: 1_700_000_000_000 + i });
+        }
+        for (let i = 0; i < 5; i++) {
+            appendExitDigit({ digit: 2, source: 'real', won: i % 2 === 0, ts: 1_700_000_000_100 + i });
+        }
+        for (let i = 0; i < 5; i++) {
+            appendExitDigit({ digit: 3, source: 'vh_virtual', won: true, ts: 1_700_000_000_200 + i });
+        }
+        const confirmed = getLastNConfirmedDigits(20);
+        expect(confirmed).toEqual([2, 2, 2, 2, 2]);
+        expect(confirmed.every(function (d) { return d === 2; })).toBe(true);
+    });
+
+    test('returns the last N confirmed digits in chronological order', () => {
+        appendExitDigit({ digit: 1, source: 'real', won: true, ts: 1 });
+        appendExitDigit({ digit: 9, source: 'virtual', ts: 2 });
+        appendExitDigit({ digit: 2, source: 'real', won: false, ts: 3 });
+        appendExitDigit({ digit: 3, source: 'real', won: true, ts: 4 });
+        appendExitDigit({ digit: 5, source: 'vh_virtual', won: true, ts: 5 });
+        expect(getLastNConfirmedDigits(2)).toEqual([2, 3]);
+        expect(getLastNConfirmedDigits(10)).toEqual([1, 2, 3]);
+    });
+
+    test('respects the 21-entry FIFO cap when filtered', () => {
+        for (let i = 0; i < 30; i++) {
+            appendExitDigit({ digit: i % 10, source: 'virtual', ts: 1_700_000_000_000 + i });
+            appendExitDigit({ digit: (i + 5) % 10, source: 'real', won: true, ts: 1_700_000_000_100 + i });
+        }
+        const confirmed = getLastNConfirmedDigits(30);
+        expect(confirmed).toHaveLength(21);
+    });
+
+    test('settlement commit is synchronous before recovery reads', async () => {
+        const store = new TransactionsStore();
+        connectExitDigitHistoryToStore(store);
+        await store.pushTransaction(digitRecord(7, 'DIGITOVER'));
+        appendExitDigit({ digit: 8, source: 'real', won: true, ts: Date.now() });
+        expect(getLastNConfirmedDigits(1)).toEqual([8]);
+        expect(getLastNConfirmedDigits(5)).toEqual([8]);
+    });
+});

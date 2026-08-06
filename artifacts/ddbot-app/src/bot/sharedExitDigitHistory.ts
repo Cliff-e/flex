@@ -224,6 +224,21 @@ export function getLastNDigits(n: number): number[] {
 }
 
 /**
+ * Return the last N **confirmed** digit *values* (number[]) in chronological
+ * order. "Confirmed" means the digit was committed by the canonical
+ * Transactions panel pipeline (`source: 'real'`).
+ *
+ * Recovery decisions must NEVER read speculative / monitoring
+ * (`source: 'virtual'`) or VH-virtual (`source: 'vh_virtual'`) digits —
+ * they are not settled real-trade exits. This function guarantees recovery
+ * consumes only committed confirmations from the single rolling history.
+ */
+export function getLastNConfirmedDigits(n: number): number[] {
+    const confirmed = _history.filter(e => e.source === 'real').slice(-n);
+    return confirmed.map(e => e.digit);
+}
+
+/**
  * Return the digit value of the most recently recorded entry, or null when
  * the history is empty.
  */

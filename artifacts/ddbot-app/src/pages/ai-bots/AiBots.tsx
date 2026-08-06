@@ -48,6 +48,32 @@ const STATE_COLORS: Record<string, string> = {
     stopped: '#ff4444',
 };
 
+// ── Virtual Hook persistence (localStorage convention — same as theme) ──
+const VH_ENABLED_KEY = 'ai_bots_vh_enabled';
+const VH_MAX_STEPS_KEY = 'ai_bots_vh_max_steps';
+const VH_MIN_WINS_KEY = 'ai_bots_vh_min_wins';
+const VH_VIRTUAL_STAKE_KEY = 'ai_bots_vh_virtual_stake';
+
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw === null ? fallback : raw === 'true';
+    } catch {
+        return fallback;
+    }
+}
+
+function readStoredNumber(key: string, fallback: number): number {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return fallback;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 // ─── Auth hook — canonical single source of truth ────────────────────────────
 //
 // RULE: AI bot MUST NOT read localStorage directly for auth.
@@ -199,11 +225,11 @@ const AiBots: React.FC = () => {
     const [targetProfit, setTargetProfit] = useState(10);
     const [stopLoss, setStopLoss] = useState(5);
 
-    // Virtual Hook
-    const [vhEnabled, setVhEnabled] = useState(false);
-    const [vhMaxSteps, setVhMaxSteps] = useState(5);
-    const [vhMinWins, setVhMinWins] = useState(3);
-    const [vhVirtualStake, setVhVirtualStake] = useState(1);
+    // Virtual Hook — pre-start settings persisted in localStorage (page convention)
+    const [vhEnabled, setVhEnabled] = useState(() => readStoredBoolean(VH_ENABLED_KEY, false));
+    const [vhMaxSteps, setVhMaxSteps] = useState(() => readStoredNumber(VH_MAX_STEPS_KEY, 5));
+    const [vhMinWins, setVhMinWins] = useState(() => readStoredNumber(VH_MIN_WINS_KEY, 3));
+    const [vhVirtualStake, setVhVirtualStake] = useState(() => readStoredNumber(VH_VIRTUAL_STAKE_KEY, 1));
 
     // Differ strategy
     const [differDigits, setDifferDigits] = useState<number[]>([0, 2, 8, 5]);
@@ -222,10 +248,26 @@ const AiBots: React.FC = () => {
         logs: [],
         recoveryTradeCount: 0,
         recoveryWinCount: 0,
+        vhEnabled: readStoredBoolean(VH_ENABLED_KEY, false),
+        vhActive: false,
     });
     const [status, setStatus] = useState<EngineStatus>(defaultStatus);
     const isRunning = status.state !== 'idle' && status.state !== 'stopped';
     const stateColor = STATE_COLORS[status.state] ?? '#555';
+
+    // Persist VH settings whenever the pre-start inputs change
+    useEffect(() => {
+        localStorage.setItem(VH_ENABLED_KEY, String(vhEnabled));
+    }, [vhEnabled]);
+    useEffect(() => {
+        localStorage.setItem(VH_MAX_STEPS_KEY, String(vhMaxSteps));
+    }, [vhMaxSteps]);
+    useEffect(() => {
+        localStorage.setItem(VH_MIN_WINS_KEY, String(vhMinWins));
+    }, [vhMinWins]);
+    useEffect(() => {
+        localStorage.setItem(VH_VIRTUAL_STAKE_KEY, String(vhVirtualStake));
+    }, [vhVirtualStake]);
 
     // Cleanup on unmount
     useEffect(() => () => { engineRef.current?.stop(); }, []);
@@ -315,6 +357,28 @@ const AiBots: React.FC = () => {
         }
     }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss, store, vhEnabled, vhMaxSteps, vhMinWins, vhVirtualStake]);
 
+    /**
+     * Live Virtual Hook ON/OFF toggle.
+     *
+     * Safe while the bot is idle or monitoring (no trade in flight and the VH
+     * engine is not mid-evaluation). Disabled while executing / recovering —
+     * changing the gate mid-run would risk an inconsistent authorization.
+     * The engine alone owns the runtime state; the UI is a view.
+     */
+    const handleVhToggle = useCallback(() => {
+        const engine = engineRef.current;
+        if (!engine) {
+            // No engine yet — just flip the persisted pre-start preference.
+            setVhEnabled(prev => !prev);
+            return;
+        }
+        const applied = engine.setVHEnabled(!status.vhEnabled);
+        if (applied) {
+            // Reflect the engine's authoritative state immediately.
+            setStatus(engine.getStatus());
+        }
+    }, [status.vhEnabled]);
+
     const handleStop = useCallback(() => {
         engineRef.current?.stop();
         // Unregister the shared bot listeners after the engine stops so
@@ -324,6 +388,9 @@ const AiBots: React.FC = () => {
     }, [store]);
 
     const profitColor = status.profit > 0 ? '#00ff66' : status.profit < 0 ? '#ff4444' : '#888';
+
+    // Live VH toggle is allowed only while idle or monitoring (not mid-run).
+    const vhToggleDisabled = status.state === 'executing' || status.state === 'recovery';
 
     return (
         <div style={S.page} className='ai-bots-page'>
@@ -373,7 +440,7 @@ const AiBots: React.FC = () => {
                     <div style={{ ...S.statusBar, borderColor: stateColor }}>
                         <span style={{ color: stateColor, fontWeight: 700, minWidth: 120 }}>{STATE_LABELS[status.state] ?? status.state}</span>
                         <span style={{ color: profitColor }}>
-                            P&amp;L: <strong>{status.profit >= 0 ? '+' : ''}{status.profit.toFixed(2)}</strong>
+                            P&L: <strong>{status.profit >= 0 ? '+' : ''}{status.profit.toFixed(2)}</strong>
                         </span>
                         <span style={{ color: '#888' }}>
                             Trades: <strong style={{ color: '#fff' }}>{status.trades}</strong>
@@ -387,6 +454,12 @@ const AiBots: React.FC = () => {
                             <span style={{ color: '#c084fc' }}>
                                 Recovery: <strong>{status.recoveryWinCount}/{status.recoveryTradeCount}</strong>
                                 <span style={{ color: '#666', fontWeight: 400 }}> (wins/total)</span>
+                            </span>
+                        )}
+                        {isRunning && (
+                            <span style={{ color: status.vhEnabled ? '#c084fc' : '#666' }}>
+                                🛡 VH: <strong>{status.vhEnabled ? 'ON' : 'OFF'}</strong>
+                                {status.vhEnabled && status.vhActive ? ' (evaluating…)' : ''}
                             </span>
                         )}
                     </div>
@@ -544,7 +617,7 @@ const AiBots: React.FC = () => {
                                 <span style={S.hint}>
                                     {martingaleMultiplier <= 1
                                         ? '1.0 = disabled (flat stake)'
-                                        : `×${martingaleMultiplier} stake after each loss, reset on win`}
+                                        : `×${martingaleMultiplier} stake after each recovery loss, reset on recovery win`}
                                 </span>
                             </div>
 
@@ -585,30 +658,57 @@ const AiBots: React.FC = () => {
                                     }}
                                 />
                                 <span style={S.hint}>
-                                    100–5000 · shared with DCircles &amp; all analytics
+                                    100–5000 · shared with DCircles & all analytics
                                 </span>
                             </div>
                         </div>
 
                         {/* ══════════════════════════════════════════
-                            Virtual Hook settings
+                            Virtual Hook settings — live ON/OFF toggle
                         ══════════════════════════════════════════ */}
                         <div style={{ ...S.differSection, border: `1px solid ${isDark ? '#2a1a3a' : '#c0d0e8'}` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <label style={{ ...S.label, flex: 1, marginBottom: 0 }}>
                                     🛡 Virtual Hook
                                 </label>
-                                <input
-                                    type='checkbox'
-                                    checked={vhEnabled}
-                                    disabled={isRunning}
-                                    onChange={e => setVhEnabled(e.target.checked)}
-                                    style={{ width: 18, height: 18, cursor: 'pointer' }}
-                                />
-                                <span style={{ fontSize: 11, color: vhEnabled ? '#c084fc' : '#666' }}>
-                                    {vhEnabled ? 'Enabled' : 'Disabled'}
+                                {/* Live toggle — AI Bot only. Reuses the engine's
+                                    existing configure({ enabled }) API. Disabled while
+                                    a session is executing/recovering to avoid changing
+                                    the gate mid-run. */}
+                                <button
+                                    type='button'
+                                    onClick={handleVhToggle}
+                                    disabled={vhToggleDisabled}
+                                    title={vhToggleDisabled
+                                        ? 'VH can be toggled while the bot is idle or monitoring'
+                                        : status.vhEnabled ? 'Disable Virtual Hook filtering' : 'Enable Virtual Hook filtering'}
+                                    style={{
+                                        minWidth: 76,
+                                        padding: '5px 14px',
+                                        borderRadius: 20,
+                                        border: 'none',
+                                        cursor: vhToggleDisabled ? 'not-allowed' : 'pointer',
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        letterSpacing: 1,
+                                        background: (status.vhEnabled || (!engineRef.current && vhEnabled)) ? '#c084fc' : (isDark ? '#222' : '#e8edf3'),
+                                        color: (status.vhEnabled || (!engineRef.current && vhEnabled)) ? '#000' : (isDark ? '#888' : '#555'),
+                                        opacity: vhToggleDisabled ? 0.4 : 1,
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    {(status.vhEnabled || (!engineRef.current && vhEnabled)) ? '● ON' : '○ OFF'}
+                                </button>
+                                <span style={{ fontSize: 11, color: (status.vhEnabled || (!engineRef.current && vhEnabled)) ? '#c084fc' : '#666' }}>
+                                    {(status.vhEnabled || (!engineRef.current && vhEnabled)) ? 'Enabled' : 'Disabled'}
                                 </span>
                             </div>
+                            {status.vhActive && (
+                                <span style={{ ...S.hint, color: '#c084fc', fontWeight: 700 }}>
+                                    🛡 Virtual Hook is actively evaluating a signal…
+                                </span>
+                            )}
                             <div style={S.grid2}>
                                 <div style={S.row}>
                                     <label style={S.label}>Max Steps</label>
@@ -634,11 +734,11 @@ const AiBots: React.FC = () => {
                         {/* Info box */}
                         <div style={S.infoBox}>
                             {strategy === 'OVER_1' && <>
-                                <strong>OVER 1</strong> — DCircles confirms digits 0 &amp; 1 both &lt;10.5% with no hot bar.
+                                <strong>OVER 1</strong> — DCircles confirms digits 0 {''} {'' + '&'} 1 both {'<10.5%'} with no hot bar.
                                 Entry fires on digit <strong>5</strong> or <strong>6</strong>.
                             </>}
                             {strategy === 'UNDER_8' && <>
-                                <strong>UNDER 8</strong> — DCircles confirms digits 8 &amp; 9 both &lt;10.5% with no hot bar.
+                                <strong>UNDER 8</strong> — DCircles confirms digits 8 {''} {'' + '&'} 9 both {'<10.5%'} with no hot bar.
                                 Entry fires on digit <strong>7</strong>, <strong>4</strong>, or <strong>9</strong>.
                             </>}
                             {strategy === 'DIFFER' && differSubStrat === 'MANUAL' && <>
