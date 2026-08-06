@@ -260,12 +260,17 @@ export class TradingEngine {
         // Dispose any previous VH engine before recreating (prevents
         // leaked observer subscriptions across session restarts).
         this._disposeVHEngine();
-        this._vhEngine = null;
         // Initialize VH config from TradingConfig overrides (always safe —
         // DEFAULT_VH_CONFIG.enabled === false so the gate is inert by default).
         // resolveVHConfig validates and clamps the merged values, rejecting
         // impossible combinations (minWins > maxSteps) early.
         this._vhConfig = resolveVHConfig(this.config.vhConfig ?? {});
+
+        // Eagerly construct the VirtualHookEngine for this session so the
+        // gate is ready before the first trade signal arrives.  _ensureVHEngine
+        // is idempotent — it returns the existing instance on subsequent calls
+        // — so _executeTrade() and setVHEnabled() safely reuse the same engine.
+        this._ensureVHEngine();
 
         RuntimeLogger.start(AI_BOT_RUNTIME_ID, {
             name: 'AI Bot',

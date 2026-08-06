@@ -58,6 +58,15 @@ export default Engine =>
          */
         _purchaseInProgress = false;
 
+        /**
+         * When true, the completion of the current purchase() call must NOT
+         * dispatch purchaseSuccessful() (which moves scope to DURING_PURCHASE).
+         * Used ONLY by purchaseMultiple() so the scope stays in BEFORE_PURCHASE
+         * between batch members — allowing every member to route through the
+         * normal purchase() flow. Always false for single purchases.
+         */
+        _deferPurchaseSuccessful = false;
+
         purchase(contract_type) {
             // Prevent calling purchase twice — scope-based guard (async).
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
@@ -151,7 +160,14 @@ export default Engine =>
                 });
 
                 this.contractId = buy.contract_id;
-                this.store.dispatch(purchaseSuccessful());
+
+                // purchaseMultiple(): keep scope in BEFORE_PURCHASE until the
+                // final batch member. Single purchases always dispatch.
+                const dispatchPurchaseSuccessful = !this._deferPurchaseSuccessful;
+                this._deferPurchaseSuccessful = false;
+                if (dispatchPurchaseSuccessful) {
+                    this.store.dispatch(purchaseSuccessful());
+                }
 
                 if (this.is_proposal_subscription_required) {
                     this.renewProposalsOnPurchase();
@@ -348,18 +364,27 @@ export default Engine =>
         /**
          * Execute the same contract type N times in one before_purchase phase.
          *
-         * Design constraints:
+         * Architectural rule: there is exactly ONE purchase execution path —
+         * purchase(). This method is a thin sequencing wrapper that routes
+         * EVERY member of the batch through purchase(), so each trade
+         * independently flows through the same guards, Virtual Hook
+         * authorization, proposal selection, buy + retry, recovery engine and
+         * event emissions as a normal single purchase.
+         *
+         * No batch-specific authorization exists. The Virtual Hook remains
+         * attached ONLY to purchase() via _runVirtualHookGate(). There is no
+         * duplicate VH logic here and no second authorization flow.
+         *
+         * Sequencing preserved:
          *   • The scope guard (BEFORE_PURCHASE) is checked once at entry — it is
          *     never bypassed or weakened.
-         *   • The _purchaseInProgress flag is held for the entire batch so no
-         *     concurrent purchase() or hedge() call can slip in between buys.
-         *   • purchaseSuccessful() (which transitions scope → DURING_PURCHASE) is
-         *     dispatched only after the final buy in the batch.
-         *   • The effective contract type is resolved once from the priority chain
-         *     (explicit type > activeContractOverride > Trade Parameters).
-         *   • Between intermediate buys, renewProposalsOnPurchase() is called and
-         *     this method waits for proposalsReady before selecting the next proposal.
-         *   • When count === 1 the method delegates to the standard purchase() path
+         *   • purchaseSuccessful() (scope → DURING_PURCHASE) is deferred until
+         *     the final member so scope stays in BEFORE_PURCHASE for the whole
+         *     batch (same observable behavior as the previous inline loop).
+         *   • Between members, purchase() already renews proposals on
+         *     completion; this method waits for proposalsReady before routing
+         *     the next member through purchase().
+         *   • When count === 1 the method delegates straight to purchase(),
          *     so non-bulk bots are completely unaffected.
          *
          * @param {string} contract_type  - Raw value from the Blockly dropdown
@@ -370,8 +395,7 @@ export default Engine =>
         async purchaseMultiple(contract_type, count) {
             const totalBuys = Math.max(1, Math.floor(count) || 1);
 
-            // Single-buy: delegate entirely to the standard purchase() pipeline
-            // (timeMachineEnabled / recoverFromError support is preserved).
+            // Single-buy: delegate entirely to the standard purchase() pipeline.
             if (totalBuys === 1) {
                 return this.purchase(contract_type);
             }
@@ -383,40 +407,18 @@ export default Engine =>
             if (this._purchaseInProgress) {
                 return;
             }
-            this._purchaseInProgress = true;
-
-            // ── Resolve effective contract type once ───────────────────────────
-            const effective_type =
-                contract_type === 'DISABLE'
-                    ? (this.activeContractOverride ?? this.tradeOptions?.contractTypes?.[0] ?? null)
-                    : contract_type;
 
             // eslint-disable-next-line no-console
             console.log(
                 `[VH] Purchase.purchaseMultiple() ENTER | count=${totalBuys}` +
-                ` | effective_type=${effective_type}` +
                 ` | scope=${this.store.getState().scope}`
             );
 
-            // ── Virtual Hook gate (batch) ──────────────────────────────────────
-            // When VH is enabled, the ENTIRE batch must pass the gate ONCE before
-            // any buy request is sent. This closes the bypass where a multi-buy
-            // block previously sent direct buy requests (below) without VH
-            // authorization. Single-buy batches already route through the gate
-            // via purchase() → _runVirtualHookGate().
-            // _authorizeVirtualHook() clears _purchaseInProgress on REJECT /
-            // STOPPED / error, so the guard is always released on a denied batch.
-            if (this.virtualHookEngine?.isEnabled?.()) {
-                const authorized = await this._authorizeVirtualHook(effective_type);
-                if (!authorized) {
-                    return Promise.resolve();
-                }
-            }
-
             /**
              * Resolves once store.proposalsReady is true.
-             * Used between intermediate bulk buys to ensure a fresh proposal is
-             * available before the next selectProposal() call.
+             * Used between batch members — purchase() already renewed the
+             * proposals on completion; this just waits for them to be ready
+             * before routing the next member through purchase().
              */
             const waitForProposals = () =>
                 new Promise(resolve => {
@@ -426,74 +428,23 @@ export default Engine =>
                     });
                 });
 
-            // ── Batch loop ─────────────────────────────────────────────────────
-            for (let i = 0; i < totalBuys; i++) {
-                const isLast = i === totalBuys - 1;
-
-                if (this.is_proposal_subscription_required) {
-                    const { id, askPrice } = this.selectProposal(effective_type);
-
-                    this.isSold = false;
-                    contractStatus({ id: 'contract.purchase_sent', data: askPrice });
-
+            try {
+                // ── Batch loop — every member is a normal purchase() ──────────
+                for (let i = 0; i < totalBuys; i++) {
+                    const isLast = i === totalBuys - 1;
+                    // Keep scope in BEFORE_PURCHASE until the final member so
+                    // purchase() can be re-entered for the next buy. The flag
+                    // is consumed/reset inside _executeRealPurchase.onSuccess().
+                    this._deferPurchaseSuccessful = !isLast;
                     // eslint-disable-next-line no-await-in-loop
-                    const response = await doUntilDone(() =>
-                        api_base.api.send({ buy: id, price: askPrice })
-                    );
-                    const { buy } = response;
-
-                    contractStatus({ id: 'contract.purchase_received', data: buy.transaction_id, buy });
-                    this.contractId = buy.contract_id;
-                    log(LogTypes.PURCHASE, { longcode: buy.longcode, transaction_id: buy.transaction_id });
-                    info({
-                        accountID: this.accountInfo.loginid,
-                        totalRuns: this.updateAndReturnTotalRuns(),
-                        transaction_ids: { buy: buy.transaction_id },
-                        contract_type: effective_type,
-                        buy_price: buy.buy_price,
-                    });
-
-                    if (isLast) {
-                        this._purchaseInProgress = false;
-                        delayIndex = 0;
-                        this.store.dispatch(purchaseSuccessful());
-                        this.renewProposalsOnPurchase();
-                    } else {
-                        // Renew subscriptions and wait for fresh proposals before
-                        // the next selectProposal() call in the loop.
-                        this.renewProposalsOnPurchase();
+                    await this.purchase(contract_type);
+                    if (!isLast) {
                         // eslint-disable-next-line no-await-in-loop
                         await waitForProposals();
                     }
-                } else {
-                    const trade_option = tradeOptionToBuy(effective_type, this.tradeOptions);
-
-                    this.isSold = false;
-                    contractStatus({ id: 'contract.purchase_sent', data: this.tradeOptions.amount });
-
-                    // eslint-disable-next-line no-await-in-loop
-                    const response = await doUntilDone(() =>
-                        api_base.api.send(trade_option)
-                    );
-                    const { buy } = response;
-
-                    contractStatus({ id: 'contract.purchase_received', data: buy.transaction_id, buy });
-                    this.contractId = buy.contract_id;
-                    log(LogTypes.PURCHASE, { longcode: buy.longcode, transaction_id: buy.transaction_id });
-                    info({
-                        accountID: this.accountInfo.loginid,
-                        totalRuns: this.updateAndReturnTotalRuns(),
-                        transaction_ids: { buy: buy.transaction_id },
-                        contract_type: effective_type,
-                        buy_price: buy.buy_price,
-                    });
-
-                    if (isLast) {
-                        this._purchaseInProgress = false;
-                        delayIndex = 0;
-                        this.store.dispatch(purchaseSuccessful());
-                    }
                 }
+            } finally {
+                this._deferPurchaseSuccessful = false;
             }
         }
 
@@ -555,46 +506,11 @@ export default Engine =>
             }
         }
 
-        /**
-         * Authorize a signal through the Virtual Hook (no real purchase).
-         *
-         * Used by purchaseMultiple() BEFORE the batch buy loop so a multi-buy
-         * block can never bypass the VH gate. Shares the exact decision
-         * semantics of _runVirtualHookGate() (AUTHORIZED → true; REJECTED /
-         * STOPPED / RETRY-exhausted / engine error → false) but returns
-         * the verdict instead of executing the real purchase — the caller
-         * owns the buy path in the batch.
-         *
-         * The _purchaseInProgress guard is released on every denied verdict
-         * so a later retry of the batch is not permanently blocked.
-         */
-        async _authorizeVirtualHook(effective_type) {
-            let retries = 0;
-            for (;;) {
-                const candidate = this._buildTradeCandidate(effective_type);
-                let result;
-                try {
-                    result = await this.virtualHookEngine.start(candidate);
-                } catch (err) {
-                    // eslint-disable-next-line no-console
-                    console.error('[VH] Virtual Hook engine error during batch authorization:', err);
-                    this._purchaseInProgress = false;
-                    return false;
-                }
-                if (result.decision === VHDecision.AUTHORIZED) {
-                    return true;
-                }
-                if (result.decision === VHDecision.REJECTED || result.decision === VHDecision.STOPPED) {
-                    this._purchaseInProgress = false;
-                    return false;
-                }
-                retries++;
-                if (retries >= this._vhMaxRetries) {
-                    this._purchaseInProgress = false;
-                    return false;
-                }
-            }
-        }
+        // NOTE: There is intentionally NO batch authorization method here.
+        // The Virtual Hook is attached exclusively to purchase() via
+        // _runVirtualHookGate(). purchaseMultiple() routes every batch member
+        // through purchase(), so each trade is independently authorized by the
+        // single shared VH flow — exactly one authorization path exists.
 
         // All legacy Virtual Hook methods have been removed.
         // Responsibilities migrated to:

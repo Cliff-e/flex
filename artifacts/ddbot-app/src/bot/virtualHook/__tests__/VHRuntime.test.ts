@@ -29,6 +29,8 @@ import {
     type ExitDigitEntry,
 } from '../../sharedExitDigitHistory';
 import { connectExitDigitHistoryToStore } from '../../sharedExitDigitHistory';
+import { TransactionsStore } from '../TransactionsStore';
+import { VHTransactionPipeline, NoopTransactionPipeline } from '../TransactionPipeline';
 
 function makeCandidate(overrides: Partial<TradeCandidate> = {}): TradeCandidate {
     return {
@@ -205,5 +207,62 @@ describe('VHRuntime — production pipeline wiring', () => {
 
         expect(getExitDigitCount()).toBe(1);
         unsub();
+    });
+
+    test('getVHTransactionPipeline returns VHTransactionPipeline (not Noop) — writes to store', async () => {
+        // Regression: prove the production entry point returns a real
+        // VHTransactionPipeline that actually commits, NOT a Noop.
+        const pipeline = getVHTransactionPipeline();
+        const store = getVHStore()!;
+
+        // Sanity: before any writes, the store is empty.
+        expect(store.count).toBe(0);
+
+        await pipeline.process(makeSettledContract('vh-regression-1'));
+
+        // The real pipeline must have committed exactly one record.
+        expect(store.count).toBe(1);
+        const record = store.getByContractId('vh-regression-1');
+        expect(record).not.toBeNull();
+        expect(record!.contractId).toBe('vh-regression-1');
+        expect(record!.source).toBe('vh_virtual');
+        expect(record!.isVirtual).toBe(true);
+    });
+
+    test('NoopTransactionPipeline never writes to any store — test-only default', async () => {
+        // Regression: prove the Noop pipeline truly does nothing and
+        // that a separate store is NOT silently mutated.
+        const store = new TransactionsStore();
+        const noop = new NoopTransactionPipeline();
+        const contract = makeSettledContract('vh-noop-1');
+
+        const result = await noop.process(contract);
+
+        // Noop must return appended=false — no write occurred.
+        expect(result.appended).toBe(false);
+        expect(result.warnings).toContain('NoopTransactionPipeline: No stores connected yet.');
+
+        // The store must still be empty — Noop has no reference to it.
+        expect(store.count).toBe(0);
+    });
+
+    test('VHTransactionPipeline directly wired to TransactionsStore writes exactly once', async () => {
+        // Regression: prove the VHTransactionPipeline → TransactionsStore
+        // path works independently of the shared runtime.
+        const store = new TransactionsStore();
+        const pipeline = new VHTransactionPipeline(store);
+
+        await pipeline.process(makeSettledContract('vh-direct-1'));
+
+        expect(store.count).toBe(1);
+        const record = store.getByContractId('vh-direct-1');
+        expect(record).not.toBeNull();
+        expect(record!.source).toBe('vh_virtual');
+        expect(record!.isVirtual).toBe(true);
+
+        // Idempotency: same contractId again must NOT append.
+        const second = await pipeline.process(makeSettledContract('vh-direct-1'));
+        expect(second.appended).toBe(false);
+        expect(store.count).toBe(1);
     });
 });
