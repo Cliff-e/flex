@@ -17,7 +17,8 @@ import { PublicTickManager } from '../utils/PublicTickManager';
 import { globalTickEngine } from './globalTickEngine';
 import { WebSocketManager } from '../utils/WebSocketManager';
 import { EventBus, EventMap } from '../utils/EventBus';
-import { VirtualHookEngine, VHDecision, NoopTransactionPipeline } from './virtualHook';
+import { VirtualHookEngine, VHDecision } from './virtualHook';
+import { getVHTransactionPipeline } from './virtualHook/VHRuntime';
 import type { VHConfig } from './virtualHook/VHConfig';
 import { DEFAULT_VH_CONFIG, resolveVHConfig } from './virtualHook/VHConfig';
 import { AIProposalAdapter } from './virtualHook/adapters/AIProposalAdapter';
@@ -1056,7 +1057,7 @@ export class TradingEngine {
         this._vhEngine = new VirtualHookEngine(
             proposalAdapter,
             tickObserver,
-            new NoopTransactionPipeline()
+            getVHTransactionPipeline()
         );
 
         // Apply config overrides that were set before engine creation.

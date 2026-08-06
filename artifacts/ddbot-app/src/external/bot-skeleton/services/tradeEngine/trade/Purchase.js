@@ -398,6 +398,21 @@ export default Engine =>
                 ` | scope=${this.store.getState().scope}`
             );
 
+            // ── Virtual Hook gate (batch) ──────────────────────────────────────
+            // When VH is enabled, the ENTIRE batch must pass the gate ONCE before
+            // any buy request is sent. This closes the bypass where a multi-buy
+            // block previously sent direct buy requests (below) without VH
+            // authorization. Single-buy batches already route through the gate
+            // via purchase() → _runVirtualHookGate().
+            // _authorizeVirtualHook() clears _purchaseInProgress on REJECT /
+            // STOPPED / error, so the guard is always released on a denied batch.
+            if (this.virtualHookEngine?.isEnabled?.()) {
+                const authorized = await this._authorizeVirtualHook(effective_type);
+                if (!authorized) {
+                    return Promise.resolve();
+                }
+            }
+
             /**
              * Resolves once store.proposalsReady is true.
              * Used between intermediate bulk buys to ensure a fresh proposal is
@@ -536,6 +551,47 @@ export default Engine =>
                 if (retries >= this._vhMaxRetries) {
                     this._purchaseInProgress = false;
                     return Promise.resolve();
+                }
+            }
+        }
+
+        /**
+         * Authorize a signal through the Virtual Hook (no real purchase).
+         *
+         * Used by purchaseMultiple() BEFORE the batch buy loop so a multi-buy
+         * block can never bypass the VH gate. Shares the exact decision
+         * semantics of _runVirtualHookGate() (AUTHORIZED → true; REJECTED /
+         * STOPPED / RETRY-exhausted / engine error → false) but returns
+         * the verdict instead of executing the real purchase — the caller
+         * owns the buy path in the batch.
+         *
+         * The _purchaseInProgress guard is released on every denied verdict
+         * so a later retry of the batch is not permanently blocked.
+         */
+        async _authorizeVirtualHook(effective_type) {
+            let retries = 0;
+            for (;;) {
+                const candidate = this._buildTradeCandidate(effective_type);
+                let result;
+                try {
+                    result = await this.virtualHookEngine.start(candidate);
+                } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error('[VH] Virtual Hook engine error during batch authorization:', err);
+                    this._purchaseInProgress = false;
+                    return false;
+                }
+                if (result.decision === VHDecision.AUTHORIZED) {
+                    return true;
+                }
+                if (result.decision === VHDecision.REJECTED || result.decision === VHDecision.STOPPED) {
+                    this._purchaseInProgress = false;
+                    return false;
+                }
+                retries++;
+                if (retries >= this._vhMaxRetries) {
+                    this._purchaseInProgress = false;
+                    return false;
                 }
             }
         }

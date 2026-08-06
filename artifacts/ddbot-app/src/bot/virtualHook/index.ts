@@ -60,6 +60,14 @@ export type { VHJournalEntry, VHJournalListener, VHJournalUpdateEvent } from './
 export type { VHLogger, VHLogContext, VHLogEntry, VHLogLevel } from './VHLogger';
 export { ConsoleVHLogger } from './VHLogger';
 
+// Runtime wiring (Phases 2–5 production pipeline)
+export {
+    getVHTransactionPipeline,
+    getVHStore,
+    resetVHRuntime,
+    isVHRuntimeWired,
+} from './VHRuntime';
+
 // Errors
 export {
     VirtualHookError,

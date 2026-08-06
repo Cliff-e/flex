@@ -1,4 +1,5 @@
-import { VirtualHookEngine, NoopTransactionPipeline } from '@/bot/virtualHook';
+import { VirtualHookEngine } from '@/bot/virtualHook';
+import { getVHTransactionPipeline } from '@/bot/virtualHook/VHRuntime';
 import { XmlProposalAdapter } from '@/bot/virtualHook/adapters/XmlProposalAdapter';
 import { XmlTickObserver } from '@/bot/virtualHook/adapters/XmlTickObserver';
 import { tradeOptionToProposal } from '../utils/helpers';
@@ -62,7 +63,7 @@ export default Engine =>
             this.virtualHookEngine = new VirtualHookEngine(
                 proposalAdapter,
                 tickObserver,
-                new NoopTransactionPipeline()
+                getVHTransactionPipeline()
             );
 
             return this.virtualHookEngine;

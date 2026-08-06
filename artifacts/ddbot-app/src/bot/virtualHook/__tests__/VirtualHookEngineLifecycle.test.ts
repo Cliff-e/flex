@@ -72,8 +72,47 @@ class TrackedTickObserver implements TickObserver {
 }
 
 /**
- * Logger that captures entries for assertions.
+ * Tick observer that simulates an ENTRY-TICK TIMEOUT on the first
+ * start() call, then behaves normally on subsequent calls.
+ *
+ * Used to prove that a RETRY decision after an entry-timeout round
+ * no longer triggers an illegal state transition: the round must
+ * land in POLICY_DECISION before the run loop can continue.
  */
+class EntryTimeoutThenNormalObserver implements TickObserver {
+    stopped = false;
+    active = false;
+    private calls = 0;
+    private readonly quotes: number[];
+
+    constructor(quotes: number[] = [1006]) {
+        this.quotes = quotes;
+    }
+
+    async start(symbol: string, onTick: (tick: VHTick) => void): Promise<void> {
+        this.calls++;
+        this.active = true;
+        // First start() call simulates a complete lack of ticks → the
+        // engine's _waitForFirstTick() rejects immediately (no 30s wait).
+        if (this.calls === 1) {
+            return Promise.reject(new Error('No entry tick observed.'));
+        }
+        // Subsequent start() calls emit ticks normally.
+        this.quotes.forEach((quote, i) => {
+            setTimeout(() => onTick({ quote, epoch: 1_700_000_000 + i, digit: Number(String(quote).replace('.', '').slice(-1)) }), i * 10);
+        });
+    }
+
+    async stop(): Promise<void> {
+        this.stopped = true;
+        this.active = false;
+    }
+
+    isActive(): boolean {
+        return this.active;
+    }
+}
+
 class CaptureLogger implements VHLogger {
     entries: { level: string; event: string; context: VHLogContext }[] = [];
 
@@ -193,6 +232,39 @@ describe('VirtualHookEngine — dispose lifecycle', () => {
         expect(status.maxSteps).toBe(7);
         expect(status.minWins).toBe(4);
     });
+});
+
+describe('VirtualHookEngine — entry-timeout RETRY regression', () => {
+    test('entry-timeout round followed by RETRY continues without IllegalStateTransitionError', async () => {
+        const logger = new CaptureLogger();
+        // Round 1: entry-timeout failure (consecutive failure 1).
+        // Policy: rounds 0 < maxSteps 2, wins 0 < minWins 1 → RETRY.
+        // Round 2: tick emitted → win → AUTHORIZED.
+        const engine = new VirtualHookEngine(
+            new TrackedProposalAdapter(),
+            new EntryTimeoutThenNormalObserver([1006]),
+            new NoopPipeline(),
+            logger,
+            { maxSteps: 2, minWins: 1, enabled: true, settlementTimeoutMs: 5_000 }
+        );
+
+        const result = await engine.start(makeCandidate());
+
+        // The run must NOT have been aborted by an illegal transition.
+        expect(result.decision).toBe(VHDecision.AUTHORIZED);
+        // Only the successful round counts toward roundsCompleted.
+        expect(result.roundsCompleted).toBe(1);
+        expect(result.wins).toBe(1);
+
+        // Prove the failure path actually ran.
+        const entryTimeout = logger.entries.filter(e => e.event === 'vh.entry_timeout');
+        expect(entryTimeout.length).toBe(1);
+
+        // Exactly one terminal log with AUTHORIZED.
+        const completed = logger.entries.filter(e => e.event === 'vh.run_completed');
+        expect(completed.length).toBe(1);
+        expect(completed[0].context.decision).toBe(VHDecision.AUTHORIZED);
+    }, 15_000);
 });
 
 describe('VirtualHookEngine — run_completed logging', () => {
