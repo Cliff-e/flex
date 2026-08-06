@@ -34,6 +34,13 @@ export interface VHConfig {
 
     /** Maximum number of consecutive failed rounds before giving up. */
     maxConsecutiveFailures: number;
+
+    /**
+     * Maximum number of RETRY re-submissions in the AI gate's RETRY loop.
+     * Default 3. Only used by the AI trading engine; XML uses its own bound
+     * via _vhMaxRetries in Purchase.js.
+     */
+    aiMaxRetries: number;
 }
 
 /**
@@ -48,6 +55,7 @@ export const DEFAULT_VH_CONFIG: VHConfig = {
     settlementTimeoutMs: 30_000,
     maxProposalRetries: 3,
     maxConsecutiveFailures: 5,
+    aiMaxRetries: 3,
 };
 
 /**
