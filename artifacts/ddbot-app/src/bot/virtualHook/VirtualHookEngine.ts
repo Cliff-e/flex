@@ -37,6 +37,7 @@ import {
     InvalidTradeCandidateError,
     ProposalError,
     SettlementTimeoutError,
+    VHAbortError,
     VirtualHookBusyError,
     VirtualHookError,
 } from './errors';
@@ -108,6 +109,10 @@ export class VirtualHookEngine {
     private _busy = false;
     private _runAbortRequested = false;
     private _disposed = false;
+
+    // Idle-waiters: resolvers from waitForIdle() awaiting run completion.
+    // Invoked in _notifyIdle() whenever the engine transitions to idle.
+    private _idleWaiters: Array<() => void> = [];
 
     // Observability — last settled contract reference for run-completion logs.
     private _lastContractId: string | null = null;
@@ -207,6 +212,55 @@ export class VirtualHookEngine {
      */
     abort(): void {
         this._runAbortRequested = true;
+    }
+
+    /**
+     * Wait until the engine becomes idle (no run in progress).
+     *
+     * Used by session teardown (interpreter.terminateSession) so an in-flight
+     * VH round can finish its current virtual settlement with a genuine exit
+     * tick before the engine is disposed.
+     *
+     * Safe under any condition:
+     *   • Engine already idle → resolves true immediately.
+     *   • Run completes before the budget → resolves true (via _notifyIdle).
+     *   • Budget elapses → resolves false; caller may proceed to dispose().
+     *     dispose() sets _runAbortRequested and stops the observer; the still
+     *     running start() promise finishes its bounded wait and terminates via
+     *     the VHAbortError path — no deadlock, no leaked subscription.
+     *
+     * @param timeoutMs  Maximum ms to wait before resolving false (default 5000).
+     * @returns Promise<boolean> — true when the engine became idle in time.
+     */
+    async waitForIdle(timeoutMs = 5_000): Promise<boolean> {
+        if (!this._busy) return true;
+
+        return new Promise<boolean>(resolve => {
+            let done = false;
+            const timer = setTimeout(() => {
+                if (done) return;
+                done = true;
+                resolve(false);
+            }, timeoutMs);
+
+            this._idleWaiters.push(() => {
+                if (done) return;
+                done = true;
+                clearTimeout(timer);
+                resolve(true);
+            });
+        });
+    }
+
+    /**
+     * Resolve every pending waitForIdle() waiter.
+     * Called whenever the engine transitions to idle (run finished or disposed).
+     */
+    private _notifyIdle(): void {
+        while (this._idleWaiters.length > 0) {
+            const waiter = this._idleWaiters.shift();
+            waiter?.();
+        }
     }
 
     /**
@@ -584,6 +638,13 @@ export class VirtualHookEngine {
         try {
             exitTick = await this._waitForExitTick(candidate, entryTick);
         } catch (err) {
+            // VHAbortError — the round was aborted/disposed before a genuine
+            // exit tick arrived. Rethrow so the run terminates STOPPED with NO
+            // settlement recorded (no transaction, no exit digit). The entry
+            // tick is never reused as an exit tick because of disposal.
+            if (err instanceof VHAbortError) {
+                throw err;
+            }
             const reason = err instanceof Error ? err.message : String(err);
             this._logger.warn('vh.exit_timeout', {
                 runId,
@@ -594,7 +655,8 @@ export class VirtualHookEngine {
                 retryCount: null,
                 recoveryAction: 'Using last observed tick as fallback exit digit.',
             });
-            // Fallback: use the entry tick digit (last known).
+            // Fallback: use the entry tick digit (last known) — ONLY for a
+            // bounded exit timeout when NO abort was requested.
             exitTick = entryTick;
         }
 
@@ -727,15 +789,22 @@ export class VirtualHookEngine {
         if (candidate.durationUnit === 't') {
             const startTime = Date.now();
             // Wait for the tick-duration budget OR until time budget is exhausted.
+            //
+            // NOTE: We deliberately do NOT break on _runAbortRequested inside the
+            // poll loop. An abort/dispose must not short-circuit tick capture —
+            // the loop remains bounded by tickBudgetMs (≤ settlementTimeoutMs),
+            // so a silent observer failure still terminates. If an abort arrives
+            // and NO genuine exit tick was observed before the budget elapsed,
+            // _finalizeExitTick throws VHAbortError instead of returning the
+            // stale entry tick as an exit tick.
             const tickBudgetMs = Math.min(
                 this._config.settlementTimeoutMs,
                 this._durationToMs(candidate.duration, 't')
             );
             while (Date.now() - startTime < tickBudgetMs) {
-                if (this._runAbortRequested) break;
                 await this._sleep(100);
             }
-            return lastTick;
+            return this._finalizeExitTick(entryTick, lastTick);
         }
 
         const waitMs = Math.min(
@@ -743,6 +812,22 @@ export class VirtualHookEngine {
             Math.max(1, this._durationToMs(candidate.duration, candidate.durationUnit))
         );
         await this._sleep(waitMs);
+        return this._finalizeExitTick(entryTick, lastTick);
+    }
+
+    /**
+     * Verify the observed exit tick is a GENUINE exit tick before returning it.
+     *
+     * When an abort/dispose was requested AND no tick newer than the entry tick
+     * was observed, the round must NOT settle using the entry tick as an exit.
+     * Throwing VHAbortError terminates the round without settlement (STOPPED).
+     */
+    private _finalizeExitTick(entryTick: VHTick, lastTick: VHTick): VHTick {
+        if (this._runAbortRequested && lastTick.epoch <= entryTick.epoch) {
+            throw new VHAbortError(
+                'VH round aborted before a genuine exit tick arrived — no settlement recorded.'
+            );
+        }
         return lastTick;
     }
 
@@ -860,6 +945,10 @@ export class VirtualHookEngine {
         this._lastContractId = null;
         this._lastRoundIndex = null;
 
+        // Wake any waitForIdle() callers still waiting (e.g. when the disposal
+        // timed out and the caller proceeded to dispose anyway).
+        this._notifyIdle();
+
         this._logger.info('vh.disposed', {
             runId: 'none',
             currentState: VHState.IDLE,
@@ -891,5 +980,7 @@ export class VirtualHookEngine {
                 recoveryAction: 'Ignored — observer stop is best-effort.',
             });
         }
+        // Wake any waitForIdle() callers — the engine is now idle.
+        this._notifyIdle();
     }
 }

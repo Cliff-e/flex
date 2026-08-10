@@ -109,6 +109,28 @@ export class SettlementTimeoutError extends VirtualHookError {
 }
 
 /**
+ * Raised when a VH round is aborted/disposed while waiting for an
+ * exit tick and NO genuine exit tick arrived before the abort.
+ *
+ * This error makes it structurally impossible for the round to settle
+ * using the ENTRY tick as an exit tick merely because the engine was
+ * disposed mid-round (interpreter stop, session teardown).
+ *
+ * The round terminates WITHOUT settlement — no transaction is recorded,
+ * no exit digit is appended, and the caller receives STOPPED.
+ */
+export class VHAbortError extends VirtualHookError {
+    constructor(message: string) {
+        super(message, {
+            currentState: 'ACTIVE',
+            expectedState: 'STOPPED',
+            recoveryAction: 'Round aborted before a genuine exit tick arrived — no settlement recorded.',
+        });
+        this.name = 'VHAbortError';
+    }
+}
+
+/**
  * Raised when the engine is already processing a signal and a second
  * start() call is attempted. This is a concurrency guard violation.
  */

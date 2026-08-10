@@ -267,6 +267,130 @@ describe('VirtualHookEngine — entry-timeout RETRY regression', () => {
     }, 15_000);
 });
 
+/**
+ * Tick observer that emits exactly ONE tick (the entry tick) then stays
+ * silent. Used to prove that aborting/disposing while the round is in
+ * WAIT_FOR_EXIT can never settle using the entry tick as an exit tick.
+ */
+class SingleTickThenSilentObserver implements TickObserver {
+    stopped = false;
+    active = false;
+    started = 0;
+
+    async start(symbol: string, onTick: (tick: VHTick) => void): Promise<void> {
+        this.started++;
+        this.active = true;
+        // Only the FIRST start() (entry observation) emits a tick.
+        if (this.started === 1) {
+            const quote = 1006;
+            onTick({ quote, epoch: 1_700_000_000, digit: 6 });
+        }
+        // Subsequent start() calls (exit observation) emit nothing,
+        // simulating a stopped/aborted tick stream.
+    }
+
+    async stop(): Promise<void> {
+        this.stopped = true;
+        this.active = false;
+    }
+
+    isActive(): boolean {
+        return this.active;
+    }
+}
+
+/**
+ * Pipeline that records whether process() was ever called.
+ * Used to prove an aborted round records NO transaction.
+ */
+class CountingPipeline implements TransactionPipeline {
+    processed = 0;
+
+    async process(contract: never): Promise<TransactionResult> {
+        this.processed++;
+        return {
+            transaction: {
+                transactionId: 'tx-1',
+                runId: 'run-1',
+                roundIndex: 0,
+                contractId: 'c-1',
+                contractType: 'DIGITOVER',
+                symbol: 'R_100',
+                stake: 1,
+                profit: 1,
+                won: true,
+                exitDigit: 6,
+                settlement: 'api',
+                isVirtual: true,
+                settledAt: Date.now(),
+                source: 'vh_virtual',
+            },
+            appended: true,
+            exitDigitRecorded: true,
+            warnings: [],
+        };
+    }
+}
+
+describe('VirtualHookEngine — abort/dispose cannot settle using the entry tick', () => {
+    test('aborting while WAIT_FOR_EXIT with no genuine exit tick returns STOPPED and records nothing', async () => {
+        const logger = new CaptureLogger();
+        const pipeline = new CountingPipeline();
+        const ticks = new SingleTickThenSilentObserver();
+        const engine = new VirtualHookEngine(
+            new TrackedProposalAdapter(),
+            ticks,
+            pipeline,
+            logger,
+            { maxSteps: 3, minWins: 1, enabled: true, settlementTimeoutMs: 400 }
+        );
+
+        // Start the run; entry tick arrives, then the round blocks in
+        // WAIT_FOR_EXIT waiting for a genuine exit tick that never comes.
+        const startPromise = engine.start(makeCandidate());
+
+        // Give the entry observation a moment to complete, then abort —
+        // this is exactly what dispose() does (sets _runAbortRequested).
+        await new Promise(r => setTimeout(r, 50));
+        engine.abort();
+
+        const result = await startPromise;
+
+        // The run must terminate STOPPED — NEVER AUTHORIZED/REJECTED from a
+        // stale entry-tick settlement.
+        expect(result.decision).toBe(VHDecision.STOPPED);
+
+        // No transaction may be recorded for the aborted round.
+        expect(pipeline.processed).toBe(0);
+
+        const completed = logger.entries.filter(e => e.event === 'vh.run_completed');
+        expect(completed.length).toBe(1);
+        expect(completed[0].context.decision).toBe(VHDecision.STOPPED);
+    }, 10_000);
+
+    test('waitForIdle resolves false on timeout and true when the run completes', async () => {
+        const engine = new VirtualHookEngine(
+            new TrackedProposalAdapter(),
+            new SingleTickThenSilentObserver(),
+            new NoopPipeline(),
+            new CaptureLogger(),
+            { maxSteps: 3, minWins: 1, enabled: true, settlementTimeoutMs: 400 }
+        );
+
+        // Timeout case: a run is stuck in WAIT_FOR_EXIT; waitForIdle must
+        // not hang — it resolves false after the bounded budget.
+        const startPromise = engine.start(makeCandidate());
+        await new Promise(r => setTimeout(r, 50));
+        const idleAfterTimeout = await engine.waitForIdle(100);
+        expect(idleAfterTimeout).toBe(false);
+
+        // Abort so the run terminates, then waitForIdle must resolve true.
+        engine.abort();
+        await startPromise;
+        expect(await engine.waitForIdle(1_000)).toBe(true);
+    }, 10_000);
+});
+
 describe('VirtualHookEngine — run_completed logging', () => {
     test('AUTHORIZED emits vh.run_completed with full context', async () => {
         const logger = new CaptureLogger();

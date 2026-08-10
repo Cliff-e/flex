@@ -235,22 +235,32 @@ const Interpreter = () => {
     }
 
     async function terminateSession() {
+        $scope.stopped = true;
+        $scope.is_error_triggered = false;
+        globalObserver.emit('bot.stop');
+
+        // Dispose the Virtual Hook engine — releases adapters, tick
+        // subscriptions, timers, and any pending proposal waits so no
+        // VH resources survive the XML session teardown.
+        //
+        // Deferral: if a VH round has already started (WAIT_FOR_ENTRY /
+        // WAIT_FOR_EXIT), give it a bounded budget (5s) to finish its
+        // current virtual settlement with a GENUINE exit tick before
+        // disposal. waitForIdle() is bounded and resolves false on
+        // timeout; on timeout we still dispose, and the engine's own
+        // VHAbortError path guarantees no stale entry-tick settlement.
+        // Fire-and-forget: dispose() is async and must never block shutdown.
+        const vhEngine = bot.tradeEngine?.virtualHookEngine;
+        if (vhEngine) {
+            if (vhEngine.waitForIdle instanceof Function) {
+                await vhEngine.waitForIdle(5_000);
+            }
+            bot.tradeEngine.virtualHookEngine = null;
+            void (vhEngine.dispose?.() ?? Promise.resolve()).catch(() => {});
+        }
+
         return new Promise((resolve, reject) => {
             try {
-                $scope.stopped = true;
-                $scope.is_error_triggered = false;
-                globalObserver.emit('bot.stop');
-
-                // Dispose the Virtual Hook engine — releases adapters, tick
-                // subscriptions, timers, and any pending proposal waits so no
-                // VH resources survive the XML session teardown.
-                // Fire-and-forget: dispose() is async and must never block shutdown.
-                const vhEngine = bot.tradeEngine?.virtualHookEngine;
-                if (vhEngine) {
-                    bot.tradeEngine.virtualHookEngine = null;
-                    void (vhEngine.dispose?.() ?? Promise.resolve()).catch(() => {});
-                }
-
                 const { ticksService } = $scope;
                 // Unsubscribe previous ticks_history subscription
                 // Unsubscribe the subscriptions from Proposal, Balance and OpenContract

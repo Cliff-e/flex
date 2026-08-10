@@ -12,6 +12,7 @@ import Text from '@/components/shared_ui/text';
 import Summary from '@/components/summary';
 import TradeAnimation from '@/components/trade-animation';
 import Transactions from '@/components/transactions';
+import VirtualHookResults from './virtual-hook-results';
 import { DBOT_TABS } from '@/constants/bot-contents';
 import { popover_zindex } from '@/constants/z-indexes';
 import usePWA from '@/hooks/usePWA';
@@ -155,11 +156,14 @@ const DrawerContent = ({ active_index, is_drawer_open, active_tour, setActiveTab
                 <div id='db-run-panel-tab__transactions' label={<Localize i18n_default_text='Transactions' />}>
                     <Transactions is_drawer_open={is_drawer_open} />
                 </div>
+                <div id='db-run-panel-tab__virtual-hook' label={<Localize i18n_default_text='Virtual Hook' />}>
+                    <VirtualHookResults />
+                </div>
                 <div id='db-run-panel-tab__journal' label={<Localize i18n_default_text='Journal' />}>
                     <Journal />
                 </div>
             </Tabs>
-            {((is_drawer_open && active_index !== 2) || active_tour) && <StatisticsSummary {...props} />}
+            {((is_drawer_open && active_index !== 3) || active_tour) && <StatisticsSummary {...props} />}
         </>
     );
 };
