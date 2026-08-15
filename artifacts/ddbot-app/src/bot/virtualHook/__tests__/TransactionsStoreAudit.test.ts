@@ -17,7 +17,7 @@ function makeRecord(overrides: Partial<TransactionRecord> = {}): TransactionReco
         settlement: 'api',
         isVirtual: true,
         settledAt: 1_700_000_000_000,
-        source: 'vh_virtual',
+        source: 'VH',
         ...overrides,
     };
 }

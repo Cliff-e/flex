@@ -30,7 +30,7 @@ const VirtualHookResults = () => {
             const store = getVHStore();
             setRecords(store ? store.getRecords() : []);
             const history = getExitDigitHistory();
-            const lastVh = [...history].reverse().find(entry => entry.source === 'vh_virtual');
+            const lastVh = [...history].reverse().find(entry => entry.source === 'VH');
             setLastExitDigit(lastVh ? lastVh.digit : null);
             setVersion(v => v + 1);
         };

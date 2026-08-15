@@ -18,6 +18,12 @@
 // Only successful committed VH transactions are allowed to write
 // through the Virtual Hook path. Never monitoring ticks, never
 // proposal ticks, never candidate signals, never duplicate commits.
+//
+// SOURCES:
+//   'VH'   — committed Virtual Hook settled contract
+//   'REAL' — confirmed real Deriv settled contract
+// A live monitoring tick is NOT an exit digit and must never reach
+// this history.
 // =============================================================
 
 import type { TransactionRecord } from './virtualHook/TransactionPipeline';
@@ -50,9 +56,8 @@ export function isVHDigitContract(contractType: string): boolean {
 export interface ExitDigitEntry {
     /** The last digit of the exit tick (0–9). */
     digit: number;
-    /** 'virtual' = monitoring-phase observation; 'real' = settled contract;
-     *  'vh_virtual' = committed Virtual Hook transaction. */
-    source: 'virtual' | 'real' | 'vh_virtual';
+    /** 'VH' = committed Virtual Hook settlement; 'REAL' = settled real contract. */
+    source: 'VH' | 'REAL';
     /** Only meaningful for real trades: true = contract won, false = lost. */
     won?: boolean;
     /** Unix-ms timestamp of the digit being recorded. */
@@ -78,7 +83,7 @@ export interface ExitDigitEntry {
  * digit transaction. Immutable once appended.
  */
 export interface VHExitDigitEntry extends ExitDigitEntry {
-    source: 'vh_virtual';
+    source: 'VH';
     won: boolean;
     contractId: string;
     transactionId: string;
@@ -93,16 +98,24 @@ export interface VHExitDigitEntry extends ExitDigitEntry {
  */
 export type ExitDigitHistoryListener = (entry: ExitDigitEntry) => void;
 
-const MAX_HISTORY = 21;
+const MAX_HISTORY = 25;
 
 let _history: ExitDigitEntry[] = [];
 
-// Phase 5 — duplicate protection. The same committed transaction
-// must never append twice (transactionId/contractId deduplication).
-let _recordedTransactionIds = new Set<string>();
-let _recordedContractIds = new Set<string>();
+// Bounded duplicate protection — the same settled contract must never
+// append twice. The dedup identity map is pruned alongside the rolling
+// history: when an entry ages out of the 25-entry buffer, its identity
+// becomes eligible again. This prevents unbounded growth during long
+// bot sessions.
+let _dedupKeys: string[] = [];
+const _dedupSet = new Set<string>();
 
 const _listeners = new Set<ExitDigitHistoryListener>();
+
+// Session-reset hooks — invoked whenever resetExitDigitHistory()
+// restarts the session. The VH runtime uses this to re-arm the
+// shared store so consumers remain subscribable after a rollback.
+const _resetHooks = new Set<() => void>();
 
 let _logger: VHLogger = new ConsoleVHLogger();
 
@@ -110,16 +123,55 @@ let _logger: VHLogger = new ConsoleVHLogger();
 // Writers
 // ─────────────────────────────────────────
 
+function _pruneDedup(): void {
+    while (_dedupKeys.length > MAX_HISTORY) {
+        const oldest = _dedupKeys.shift();
+        if (oldest !== undefined) _dedupSet.delete(oldest);
+    }
+}
+
 /**
  * Append one exit digit to the shared history, trimming to MAX_HISTORY
- * (21) entries. FIFO: newest appended, oldest removed.
+ * (25) entries. FIFO: newest appended, oldest removed.
  *
  * The entry is frozen before storage; readers receive defensive copies.
+ *
+ * Deduplication: a settled contract may only produce ONE history entry.
+ * EITHER settlement id is the identity — a previously seen contractId OR
+ * transactionId (within the same source) marks the entry as a duplicate.
+ * The dedup registry is bounded — identities of entries that age out of
+ * the rolling buffer are removed, so a very long bot session never
+ * accumulates unbounded memory.
+ *
+ * @returns true when the entry was appended, false when rejected as a
+ * duplicate.
  */
-export function appendExitDigit(entry: ExitDigitEntry): void {
+export function appendExitDigit(entry: ExitDigitEntry): boolean {
+    // ── Duplicate settlement protection ────────────────────────────
+    // One settled transaction has ONE identity; presenting a known
+    // transactionId under a different contractId (or vice versa) is
+    // still the same settlement. Entries without any id (legacy
+    // unidentified writes) have no dedup identity and pass through.
+    const candidateKeys: string[] = [];
+    if (entry.contractId) candidateKeys.push(`${entry.source}:contractId:${entry.contractId}`);
+    if (entry.transactionId) candidateKeys.push(`${entry.source}:transactionId:${entry.transactionId}`);
+
+    if (candidateKeys.length > 0) {
+        if (candidateKeys.some(key => _dedupSet.has(key))) return false;
+        candidateKeys.forEach(key => {
+            _dedupSet.add(key);
+            _dedupKeys.push(key);
+        });
+    }
+
     _history.push(Object.freeze({ ...entry }));
     if (_history.length > MAX_HISTORY) _history.shift();
+
+    // Prune dedup identities that fell out of the rolling buffer.
+    _pruneDedup();
+
     _listeners.forEach(listener => listener(_history[_history.length - 1]));
+    return true;
 }
 
 /**
@@ -131,7 +183,7 @@ export function appendExitDigit(entry: ExitDigitEntry): void {
  *   • Only the six accepted digit contract types append.
  *   • Non-digit contracts (CALL/PUT/future) are ignored.
  *   • The same committed transaction never appends twice
- *     (transactionId/contractId deduplication).
+ *     (source+contractId/transactionId deduplication).
  *   • Rolled-back transactions never fire the commit event, so the
  *     history remains unchanged (automatic rollback). No retries.
  */
@@ -140,13 +192,9 @@ export function onTransactionCommitted(record: TransactionRecord): void {
     if (!isVHDigitContract(record.contractType)) return;
     if (record.exitDigit === null || record.exitDigit === undefined) return;
 
-    // Duplicate protection — never append the same transaction twice.
-    if (_recordedTransactionIds.has(record.transactionId)) return;
-    if (_recordedContractIds.has(record.contractId)) return;
-
     const entry: VHExitDigitEntry = {
         digit: record.exitDigit,
-        source: 'vh_virtual',
+        source: 'VH',
         won: record.won,
         ts: record.settledAt,
         timestamp: record.settledAt,
@@ -157,10 +205,11 @@ export function onTransactionCommitted(record: TransactionRecord): void {
         contractType: record.contractType,
     };
 
-    appendExitDigit(entry);
-
-    _recordedTransactionIds.add(record.transactionId);
-    _recordedContractIds.add(record.contractId);
+    // The append event is emitted ONLY after the entry has passed
+    // deduplication and was actually appended — one canonical append
+    // equals exactly one event.
+    const appended = appendExitDigit(entry);
+    if (!appended) return;
 
     _logger.info('vh.exit_digit.appended', {
         runId: record.runId,
@@ -192,13 +241,25 @@ export function setExitDigitHistoryLogger(logger: VHLogger): void {
 }
 
 /**
+ * Attach a session-reset hook invoked whenever resetExitDigitHistory()
+ * runs. Returns an unsubscribe function.
+ */
+export function onExitDigitHistoryReset(hook: () => void): () => void {
+    _resetHooks.add(hook);
+    return () => {
+        _resetHooks.delete(hook);
+    };
+}
+
+/**
  * Clear the history. Call on bot start so each session begins fresh.
- * Also resets Phase 5 duplicate tracking.
+ * Also resets dedup tracking.
  */
 export function resetExitDigitHistory(): void {
     _history = [];
-    _recordedTransactionIds = new Set<string>();
-    _recordedContractIds = new Set<string>();
+    _dedupKeys = [];
+    _dedupSet.clear();
+    _resetHooks.forEach(hook => hook());
 }
 
 // ─────────────────────────────────────────
@@ -226,15 +287,15 @@ export function getLastNDigits(n: number): number[] {
 /**
  * Return the last N **confirmed** digit *values* (number[]) in chronological
  * order. "Confirmed" means the digit was committed by the canonical
- * Transactions panel pipeline (`source: 'real'`).
+ * Transactions panel pipeline (`source: 'REAL'`).
  *
- * Recovery decisions must NEVER read speculative / monitoring
- * (`source: 'virtual'`) or VH-virtual (`source: 'vh_virtual'`) digits —
- * they are not settled real-trade exits. This function guarantees recovery
- * consumes only committed confirmations from the single rolling history.
+ * Recovery decisions must NEVER read VH-virtual (`source: 'VH'`)
+ * digits — they are not settled real-trade exits. This function
+ * guarantees recovery consumes only committed confirmations from
+ * the single rolling history.
  */
 export function getLastNConfirmedDigits(n: number): number[] {
-    const confirmed = _history.filter(e => e.source === 'real').slice(-n);
+    const confirmed = _history.filter(e => e.source === 'REAL').slice(-n);
     return confirmed.map(e => e.digit);
 }
 
@@ -258,8 +319,8 @@ export function getExitDigitCount(): number {
  */
 export function clearExitDigitHistory(): void {
     _history = [];
-    _recordedTransactionIds = new Set<string>();
-    _recordedContractIds = new Set<string>();
+    _dedupKeys = [];
+    _dedupSet.clear();
 }
 
 /**

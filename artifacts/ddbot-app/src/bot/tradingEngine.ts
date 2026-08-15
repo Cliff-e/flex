@@ -34,7 +34,6 @@ import { observer } from '../external/bot-skeleton/utils/observer';
 // consumer (Transactions table, Summary card, Journal, CSV export).
 import { normalizeContractSpots } from '../external/bot-skeleton/services/tradeEngine/utils/normalize-contract';
 import {
-    appendExitDigit,
     resetExitDigitHistory,
     getExitDigitHistory,
     getLastNConfirmedDigits,
@@ -370,9 +369,10 @@ export class TradingEngine {
 
         const digit = this.extractDigit(String(tick.quote));
 
-        if (this.state === 'monitoring' && !this.executionLock) {
-            this.addVirtualExitDigit(digit);
-        }
+        // NOTE: A live tick is market observation — NOT an exit-digit event.
+        // Only settled contracts (VH or REAL) may append to the shared
+        // exit-digit history. The previous addVirtualExitDigit() call here
+        // polluted the history with every monitoring tick and is removed.
 
         if (this.inRecovery) {
             this.handleRecoveryTick(digit);
@@ -1213,16 +1213,11 @@ export class TradingEngine {
     // Digit tracking
     // ─────────────────────────────────────────
 
-    private addVirtualExitDigit(d: number): void {
-        appendExitDigit({ digit: d, source: 'virtual', ts: Date.now() });
-    }
-
     /**
      * Recovery reads ONLY confirmed exit digits committed through the
-     * canonical Transactions panel pipeline (`source: 'real'`). Monitoring
-     * ticks (`source: 'virtual'`) and VH-virtual (`source: 'vh_virtual'`)
-     * digits are NEVER used for recovery decisions — recovery must never
-     * operate on speculative or unconfirmed data.
+     * canonical Transactions panel pipeline (`source: 'REAL'`). Monitoring
+     * ticks are never written to the shared history, so recovery never
+     * operates on speculative or unconfirmed data.
      */
     private getLast20Digits(): number[] {
         return getLastNConfirmedDigits(20);

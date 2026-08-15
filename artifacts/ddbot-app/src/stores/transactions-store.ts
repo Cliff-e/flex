@@ -185,7 +185,16 @@ export default class TransactionsStore {
                 const exitTickRaw = normalized_data.exit_tick ?? 0;
                 const digit = extractLastDigit(String(exitTickRaw));
                 const won = (Number(normalized_data.profit) || 0) > 0;
-                appendExitDigit({ digit, source: 'real', won, ts: Date.now() });
+                // Settlement identity — lets the shared history's bounded
+                // dedup guarantee one entry per settled real contract even
+                // if this transition ever fires twice for the same contract.
+                const contractId =
+                    normalized_data.contract_id != null ? String(normalized_data.contract_id) : undefined;
+                const transactionId =
+                    normalized_data.transaction_ids?.buy != null
+                        ? String(normalized_data.transaction_ids.buy)
+                        : undefined;
+                appendExitDigit({ digit, source: 'REAL', won, ts: Date.now(), contractId, transactionId });
             }
         }
 

@@ -9,6 +9,7 @@ import {
 import LiveDCirclesPanel from '../../components/live-dcircles-panel/LiveDCirclesPanel';
 import PerformanceDashboard from '../../components/performance-dashboard/PerformanceDashboard';
 import DigitHeatmap from '../../components/digit-heatmap/DigitHeatmap';
+import VHSettingsModal, { type VHSettingsValues } from '@/components/virtual-hook/vh-settings-modal';
 import { AuthSessionManager } from '../../utils/AuthSessionManager';
 import { useStore } from '@/hooks/useStore';
 import { globalTickEngine } from '../../bot/globalTickEngine';
@@ -169,7 +170,7 @@ const ExitDigitStrip: React.FC<{ entries: ExitDigitEntry[]; isDark: boolean; S: 
                 let color = isDark ? '#444' : '#aaa';
                 let border = `1px solid ${isDark ? '#2a2a2a' : '#e0e0e0'}`;
 
-                if (e.source === 'real') {
+                if (e.source === 'REAL') {
                     if (e.won) {
                         bg = isDark ? '#0a2e1a' : '#e8fff4'; color = isDark ? '#00ff66' : '#00aa44'; border = `1px solid ${isDark ? '#00ff66' : '#00aa44'}`;
                     } else {
@@ -180,9 +181,9 @@ const ExitDigitStrip: React.FC<{ entries: ExitDigitEntry[]; isDark: boolean; S: 
                 }
 
                 return (
-                    <div key={i} style={{ ...S.digitCell, background: bg, color, border }} title={e.source === 'real' ? (e.won ? 'Real — Win' : 'Real — Loss') : 'Virtual'}>
+                    <div key={i} style={{ ...S.digitCell, background: bg, color, border }} title={e.source === 'REAL' ? (e.won ? 'Real — Win' : 'Real — Loss') : 'Virtual'}>
                         {e.digit}
-                        {e.source === 'real' && (
+                        {e.source === 'REAL' && (
                             <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 5, color: e.won ? '#00ff66' : '#ff4444' }}>
                                 {e.won ? '▲' : '▼'}
                             </span>
@@ -230,6 +231,7 @@ const AiBots: React.FC = () => {
     const [vhMaxSteps, setVhMaxSteps] = useState(() => readStoredNumber(VH_MAX_STEPS_KEY, 5));
     const [vhMinWins, setVhMinWins] = useState(() => readStoredNumber(VH_MIN_WINS_KEY, 3));
     const [vhVirtualStake, setVhVirtualStake] = useState(() => readStoredNumber(VH_VIRTUAL_STAKE_KEY, 1));
+    const [vhSettingsOpen, setVhSettingsOpen] = useState(false);
 
     // Differ strategy
     const [differDigits, setDifferDigits] = useState<number[]>([0, 2, 8, 5]);
@@ -378,6 +380,33 @@ const AiBots: React.FC = () => {
             setStatus(engine.getStatus());
         }
     }, [status.vhEnabled]);
+
+    /**
+     * VH Settings modal — Apply. Commits the drafted configuration back
+     * to the same React state the inline controls used (single source of
+     * truth), which persists via the existing localStorage effects. If a
+     * session is live and the enabled flag changed, mirror the live toggle
+     * path so the engine adopts the new gate immediately.
+     */
+    const handleVhSettingsApply = useCallback(
+        (next: VHSettingsValues) => {
+            setVhMaxSteps(next.maxSteps);
+            setVhMinWins(next.minWins);
+            setVhVirtualStake(next.virtualStake);
+
+            const engine = engineRef.current;
+            const liveToggleChanged = !!engine && next.enabled !== status.vhEnabled;
+            setVhEnabled(next.enabled);
+            if (liveToggleChanged) {
+                const applied = engine.setVHEnabled(next.enabled);
+                if (applied) {
+                    setStatus(engine.getStatus());
+                }
+            }
+            setVhSettingsOpen(false);
+        },
+        [status.vhEnabled]
+    );
 
     const handleStop = useCallback(() => {
         engineRef.current?.stop();
@@ -664,7 +693,12 @@ const AiBots: React.FC = () => {
                         </div>
 
                         {/* ══════════════════════════════════════════
-                            Virtual Hook settings — live ON/OFF toggle
+                            Virtual Hook — compact control + settings modal.
+                            The live ON/OFF toggle stays inline (mirrors the
+                            engine immediately). The full configuration lives
+                            behind [ VH Settings ] which opens the shared
+                            VHSettingsModal — the same modal the Bot Builder
+                            toolbar uses, so there is ONE settings window.
                         ══════════════════════════════════════════ */}
                         <div style={{ ...S.differSection, border: `1px solid ${isDark ? '#2a1a3a' : '#c0d0e8'}` }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -700,6 +734,25 @@ const AiBots: React.FC = () => {
                                 >
                                     {(status.vhEnabled || (!engineRef.current && vhEnabled)) ? '● ON' : '○ OFF'}
                                 </button>
+                                <button
+                                    type='button'
+                                    onClick={() => setVhSettingsOpen(true)}
+                                    style={{
+                                        padding: '5px 14px',
+                                        borderRadius: 20,
+                                        border: `1px solid ${isDark ? '#2a1a4a' : '#c0d0e8'}`,
+                                        cursor: 'pointer',
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        letterSpacing: 1,
+                                        background: isDark ? '#15101f' : '#fff',
+                                        color: isDark ? '#c084fc' : '#5b21b6',
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    ⚙ VH Settings
+                                </button>
                                 <span style={{ fontSize: 11, color: (status.vhEnabled || (!engineRef.current && vhEnabled)) ? '#c084fc' : '#666' }}>
                                     {(status.vhEnabled || (!engineRef.current && vhEnabled)) ? 'Enabled' : 'Disabled'}
                                 </span>
@@ -709,26 +762,6 @@ const AiBots: React.FC = () => {
                                     🛡 Virtual Hook is actively evaluating a signal…
                                 </span>
                             )}
-                            <div style={S.grid2}>
-                                <div style={S.row}>
-                                    <label style={S.label}>Max Steps</label>
-                                    <input type='number' min='1' max='50' step='1' value={vhMaxSteps} disabled={isRunning}
-                                        onChange={e => setVhMaxSteps(Number(e.target.value))} style={S.input} />
-                                    <span style={S.hint}>Virtual rounds per signal</span>
-                                </div>
-                                <div style={S.row}>
-                                    <label style={S.label}>Min Wins</label>
-                                    <input type='number' min='1' max='50' step='1' value={vhMinWins} disabled={isRunning}
-                                        onChange={e => setVhMinWins(Number(e.target.value))} style={S.input} />
-                                    <span style={S.hint}>Required to authorize trade</span>
-                                </div>
-                                <div style={S.row}>
-                                    <label style={S.label}>Virtual Stake</label>
-                                    <input type='number' min='0.35' step='0.01' value={vhVirtualStake} disabled={isRunning}
-                                        onChange={e => setVhVirtualStake(Number(e.target.value))} style={S.input} />
-                                    <span style={S.hint}>Virtual-only, never real</span>
-                                </div>
-                            </div>
                         </div>
 
                         {/* Info box */}
@@ -789,6 +822,23 @@ const AiBots: React.FC = () => {
             <div style={S.divider} />
             <PerformanceDashboard history={status.tradeHistory} />
             <DigitHeatmap history={status.tradeHistory} />
+
+            {/* Virtual Hook settings modal — the single VH settings window.
+                Edits the existing React state (single source of truth). */}
+            <VHSettingsModal
+                is_visible={vhSettingsOpen}
+                onClose={() => setVhSettingsOpen(false)}
+                onApply={handleVhSettingsApply}
+                values={{
+                    enabled: status.vhEnabled || (!engineRef.current && vhEnabled),
+                    maxSteps: vhMaxSteps,
+                    minWins: vhMinWins,
+                    virtualStake: vhVirtualStake,
+                }}
+                numbers_disabled={isRunning}
+                toggle_disabled={vhToggleDisabled}
+                is_dark={isDark}
+            />
 
         </div>
     );

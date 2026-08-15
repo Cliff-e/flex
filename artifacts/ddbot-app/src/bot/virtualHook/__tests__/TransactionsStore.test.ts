@@ -52,7 +52,7 @@ describe('TransactionsStore — successful write', () => {
         expect(result.warnings).toEqual([]);
         expect(result.transaction.contractId).toBe('VH-success-1');
         expect(result.transaction.isVirtual).toBe(true);
-        expect(result.transaction.source).toBe('vh_virtual');
+        expect(result.transaction.source).toBe('VH');
         expect(result.transaction.won).toBe(true);
         expect(result.transaction.exitDigit).toBe(8);
         expect(result.transaction.stake).toBe(1);
@@ -115,7 +115,7 @@ describe('TransactionsStore — retry after failure', () => {
             settlement: 'api',
             isVirtual: true,
             settledAt: 1_700_000_000_000,
-            source: 'vh_virtual',
+            source: 'VH',
         });
 
         expect(calls).toBe(2); // exactly one retry
@@ -150,7 +150,7 @@ describe('TransactionsStore — rollback on fatal failure', () => {
                 settlement: 'api',
                 isVirtual: true,
                 settledAt: 1_700_000_000_000,
-                source: 'vh_virtual',
+                source: 'VH',
             })
         ).rejects.toBeInstanceOf(TransactionWriteError);
 
@@ -182,7 +182,7 @@ describe('TransactionsStore — rollback on fatal failure', () => {
                 settlement: 'api',
                 isVirtual: true,
                 settledAt: 1_700_000_000_000,
-                source: 'vh_virtual',
+                source: 'VH',
             })
         ).rejects.toBeInstanceOf(TransactionWriteError);
 
@@ -201,7 +201,7 @@ describe('TransactionsStore — rollback on fatal failure', () => {
             settlement: 'api',
             isVirtual: true,
             settledAt: 1_700_000_000_000,
-            source: 'vh_virtual',
+            source: 'VH',
         });
 
         expect(ok.appended).toBe(true);

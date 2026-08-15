@@ -137,7 +137,7 @@ class AuditTransactionPipeline implements TransactionPipeline {
                 settlement: 'api',
                 isVirtual: true,
                 settledAt: Date.now(),
-                source: 'vh_virtual',
+                source: 'VH',
             },
             appended: true,
             exitDigitRecorded: true,

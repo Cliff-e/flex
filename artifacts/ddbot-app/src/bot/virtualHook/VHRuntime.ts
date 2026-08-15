@@ -26,7 +26,11 @@ import { TransactionsStore } from './TransactionsStore';
 import { VHTransactionPipeline } from './TransactionPipeline';
 import { SummaryStore } from './SummaryStore';
 import { VHJournalStore } from './VHJournalStore';
-import { connectExitDigitHistoryToStore, resetExitDigitHistory } from '../sharedExitDigitHistory';
+import {
+    connectExitDigitHistoryToStore,
+    onExitDigitHistoryReset,
+    resetExitDigitHistory,
+} from '../sharedExitDigitHistory';
 import type { TransactionPipeline } from './TransactionPipeline';
 
 /**
@@ -40,6 +44,21 @@ let _pipeline: VHTransactionPipeline | null = null;
 
 let _wired = false;
 
+/** Whether the runtime has ever been wired (sticky across resets). */
+let _everWired = false;
+
+/**
+ * Rollback recovery: a session-level reset (resetExitDigitHistory)
+ * arms the runtime, so after a rollback/teardown the shared store is
+ * re-materialized on next access instead of staying permanently null.
+ * resetVHRuntime() is the hard teardown and disarms.
+ */
+let _armed = false;
+
+onExitDigitHistoryReset(() => {
+    _armed = true;
+});
+
 /**
  * Reset the shared runtime to a fresh state (clears the store and
  * the downstream subscribers' state). Intended for test isolation
@@ -50,6 +69,10 @@ export function resetVHRuntime(): void {
     _pipeline = null;
     _wired = false;
     resetExitDigitHistory();
+    // Hard teardown disarms AFTER the session reset above fired the
+    // arming hook: the store stays down until the NEXT session reset
+    // re-arms the runtime.
+    _armed = false;
 }
 
 /**
@@ -70,6 +93,7 @@ export function getVHTransactionPipeline(): TransactionPipeline {
 
     _store = store;
     _wired = true;
+    _everWired = true;
     _pipeline = new VHTransactionPipeline(store);
 
     return _pipeline;
@@ -77,9 +101,17 @@ export function getVHTransactionPipeline(): TransactionPipeline {
 
 /**
  * Access the shared store (for diagnostics / tests). Returns null
- * before the first engine constructs the pipeline.
+ * before the first engine constructs the pipeline, and immediately
+ * after a hard resetVHRuntime() teardown until the next session
+ * reset re-arms the runtime. Once armed after a rollback, the clean
+ * fully-wired store is re-materialized so consumers can subscribe.
  */
 export function getVHStore(): TransactionsStore | null {
+    if (!_store && _armed && _everWired) {
+        // Rollback left the runtime torn down, but a fresh session
+        // started — rebuild the shared store so it remains usable.
+        getVHTransactionPipeline();
+    }
     return _store;
 }
 

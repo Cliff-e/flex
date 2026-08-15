@@ -64,7 +64,7 @@ export interface TransactionRecord {
     settledAt: number;
 
     /** Marks the recording source. */
-    source: 'vh_virtual';
+    source: 'VH';
 }
 
 /**
@@ -128,7 +128,7 @@ export class NoopTransactionPipeline implements TransactionPipeline {
             settlement: contract.settlement?.source ?? 'error',
             isVirtual: true,
             settledAt: contract.settledAt ?? Date.now(),
-            source: 'vh_virtual',
+            source: 'VH',
         };
         return {
             transaction: transactionRecord,
@@ -207,7 +207,7 @@ export class VHTransactionPipeline implements TransactionPipeline {
             settlement: contract.settlement?.source ?? 'error',
             isVirtual: true,
             settledAt: contract.settledAt ?? Date.now(),
-            source: 'vh_virtual',
+            source: 'VH',
         };
     }
 }

@@ -70,7 +70,7 @@ function makeRecord(
         settlement: 'api',
         isVirtual: true,
         settledAt: 1_700_000_000_000 + seq,
-        source: 'vh_virtual',
+        source: 'VH',
         ...overrides,
     };
 }
@@ -117,7 +117,7 @@ describe('SharedExitDigitHistory — connected to TransactionsStore', () => {
         expect(history).toHaveLength(1);
         const entry = history[0];
         expect(entry.digit).toBe(7);
-        expect(entry.source).toBe('vh_virtual');
+        expect(entry.source).toBe('VH');
         expect(entry.won).toBe(true);
         expect(entry.contractId).toBe('VH-1');
         expect(entry.transactionId).toBe('TX-1');
@@ -273,35 +273,19 @@ describe('SharedExitDigitHistory — rollback', () => {
 });
 
 describe('SharedExitDigitHistory — FIFO and capacity', () => {
-    test('history never exceeds 21 entries', async () => {
+    test('history never exceeds 25 entries', async () => {
         const store = new TransactionsStore();
         connectExitDigitHistoryToStore(store);
 
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 30; i++) {
             await store.pushTransaction(digitRecord(i % 10, 'DIGITOVER'));
         }
 
-        expect(getExitDigitCount()).toBe(21);
-        expect(getExitDigitHistory()).toHaveLength(21);
+        expect(getExitDigitCount()).toBe(25);
+        expect(getExitDigitHistory()).toHaveLength(25);
     });
 
-    test('FIFO: oldest removed, newest retained after 21 entries', async () => {
-        const store = new TransactionsStore();
-        connectExitDigitHistoryToStore(store);
-
-        for (let i = 0; i < 25; i++) {
-            await store.pushTransaction(digitRecord(i % 10, 'DIGITOVER'));
-        }
-
-        const history = getExitDigitHistory();
-        // 25 entries were appended in order [0..24] (digits cycle 0..9).
-        // After FIFO trimming to 21, kept = appended indices 4..24.
-        expect(history.map(e => e.roundIndex)).toEqual(Array.from({ length: 21 }, (_, i) => i + 4));
-        expect(history[0].digit).toBe(4 % 10);
-        expect(history[20].digit).toBe(24 % 10);
-    });
-
-    test('ordering preserved across 21+ entries', async () => {
+    test('FIFO: oldest removed, newest retained after 25 entries', async () => {
         const store = new TransactionsStore();
         connectExitDigitHistoryToStore(store);
 
@@ -310,8 +294,24 @@ describe('SharedExitDigitHistory — FIFO and capacity', () => {
         }
 
         const history = getExitDigitHistory();
-        expect(history).toHaveLength(21);
-        // Kept indices 9..29 → roundIndex increases monotonically.
+        // 30 entries were appended in order [0..29] (digits cycle 0..9).
+        // After FIFO trimming to 25, kept = appended indices 5..29.
+        expect(history.map(e => e.roundIndex)).toEqual(Array.from({ length: 25 }, (_, i) => i + 5));
+        expect(history[0].digit).toBe(5 % 10);
+        expect(history[24].digit).toBe(29 % 10);
+    });
+
+    test('ordering preserved across 25+ entries', async () => {
+        const store = new TransactionsStore();
+        connectExitDigitHistoryToStore(store);
+
+        for (let i = 0; i < 35; i++) {
+            await store.pushTransaction(digitRecord(i % 10, 'DIGITOVER'));
+        }
+
+        const history = getExitDigitHistory();
+        expect(history).toHaveLength(25);
+        // Kept indices 10..34 → roundIndex increases monotonically.
         const roundIndices = history.map(e => e.roundIndex ?? 0);
         expect(roundIndices).toEqual([...roundIndices].sort((a, b) => a - b));
     });
@@ -463,11 +463,11 @@ describe('SharedExitDigitHistory — scale and determinism', () => {
             await store.pushTransaction(digitRecord(i % 10, 'DIGITOVER'));
         }
 
-        expect(getExitDigitCount()).toBe(21);
+        expect(getExitDigitCount()).toBe(25);
         expect(logger.events).toHaveLength(100);
         const history = getExitDigitHistory();
-        expect(history[0].roundIndex).toBe(79);
-        expect(history[20].roundIndex).toBe(99);
+        expect(history[0].roundIndex).toBe(75);
+        expect(history[24].roundIndex).toBe(99);
     });
 
     test('1000 committed transactions stay correct and O(1)', async () => {
@@ -480,12 +480,12 @@ describe('SharedExitDigitHistory — scale and determinism', () => {
             await store.pushTransaction(digitRecord(i % 10, 'DIGITOVER'));
         }
 
-        expect(getExitDigitCount()).toBe(21);
+        expect(getExitDigitCount()).toBe(25);
         expect(logger.events).toHaveLength(1000);
         const history = getExitDigitHistory();
-        expect(history).toHaveLength(21);
-        expect(history[0].roundIndex).toBe(979);
-        expect(history[20].roundIndex).toBe(999);
+        expect(history).toHaveLength(25);
+        expect(history[0].roundIndex).toBe(975);
+        expect(history[24].roundIndex).toBe(999);
     });
 
     test('deterministic replay produces identical history', async () => {
@@ -517,11 +517,16 @@ describe('SharedExitDigitHistory — scale and determinism', () => {
         expect(logger.events).toHaveLength(snapshotLogs);
     });
 
-    test('appendExitDigit (legacy writers) still works and respects 21 FIFO', () => {
+    test('appendExitDigit (legacy writers) still works and respects 25 FIFO', () => {
         for (let i = 0; i < 30; i++) {
-            appendExitDigit({ digit: i % 10, source: 'virtual', ts: 1_700_000_000_000 + i });
+            appendExitDigit({
+                digit: i % 10,
+                source: 'VH',
+                contractId: `LEGACY-${i}`,
+                ts: 1_700_000_000_000 + i,
+            });
         }
-        expect(getExitDigitCount()).toBe(21);
+        expect(getExitDigitCount()).toBe(25);
         expect(getLastNDigits(3)).toEqual([7, 8, 9]);
     });
 
@@ -549,15 +554,15 @@ describe('getLastNConfirmedDigits — recovery consumes only confirmed exit digi
         resetExitDigitHistory();
     });
 
-    test('returns only source=real digits, excluding virtual monitoring and vh_virtual', () => {
+    test('returns only source=REAL digits, excluding VH virtual settlements', () => {
         for (let i = 0; i < 5; i++) {
-            appendExitDigit({ digit: 1, source: 'virtual', ts: 1_700_000_000_000 + i });
+            appendExitDigit({ digit: 1, source: 'VH', ts: 1_700_000_000_000 + i });
         }
         for (let i = 0; i < 5; i++) {
-            appendExitDigit({ digit: 2, source: 'real', won: i % 2 === 0, ts: 1_700_000_000_100 + i });
+            appendExitDigit({ digit: 2, source: 'REAL', won: i % 2 === 0, ts: 1_700_000_000_100 + i });
         }
         for (let i = 0; i < 5; i++) {
-            appendExitDigit({ digit: 3, source: 'vh_virtual', won: true, ts: 1_700_000_000_200 + i });
+            appendExitDigit({ digit: 3, source: 'VH', won: true, contractId: `VH-x-${i}`, ts: 1_700_000_000_200 + i });
         }
         const confirmed = getLastNConfirmedDigits(20);
         expect(confirmed).toEqual([2, 2, 2, 2, 2]);
@@ -565,29 +570,31 @@ describe('getLastNConfirmedDigits — recovery consumes only confirmed exit digi
     });
 
     test('returns the last N confirmed digits in chronological order', () => {
-        appendExitDigit({ digit: 1, source: 'real', won: true, ts: 1 });
-        appendExitDigit({ digit: 9, source: 'virtual', ts: 2 });
-        appendExitDigit({ digit: 2, source: 'real', won: false, ts: 3 });
-        appendExitDigit({ digit: 3, source: 'real', won: true, ts: 4 });
-        appendExitDigit({ digit: 5, source: 'vh_virtual', won: true, ts: 5 });
+        appendExitDigit({ digit: 1, source: 'REAL', won: true, ts: 1 });
+        appendExitDigit({ digit: 9, source: 'VH', ts: 2 });
+        appendExitDigit({ digit: 2, source: 'REAL', won: false, ts: 3 });
+        appendExitDigit({ digit: 3, source: 'REAL', won: true, ts: 4 });
+        appendExitDigit({ digit: 5, source: 'VH', won: true, contractId: 'VH-y', ts: 5 });
         expect(getLastNConfirmedDigits(2)).toEqual([2, 3]);
         expect(getLastNConfirmedDigits(10)).toEqual([1, 2, 3]);
     });
 
-    test('respects the 21-entry FIFO cap when filtered', () => {
+    test('respects the 25-entry FIFO cap when filtered', () => {
         for (let i = 0; i < 30; i++) {
-            appendExitDigit({ digit: i % 10, source: 'virtual', ts: 1_700_000_000_000 + i });
-            appendExitDigit({ digit: (i + 5) % 10, source: 'real', won: true, ts: 1_700_000_000_100 + i });
+            appendExitDigit({ digit: i % 10, source: 'VH', contractId: `VH-f-${i}`, ts: 1_700_000_000_000 + i });
+            appendExitDigit({ digit: (i + 5) % 10, source: 'REAL', won: true, contractId: `REAL-f-${i}`, ts: 1_700_000_000_100 + i });
         }
+        // 60 interleaved appends trim to the last 25; 13 of those are REAL.
         const confirmed = getLastNConfirmedDigits(30);
-        expect(confirmed).toHaveLength(21);
+        expect(confirmed).toHaveLength(13);
+        expect(confirmed).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4]);
     });
 
     test('settlement commit is synchronous before recovery reads', async () => {
         const store = new TransactionsStore();
         connectExitDigitHistoryToStore(store);
         await store.pushTransaction(digitRecord(7, 'DIGITOVER'));
-        appendExitDigit({ digit: 8, source: 'real', won: true, ts: Date.now() });
+        appendExitDigit({ digit: 8, source: 'REAL', won: true, ts: Date.now() });
         expect(getLastNConfirmedDigits(1)).toEqual([8]);
         expect(getLastNConfirmedDigits(5)).toEqual([8]);
     });

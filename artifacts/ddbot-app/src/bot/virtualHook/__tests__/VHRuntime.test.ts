@@ -123,7 +123,7 @@ describe('VHRuntime — production pipeline wiring', () => {
         expect(getExitDigitCount()).toBe(1);
         const history: ExitDigitEntry[] = getExitDigitHistory();
         expect(history[0].digit).toBe(8);
-        expect(history[0].source).toBe('vh_virtual');
+        expect(history[0].source).toBe('VH');
         expect(history[0].contractId).toBe('vh-prod-1');
     });
 
@@ -225,7 +225,7 @@ describe('VHRuntime — production pipeline wiring', () => {
         const record = store.getByContractId('vh-regression-1');
         expect(record).not.toBeNull();
         expect(record!.contractId).toBe('vh-regression-1');
-        expect(record!.source).toBe('vh_virtual');
+        expect(record!.source).toBe('VH');
         expect(record!.isVirtual).toBe(true);
     });
 
@@ -257,7 +257,7 @@ describe('VHRuntime — production pipeline wiring', () => {
         expect(store.count).toBe(1);
         const record = store.getByContractId('vh-direct-1');
         expect(record).not.toBeNull();
-        expect(record!.source).toBe('vh_virtual');
+        expect(record!.source).toBe('VH');
         expect(record!.isVirtual).toBe(true);
 
         // Idempotency: same contractId again must NOT append.
