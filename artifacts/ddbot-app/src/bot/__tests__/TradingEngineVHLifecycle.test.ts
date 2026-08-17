@@ -12,11 +12,17 @@
 //   8. XML runtime is unaffected (covered by Phase6 tests).
 //   9. Purchase logic remains unchanged (covered by existing tests).
 //  10. Recovery mode still routes through VH flow.
+//  11. MODE-GATE LATCH (2026-08-16 semantics): a signal that enters
+//      while VH is active can NEVER become a real trade — AUTHORIZED
+//      discards the latched signal (zero buys) and deactivates the VH
+//      runtime mode; the NEXT new (unlatched) signal uses the real
+//      pipeline unchanged.
 // =============================================================
 
 import { TradingEngine } from '../tradingEngine';
 import type { TradingConfig } from '../tradingEngine';
 import { VirtualHookEngine } from '../virtualHook/VirtualHookEngine';
+import { VHDecision } from '../virtualHook/VHDecision';
 import { DEFAULT_VH_CONFIG } from '../virtualHook/VHConfig';
 
 // ── Mock all external dependencies ──────────────────────────
@@ -391,6 +397,173 @@ describe('TradingEngine — VH lifecycle', () => {
         const vhAfter = getVHEngine(engine);
         expect(vhAfter).toBe(vhBefore); // Same instance.
         expect(vhAfter!.isEnabled()).toBe(true);
+
+        engine.stop();
+    });
+});
+
+// ──────────────────────────────────────────────────────────────
+// MODE-GATE LATCH — AUTHORIZED semantics (2026-08-16)
+//
+// Proves the governing invariants for the AI engine:
+//   • A signal that ENTERS while VH is active latches
+//     enteredWhileVH=true and can NEVER become a real trade.
+//   • AUTHORIZED ⇒ zero real buys for THAT signal + VH runtime
+//     becomes inactive (no same-signal replay/promotion).
+//   • A subsequent NEW (unlatched) signal uses the existing real
+//     pipeline unchanged and may buy once.
+//   • A manual VH disable mid-round (flag flip before settlement)
+//     can NOT promote the latched signal.
+// ──────────────────────────────────────────────────────────────
+
+const AUTHORIZED_RESULT = {
+    decision: VHDecision.AUTHORIZED,
+    reason: 'MIN_WINS_REACHED',
+    roundsCompleted: 3,
+    wins: 2,
+    losses: 1,
+} as any;
+
+describe('TradingEngine — VH mode-gate latch (AUTHORIZED semantics)', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('AUTHORIZED on a latched signal → zero real buys + VH runtime deactivated', async () => {
+        const engine = new TradingEngine(baseConfig);
+        await engine.start();
+
+        expect((engine as any)._vhActive).toBe(true);
+
+        const realSpy = jest.fn().mockResolvedValue({ won: true, profit: 0.9, exitDigit: 5 });
+        (engine as any)._executeRealTrade = realSpy;
+
+        const vh = getVHEngine(engine)!;
+        const startSpy = jest.spyOn(vh, 'start').mockResolvedValue(AUTHORIZED_RESULT);
+
+        // Signal N enters while VH is active → latched.
+        await expect(
+            (engine as any)._executeTrade('DIGITDIFF', '5', 1)
+        ).rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+
+        // ZERO real buys for signal N — the latch blocks the real path.
+        expect(realSpy).not.toHaveBeenCalled();
+        expect(startSpy).toHaveBeenCalledTimes(1);
+
+        // VH runtime mode is now inactive.
+        expect((engine as any)._vhActive).toBe(false);
+        expect(vh.isEnabled()).toBe(false);
+
+        engine.stop();
+    });
+
+    test('a subsequent NEW signal (unlatched) uses the real pipeline unchanged', async () => {
+        const engine = new TradingEngine(baseConfig);
+        await engine.start();
+
+        const realResult = { won: true, profit: 0.9, exitDigit: 5 };
+        const realSpy = jest.fn().mockResolvedValue(realResult);
+        (engine as any)._executeRealTrade = realSpy;
+
+        const vh = getVHEngine(engine)!;
+        jest.spyOn(vh, 'start').mockResolvedValue(AUTHORIZED_RESULT);
+
+        // Signal N — latched, discarded.
+        await expect(
+            (engine as any)._executeTrade('DIGITDIFF', '5', 1)
+        ).rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+        expect(realSpy).not.toHaveBeenCalled();
+
+        // Signal N+1 — new signal, enters unlatched → real path, buys once.
+        const result = await (engine as any)._executeTrade('DIGITDIFF', '5', 1);
+        expect(result).toEqual(realResult);
+        expect(realSpy).toHaveBeenCalledTimes(1);
+        // The VH gate is never consulted for an unlatched signal.
+        expect(vh.start).toHaveBeenCalledTimes(1);
+
+        engine.stop();
+    });
+
+    test('manual VH disable mid-round can NOT promote a latched signal', async () => {
+        const engine = new TradingEngine(baseConfig);
+        await engine.start();
+
+        const realSpy = jest.fn().mockResolvedValue({ won: true, profit: 0.9, exitDigit: 5 });
+        (engine as any)._executeRealTrade = realSpy;
+
+        const vh = getVHEngine(engine)!;
+        jest.spyOn(vh, 'start').mockImplementation(async () => {
+            // Flag flip BEFORE settlement — the latch must survive it.
+            engine.setVHEnabled(false);
+            return AUTHORIZED_RESULT;
+        });
+
+        await expect(
+            (engine as any)._executeTrade('DIGITDIFF', '5', 1)
+        ).rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+
+        // Still zero real buys — the latch, not the mutable flag, governs.
+        expect(realSpy).not.toHaveBeenCalled();
+        expect((engine as any)._vhActive).toBe(false);
+
+        engine.stop();
+    });
+
+    test('REJECTED/STOPPED/RETRY-exhausted on a latched signal never buy', async () => {
+        const engine = new TradingEngine(baseConfig);
+        await engine.start();
+
+        const realSpy = jest.fn().mockResolvedValue({ won: true, profit: 0.9, exitDigit: 5 });
+        (engine as any)._executeRealTrade = realSpy;
+
+        const vh = getVHEngine(engine)!;
+
+        // REJECTED
+        jest.spyOn(vh, 'start').mockResolvedValueOnce({
+            decision: VHDecision.REJECTED, reason: 'MAX_STEPS_REACHED',
+            roundsCompleted: 3, wins: 1, losses: 2,
+        } as any);
+        await expect((engine as any)._executeTrade('DIGITDIFF', '5', 1))
+            .rejects.toThrow(/VH REJECTED/);
+
+        // STOPPED
+        jest.spyOn(vh, 'start').mockResolvedValueOnce({
+            decision: VHDecision.STOPPED, reason: 'Invalid TradeCandidate',
+            roundsCompleted: 0, wins: 0, losses: 0,
+        } as any);
+        await expect((engine as any)._executeTrade('DIGITDIFF', '5', 1))
+            .rejects.toThrow(/VH STOPPED/);
+
+        // RETRY exhausted (aiMaxRetries from resolved config)
+        jest.spyOn(vh, 'start').mockResolvedValue({
+            decision: VHDecision.RETRY, reason: 'CONTINUE',
+            roundsCompleted: 1, wins: 1, losses: 0,
+        } as any);
+        await expect((engine as any)._executeTrade('DIGITDIFF', '5', 1))
+            .rejects.toThrow(/VH RETRY exhausted/);
+
+        expect(realSpy).not.toHaveBeenCalled();
+
+        engine.stop();
+    });
+
+    test('unlatched signal (VH inactive at entry) goes straight to the real path', async () => {
+        const engine = new TradingEngine({
+            ...baseConfig,
+            vhConfig: { enabled: false },
+        });
+        await engine.start();
+
+        expect((engine as any)._vhActive).toBe(false);
+
+        const realResult = { won: false, profit: -1, exitDigit: 3 };
+        const realSpy = jest.fn().mockResolvedValue(realResult);
+        (engine as any)._executeRealTrade = realSpy;
+
+        const result = await (engine as any)._executeTrade('DIGITDIFF', '5', 1);
+
+        expect(result).toEqual(realResult);
+        expect(realSpy).toHaveBeenCalledTimes(1);
 
         engine.stop();
     });

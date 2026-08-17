@@ -1,13 +1,29 @@
 # VH Transaction Record — Schema Freeze
 
 **Status:** FROZEN  
-**Date:** 2026-08-05  
+**Version:** 2.1  
+**Date:** 2026-08-05 (v2.0) / Amended 2026-08-16 (v2.1)  
 **Phase:** 2 (Post-approval audit)  
 **Commit:** (audit commit)  
 
 The canonical transaction schema below is frozen. Summary (Phase 3), Journal (Phase 4),
 and SharedExitDigitHistory (Phase 5) must derive exclusively from this shape.
 Any change requires a written change proposal and user approval.
+
+## Amendment v2.1 (2026-08-16)
+
+Approved by the user's governing spec of 2026-08-16 (written approval — Task A:
+mode-gate latch rewiring + history/schema normalization):
+
+1. `source` is normalized to `'VH'` (matches the code; supersedes the legacy
+   `'vh_virtual'` literal that appeared in earlier docs/journal).
+2. Three OPTIONAL nullable fields added (purely additive — no existing field
+   renamed, removed, retyped, or re-semanticized):
+   `entryDigit?: number | null`, `entryTick?: number | null`,
+   `exitTick?: number | null`. Populated from the settled VirtualContract in
+   the pipeline normalize step.
+
+Dedupe, ordering, and ownership invariants below are UNCHANGED.
 
 ## Canonical Interface
 
@@ -43,6 +59,15 @@ export interface TransactionRecord {
     /** Settled exit digit (0–9), or null for non-digit contracts. */
     exitDigit: number | null;
 
+    /** Entry digit observed at contract entry (optional, additive — v2.1). */
+    entryDigit?: number | null;
+
+    /** Entry tick quote value (optional, additive — v2.1). */
+    entryTick?: number | null;
+
+    /** Exit tick quote value (optional, additive — v2.1). */
+    exitTick?: number | null;
+
     /** How the settlement outcome was determined. */
     settlement: 'api' | 'timeout' | 'error';
 
@@ -53,7 +78,7 @@ export interface TransactionRecord {
     settledAt: number;
 
     /** Marks the recording source. */
-    source: 'vh_virtual';
+    source: 'VH';
 }
 ```
 

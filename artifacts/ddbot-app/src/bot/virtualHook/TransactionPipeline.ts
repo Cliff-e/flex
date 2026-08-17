@@ -54,6 +54,15 @@ export interface TransactionRecord {
     /** Settled exit digit (0–9), or null for non-digit contracts. */
     exitDigit: number | null;
 
+    /** Entry digit observed at contract entry (optional, additive). */
+    entryDigit?: number | null;
+
+    /** Entry tick quote value (optional, additive). */
+    entryTick?: number | null;
+
+    /** Exit tick quote value (optional, additive). */
+    exitTick?: number | null;
+
     /** How the settlement outcome was determined. */
     settlement: 'api' | 'timeout' | 'error';
 
@@ -125,6 +134,9 @@ export class NoopTransactionPipeline implements TransactionPipeline {
             profit: contract.settlement?.won ? contract.virtualStake : -contract.virtualStake,
             won: contract.settlement?.won ?? false,
             exitDigit: contract.exitDigit,
+            entryDigit: contract.entryDigit,
+            entryTick: contract.entryTick,
+            exitTick: contract.exitTick,
             settlement: contract.settlement?.source ?? 'error',
             isVirtual: true,
             settledAt: contract.settledAt ?? Date.now(),
@@ -204,6 +216,9 @@ export class VHTransactionPipeline implements TransactionPipeline {
             profit: contract.settlement?.won ? contract.virtualStake : -contract.virtualStake,
             won: contract.settlement?.won ?? false,
             exitDigit: contract.exitDigit,
+            entryDigit: contract.entryDigit,
+            entryTick: contract.entryTick,
+            exitTick: contract.exitTick,
             settlement: contract.settlement?.source ?? 'error',
             isVirtual: true,
             settledAt: contract.settledAt ?? Date.now(),

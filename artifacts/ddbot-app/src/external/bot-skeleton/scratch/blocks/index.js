@@ -1,3 +1,6 @@
+// Custom field registrations must be imported BEFORE any block module
+// so they exist in Blockly.fieldRegistry before jsonInit() runs.
+import '../fields/field_vh_settings_button';
 import './Advanced/Functions';
 import './Advanced/List';
 import './Advanced/Loops';

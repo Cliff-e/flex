@@ -6,8 +6,8 @@ import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 import { rudderStackSendOpenEvent } from '../../../analytics/rudderstack-common-events';
 import ToolbarButton from './toolbar-button';
-import VHToolbarControl from './vh-toolbar-control';
 import WorkspaceGroup from './workspace-group';
+import VHSettingsHost from '@/components/virtual-hook/vh-settings-host';
 
 const Toolbar = observer(() => {
     const { run_panel, toolbar, quick_strategy } = useStore();
@@ -40,10 +40,10 @@ const Toolbar = observer(() => {
                         />
                     )}
                     {isDesktop && <WorkspaceGroup />}
-                    <VHToolbarControl />
                 </div>
             </div>
             {!isDesktop && <WorkspaceGroup />}
+            <VHSettingsHost />
             <Dialog
                 portal_element_id='modal_root'
                 title={localize('Are you sure?')}

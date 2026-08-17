@@ -29,13 +29,20 @@ window.Blockly.Blocks.trade_definition_market = {
                     options: [['', '']],
                 },
             ],
-            message1: localize('Virtual Hook: {{ enabled }}', { enabled: '%1' }),
+            message1: localize('Virtual Hook: {{ enabled }} {{ vh_settings }}', {
+                enabled: '%1',
+                vh_settings: '%2',
+            }),
             args1: [
                 {
                     type: 'field_checkbox',
                     name: 'VH_ENABLED',
                     checked: false,
                     class: 'blocklyCheckbox',
+                },
+                {
+                    type: 'field_vh_settings_button',
+                    name: 'VH_SETTINGS_BTN',
                 },
             ],
             message2: localize('Max Steps {{ num }}', { num: '%1' }),
@@ -77,6 +84,14 @@ window.Blockly.Blocks.trade_definition_market = {
 
         this.setMovable(false);
         this.setDeletable(false);
+
+        // The raw VH numeric inputs remain in the block model (so
+        // mutationToDom/domToMutation and code generation keep working),
+        // but they are hidden from the block UI — editing happens in the
+        // bundled VH Settings modal opened by the button field above.
+        this.getField('VH_VIRTUAL_TRADES')?.setVisible(false);
+        this.getField('VH_REAL_WINS')?.setVisible(false);
+        this.getField('VH_STAKE')?.setVisible(false);
     },
     /**
      * Serialize Virtual Hook settings into a <mutation> XML element.

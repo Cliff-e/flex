@@ -83,6 +83,15 @@ export interface VHJournalEntry {
     /** Settled exit digit (0–9), or null for non-digit contracts. */
     exitDigit: number | null;
 
+    /** Entry digit observed at contract entry (optional). */
+    entryDigit?: number | null;
+
+    /** Entry tick quote value (optional). */
+    entryTick?: number | null;
+
+    /** Exit tick quote value (optional). */
+    exitTick?: number | null;
+
     /** How the settlement outcome was determined. */
     settlement: 'api' | 'timeout' | 'error';
 
@@ -90,7 +99,7 @@ export interface VHJournalEntry {
     timestamp: number;
 
     /** Marks the journaling source. */
-    source: 'vh_virtual';
+    source: 'VH';
 }
 
 /**
@@ -228,9 +237,12 @@ export class VHJournalStore {
             profit: record.profit,
             stake: record.stake,
             exitDigit: record.exitDigit,
+            entryDigit: record.entryDigit,
+            entryTick: record.entryTick,
+            exitTick: record.exitTick,
             settlement: record.settlement,
             timestamp: record.settledAt,
-            source: 'vh_virtual',
+            source: 'VH',
         };
     }
 

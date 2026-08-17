@@ -39,6 +39,22 @@ export default Engine =>
         virtualHookEngine = null;
 
         /**
+         * Runtime VH mode flag — true while the Virtual Hook is actively
+         * gating purchases. Set exclusively by setVirtualHookEnabled()
+         * (re-initialized each Run via codegen `Bot.setVirtualHookEnabled`)
+         * and cleared by deactivateVirtualHookRuntime() (switch-to-real on
+         * AUTHORIZED).
+         *
+         * IMPORTANT: this flag is never consulted directly mid-flight for
+         * a gate decision. Every purchase latches its value at entry
+         * (`enteredWhileVH`) and the latch alone governs that purchase's
+         * whole async lifecycle — a manual disable, policy deactivation,
+         * or AUTHORIZED before settlement can never promote a latched
+         * purchase to a real buy.
+         */
+        _vhRuntimeActive = false;
+
+        /**
          * Lazily construct the VirtualHookEngine with XML adapters.
          * Called on first VH enable or VH status query.
          */
@@ -224,10 +240,34 @@ export default Engine =>
         setVirtualHookEnabled(enabled) {
             if (Boolean(enabled)) {
                 this._ensureVirtualHookEngine().configure({ enabled: true });
+                // Runtime mode ON — every NEW purchase latches this at entry.
+                this._vhRuntimeActive = true;
                 notify('notify-virtual-hook', 'Virtual Hook Enabled');
                 notify('notify-virtual-hook', 'Virtual Hook Authorized');
             } else {
                 this._ensureVirtualHookEngine().configure({ enabled: false });
+                // Runtime mode OFF — in-flight latched purchases are
+                // unaffected; their latch governs until settlement.
+                this._vhRuntimeActive = false;
+            }
+        }
+
+        /**
+         * Switch-to-real deactivation of the VH runtime mode.
+         *
+         * Called exclusively when a purchase latched while VH was active
+         * receives AUTHORIZED — after virtual settlement and record commit
+         * have completed inside virtualHookEngine.start(). The latched
+         * purchase itself is DISCARDED (zero real buys); this method only
+         * clears the runtime mode so the NEXT new purchase enters
+         * unlatched and uses the existing real pipeline unchanged.
+         * minWins/policy semantics are untouched — the engine is merely
+         * disabled, never reconfigured.
+         */
+        deactivateVirtualHookRuntime() {
+            this._vhRuntimeActive = false;
+            if (this.virtualHookEngine) {
+                this.virtualHookEngine.configure({ enabled: false });
             }
         }
 

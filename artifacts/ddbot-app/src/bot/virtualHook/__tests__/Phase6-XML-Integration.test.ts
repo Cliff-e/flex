@@ -64,12 +64,13 @@ function mockCandidate(overrides: Partial<TradeCandidate> = {}): TradeCandidate 
 }
 
 describe('Phase 6 — XML VirtualHookEngine Integration', () => {
-    // ── Test 1: VH disabled → purchase behaves exactly as before ─────
-    test('VH disabled calls _executeRealPurchase directly', async () => {
+    // ── Test 1: VH inactive at entry (unlatched) → real path unchanged ──
+    test('unlatched purchase (VH inactive at entry) calls _executeRealPurchase directly', async () => {
         const purchase = {
             store: mockStore(),
             virtualHookEngine: mockEngine(false),
             _purchaseInProgress: false,
+            _vhRuntimeActive: false,
             tradeOptions: { contractTypes: ['DIGITOVER'], symbol: 'R_100', amount: 10, duration: 1, duration_unit: 't', currency: 'USD', basis: 'stake' },
             activeContractOverride: null,
             activeSymbolOverride: null,
@@ -79,18 +80,26 @@ describe('Phase 6 — XML VirtualHookEngine Integration', () => {
             is_proposal_subscription_required: true,
         };
 
-        // Simulate the purchase() decision logic inline.
-        const result = purchase.virtualHookEngine.isEnabled()
-            ? 'VH_GATE'   // should NOT happen when disabled
+        // Simulate the purchase() mode-gate latch inline: the purchase
+        // latches the VH runtime mode at entry; unlatched → real path.
+        const vhContext = { enteredWhileVH: Boolean(purchase._vhRuntimeActive) };
+        const result = vhContext.enteredWhileVH
+            ? 'VH_GATE'   // should NOT happen when unlatched
             : 'REAL_PURCHASE';
 
+        expect(vhContext.enteredWhileVH).toBe(false);
         expect(result).toBe('REAL_PURCHASE');
-        expect(purchase.virtualHookEngine.isEnabled).toHaveBeenCalled();
         expect(purchase.virtualHookEngine.start).not.toHaveBeenCalled();
     });
 
-    // ── Test 2: VH enabled + AUTHORIZED → one funded purchase ────────
-    test('VH AUTHORIZED triggers real purchase', async () => {
+    // ── Test 2: VH enabled + AUTHORIZED → latched purchase discarded ────
+    // NEW SEMANTICS (2026-08-16 governing spec): AUTHORIZED on a purchase
+    // that ENTERED while VH was active never becomes a real buy. Virtual
+    // settlement + record commit completed inside engine.start(); the
+    // switch-to-real decision deactivates the VH runtime mode and
+    // DISCARDS the purchase. Only a subsequent NEW (unlatched) purchase
+    // may use the real pipeline.
+    test('VH AUTHORIZED discards the latched purchase (zero buys) and deactivates VH runtime', async () => {
         const engine = mockEngine(true, {
             decision: VHDecision.AUTHORIZED,
             reason: 'MIN_WINS_REACHED',
@@ -99,10 +108,38 @@ describe('Phase 6 — XML VirtualHookEngine Integration', () => {
             losses: 0,
         });
 
-        const result = await engine.start(mockCandidate());
+        // Runtime mode state (mirrors ActiveContract._vhRuntimeActive).
+        const runtime = { vhRuntimeActive: true };
+        const realBuys: string[] = [];
 
+        // ── Signal N: purchase() entry latches the VH runtime mode ──
+        const vhContext = { enteredWhileVH: runtime.vhRuntimeActive };
+        expect(vhContext.enteredWhileVH).toBe(true);
+
+        const result = await engine.start(mockCandidate());
         expect(result.decision).toBe(VHDecision.AUTHORIZED);
         expect(engine.start).toHaveBeenCalledTimes(1);
+
+        // AUTHORIZED branch of _runVirtualHookGate with the latch guard.
+        if (result.decision === VHDecision.AUTHORIZED) {
+            if (!vhContext.enteredWhileVH) {
+                realBuys.push('signal-N'); // unreachable for a latched context
+            } else {
+                runtime.vhRuntimeActive = false; // deactivateVirtualHookRuntime()
+            }
+        }
+
+        // Zero real buys for signal N; VH runtime is now inactive.
+        expect(realBuys).toHaveLength(0);
+        expect(runtime.vhRuntimeActive).toBe(false);
+
+        // ── Signal N+1: new purchase enters UNLATCHED → real path ──
+        const nextContext = { enteredWhileVH: runtime.vhRuntimeActive };
+        expect(nextContext.enteredWhileVH).toBe(false);
+        if (!nextContext.enteredWhileVH) {
+            realBuys.push('signal-N+1'); // existing real pipeline, unchanged
+        }
+        expect(realBuys).toEqual(['signal-N+1']); // the new signal buys once
     });
 
     // ── Test 3: VH enabled + REJECTED → zero purchases ─────────────

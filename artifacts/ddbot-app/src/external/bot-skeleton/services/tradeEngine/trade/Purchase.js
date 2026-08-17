@@ -103,20 +103,31 @@ export default Engine =>
                     : contract_type;
 
             // ── Virtual Hook gate ─────────────────────────────────────────────
-            // When VH is enabled, delegate authorization to VirtualHookEngine.
-            //   AUTHORIZED → execute the real purchase
+            // MODE-GATE LATCH: latch the VH runtime mode at purchase
+            // entry into a per-purchase execution context. The latch is
+            // a const carried through every async continuation of THIS
+            // purchase — no flag flip (manual disable, policy
+            // deactivation, AUTHORIZED) before settlement can promote a
+            // latched purchase to a real buy.
+            //
+            // When latched (VH active at entry), delegate to the VH gate:
+            //   AUTHORIZED → virtual settlement/records already
+            //                committed; deactivate the VH runtime mode,
+            //                DISCARD this purchase — zero real buys.
             //   REJECTED   → drop the signal, no purchase
             //   STOPPED    → abort, no purchase
             //   RETRY      → re-submit the candidate (bounded)
             //
-            // When VH is disabled, purchase() behaves exactly as before and
-            // delegates directly to the real purchase path.
-            if (this.virtualHookEngine?.isEnabled?.()) {
-                return this._runVirtualHookGate(contract_type, effective_type);
+            // When unlatched (VH inactive at entry), purchase() behaves
+            // exactly as before and delegates directly to the real
+            // purchase path.
+            const vhContext = { enteredWhileVH: Boolean(this._vhRuntimeActive) };
+            if (vhContext.enteredWhileVH) {
+                return this._runVirtualHookGate(contract_type, effective_type, vhContext);
             }
 
             // eslint-disable-next-line no-console
-            console.log('[BUY TRACE] VH disabled — proceeding directly to real purchase.');
+            console.log('[BUY TRACE] VH inactive at entry (unlatched) — proceeding directly to real purchase.');
 
             return this._executeRealPurchase(contract_type, effective_type);
         }
@@ -126,8 +137,11 @@ export default Engine =>
          *
          * This is the legacy real purchase pipeline, extracted intact from the
          * original purchase() entry point. It is invoked:
-         *   • directly when VH is disabled (exact legacy behaviour)
-         *   • after VH returns AUTHORIZED (funded trade gate passed)
+         *   • directly when the purchase entered UNLATCHED (VH runtime
+         *     inactive at entry — exact legacy behaviour)
+         *   • NEVER for a latched purchase — the mode-gate latch makes
+         *     _executeRealPurchase unreachable for purchases that entered
+         *     while VH was active, on every decision including AUTHORIZED
          *
          * The implementation (proposal selection, buy request + retry,
          * recovery engine, open contract monitoring) is unchanged.
@@ -480,7 +494,7 @@ export default Engine =>
             };
         }
 
-        async _runVirtualHookGate(contract_type, effective_type) {
+        async _runVirtualHookGate(contract_type, effective_type, vhContext) {
             let retries = 0;
             for (;;) {
                 const candidate = this._buildTradeCandidate(effective_type);
@@ -492,7 +506,26 @@ export default Engine =>
                     return Promise.resolve();
                 }
                 if (result.decision === VHDecision.AUTHORIZED) {
-                    return this._executeRealPurchase(contract_type, effective_type);
+                    // LATCH GUARD — a purchase latched while VH was active
+                    // can NEVER become a real buy, not even on AUTHORIZED.
+                    // Virtual settlement and record commit already completed
+                    // inside virtualHookEngine.start(); the switch-to-real
+                    // decision therefore deactivates the VH runtime mode and
+                    // DISCARDS this purchase — zero real buys. The NEXT new
+                    // purchase (unlatched) uses the real pipeline unchanged.
+                    if (!vhContext.enteredWhileVH) {
+                        // Unreachable for a latched context — kept as the
+                        // explicit latch guard on the sole real call site.
+                        return this._executeRealPurchase(contract_type, effective_type);
+                    }
+                    this.deactivateVirtualHookRuntime?.();
+                    this._purchaseInProgress = false;
+                    // eslint-disable-next-line no-console
+                    console.log(
+                        `[VH] AUTHORIZED — latched purchase ${candidate.signalId} discarded` +
+                        ' | VH runtime deactivated | real buys for this purchase: 0'
+                    );
+                    return Promise.resolve();
                 }
                 if (result.decision === VHDecision.REJECTED || result.decision === VHDecision.STOPPED) {
                     this._purchaseInProgress = false;
@@ -500,6 +533,9 @@ export default Engine =>
                 }
                 retries++;
                 if (retries >= this._vhMaxRetries) {
+                    // Latch guard: RETRY exhaustion of a latched purchase
+                    // resolves without buying — never falls through to
+                    // _executeRealPurchase.
                     this._purchaseInProgress = false;
                     return Promise.resolve();
                 }

@@ -74,7 +74,7 @@ describe('VHJournalStore — single transaction', () => {
         const entry = entries[0];
         expect(entry.entryId).toBe('J-TX-1');
         expect(entry.event).toBe('VH_SETTLEMENT');
-        expect(entry.source).toBe('vh_virtual');
+        expect(entry.source).toBe('VH');
         expect(entry.transactionId).toBe('TX-1');
         expect(entry.contractId).toBe('VH-1');
         expect(entry.runId).toBe('run-1');

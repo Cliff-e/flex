@@ -10,7 +10,11 @@ import type { TransactionRecord } from '@/bot/virtualHook/TransactionPipeline';
  * Renders a live summary of the Virtual Hook stores WITHOUT creating a
  * second source of truth. The existing VH stores are the single source:
  *   • TransactionsStore  (getVHStore)  — committed virtual transactions
- *   • SharedExitDigitHistory           — rolling exit digit history (vh_virtual)
+ *   • SharedExitDigitHistory           — rolling exit digit history (VH)
+ *
+ * This panel is strictly OBSERVATIONAL: it never displays or aggregates
+ * financial figures (buy price, stake, payout, profit/loss) and never
+ * writes to the real accounting stores — it only reads the VH stores.
  *
  * Reactivity: subscribes to the SAME store subscriptions the VH pipeline
  * already uses (TransactionsStore.subscribe + subscribeToExitDigitHistory),
@@ -18,6 +22,24 @@ import type { TransactionRecord } from '@/bot/virtualHook/TransactionPipeline';
  * exit digit is appended. No polling.
  */
 const RECENT_TRADES_CAP = 10;
+
+/**
+ * Spot/digit detail fields are being added to TransactionRecord separately.
+ * Intersect them here (all optional) so this file compiles both before and
+ * after that change lands — absent fields simply render as "—".
+ */
+type TransactionRecordWithSpots = TransactionRecord & {
+    entryTick?: number | null;
+    entryDigit?: number | null;
+    exitTick?: number | null;
+};
+
+/** Format a spot/digit pair, guarding against absent/null values. */
+const formatSpotDigit = (spot: number | null, digit: number | null): string => {
+    if (spot === null && digit === null) return '—';
+    if (spot === null) return String(digit);
+    return digit === null ? String(spot) : `${spot} (${digit})`;
+};
 
 const VirtualHookResults = () => {
     const [, setVersion] = React.useState(0);
@@ -52,7 +74,6 @@ const VirtualHookResults = () => {
     const wins = records.filter(r => r.won).length;
     const losses = totalTrades - wins;
     const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
-    const netProfit = records.reduce((sum, r) => sum + (r.profit ?? 0), 0);
     const recentTrades = records.slice(-RECENT_TRADES_CAP).reverse();
 
     return (
@@ -79,20 +100,6 @@ const VirtualHookResults = () => {
                     <div className='run-panel__tile-content'>{totalTrades > 0 ? `${winRate.toFixed(1)}%` : '—'}</div>
                 </div>
                 <div className='run-panel__tile'>
-                    <div className='run-panel__tile-title'>{localize('Net Profit / Loss')}</div>
-                    <div
-                        className={[
-                            'run-panel__tile-content run-panel__stat-amount',
-                            netProfit > 0 && 'run-panel__stat-amount--positive',
-                            netProfit < 0 && 'run-panel__stat-amount--negative',
-                        ]
-                            .filter(Boolean)
-                            .join(' ')}
-                    >
-                        {netProfit.toFixed(2)}
-                    </div>
-                </div>
-                <div className='run-panel__tile'>
                     <div className='run-panel__tile-title'>{localize('Last Exit Digit')}</div>
                     <div className='run-panel__tile-content'>{lastExitDigit !== null ? lastExitDigit : '—'}</div>
                 </div>
@@ -104,28 +111,35 @@ const VirtualHookResults = () => {
                     <div className='virtual-hook-results__empty'>{localize('No virtual trades yet.')}</div>
                 ) : (
                     <ul className='virtual-hook-results__list'>
-                        {recentTrades.map(record => (
-                            <li key={record.contractId} className='virtual-hook-results__item'>
-                                <span className='virtual-hook-results__item-id'>{record.contractId}</span>
-                                <span className='virtual-hook-results__item-type'>{record.contractType}</span>
-                                <span
-                                    className={[
-                                        'virtual-hook-results__item-status',
-                                        record.won
-                                            ? 'virtual-hook-results__item-status--won'
-                                            : 'virtual-hook-results__item-status--lost',
-                                    ].join(' ')}
-                                >
-                                    {record.won ? localize('WON') : localize('LOST')}
-                                </span>
-                                <span className='virtual-hook-results__item-digit'>
-                                    {record.exitDigit !== null && record.exitDigit !== undefined
-                                        ? `${localize('Exit')}: ${record.exitDigit}`
-                                        : ''}
-                                </span>
-                                <span className='virtual-hook-results__item-profit'>{record.profit.toFixed(2)}</span>
-                            </li>
-                        ))}
+                        {recentTrades.map(record => {
+                            const rec = record as TransactionRecordWithSpots;
+                            const entrySpot = rec.entryTick ?? null;
+                            const entryDigit = rec.entryDigit ?? null;
+                            const exitSpot = rec.exitTick ?? null;
+                            const exitDigit = rec.exitDigit ?? null;
+                            return (
+                                <li key={record.contractId} className='virtual-hook-results__item'>
+                                    <span className='virtual-hook-results__item-label'>{localize('Virtual Hook')}</span>
+                                    <span className='virtual-hook-results__item-type'>{record.contractType}</span>
+                                    <span className='virtual-hook-results__item-spot'>
+                                        {`${localize('Entry')}: ${formatSpotDigit(entrySpot, entryDigit)}`}
+                                    </span>
+                                    <span className='virtual-hook-results__item-spot'>
+                                        {`${localize('Exit')}: ${formatSpotDigit(exitSpot, exitDigit)}`}
+                                    </span>
+                                    <span
+                                        className={[
+                                            'virtual-hook-results__item-status',
+                                            record.won
+                                                ? 'virtual-hook-results__item-status--won'
+                                                : 'virtual-hook-results__item-status--lost',
+                                        ].join(' ')}
+                                    >
+                                        {record.won ? localize('virtual won') : localize('virtual lost')}
+                                    </span>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </div>

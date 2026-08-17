@@ -28,7 +28,6 @@ import { observer } from '../external/bot-skeleton/utils/observer';
 // consumer (Transactions table, Summary card, Journal, CSV export).
 import { normalizeContractSpots } from '../external/bot-skeleton/services/tradeEngine/utils/normalize-contract';
 import {
-    appendExitDigit,
     resetExitDigitHistory,
     getExitDigitHistory,
     getLastNDigits,
@@ -306,9 +305,10 @@ export class TradingEngine {
 
         const digit = this.extractDigit(String(tick.quote));
 
-        if (this.state === 'monitoring' && !this.executionLock) {
-            this.addVirtualExitDigit(digit);
-        }
+        // NOTE: A live tick is market observation — NOT an exit-digit event.
+        // Only settled contracts (VH or REAL) may append to the shared
+        // exit-digit history. The previous addVirtualExitDigit() call here
+        // polluted the history with every monitoring tick and is removed.
 
         if (this.inRecovery) {
             // Recovery loop runs independently via executeRecoveryTrade().
@@ -1061,13 +1061,11 @@ export class TradingEngine {
     // Digit tracking
     // ─────────────────────────────────────────
 
-    private addVirtualExitDigit(d: number): void {
-        // Write to the single shared chronological history only.
-        // Virtual (monitoring-phase) digits are NOT settled contracts so they
-        // never flow through pushTransaction — this remains the sole writer
-        // for virtual digits.
-        appendExitDigit({ digit: d, source: 'virtual', ts: Date.now() });
-    }
+    // NOTE: addVirtualExitDigit has been intentionally removed.
+    // A live monitoring tick is market observation — NOT an exit-digit
+    // event. Only settled contracts (VH or REAL) may append to the shared
+    // exit-digit history; the removed method polluted the history with
+    // every monitoring tick.
 
     // NOTE: addRealExitDigit has been intentionally removed.
     // Real trade exit digits are now appended by TransactionsStore.pushTransaction,

@@ -1036,6 +1036,25 @@ drag a block and selected text moves instead.
         x: 2;
     }
 
+    // Clickable "VH Settings" field inside the Trade parameters block.
+    // The stroke paints a rounded pill behind the label text so the
+    // field reads as a button without needing a sized SVG rect.
+    .field-vh-settings-button {
+        cursor: pointer;
+        fill: #ffffff;
+        font-weight: 700;
+        paint-order: stroke;
+        stroke: rgba(255, 255, 255, 0.16);
+        stroke-width: 14px;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+
+        &:hover {
+            fill: #ff444f;
+            stroke: rgba(255, 255, 255, 0.92);
+        }
+    }
+
     .header__title {
         color: var(--text-prominent);
         display: inline-block;

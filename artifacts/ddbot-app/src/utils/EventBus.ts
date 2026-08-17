@@ -15,6 +15,7 @@ export type EventMap = {
     'public:tick': { symbol: string; quote: number; epoch: number; [k: string]: unknown };
     'active_symbols:loaded': undefined;
     'chart:mode_changed': { mode: 'preview' | 'live' };
+    'vh:open-settings': undefined;
     error: unknown;
 };
 
