@@ -47,7 +47,9 @@ export type TStatistics = {
 };
 
 export type TTransactionStore = {
-    transactions: TTransactions[];
+    transactions: any[];
+    mixed_transactions?: any[];
+    display_statistics?: TStatistics;
     is_transaction_details_modal_open: boolean;
     toggleTransactionDetailsModal: (is_open: boolean) => void;
     statistics: TStatistics;

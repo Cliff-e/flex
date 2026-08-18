@@ -1,1 +1,2 @@
 - [Account switcher invisible after OAuth login](account-switcher-empty-account-list.md) — new Deriv trading API returns empty account_list; fix reconstructs it from REST localStorage data or authorize fields.
+- [Virtual Hook presentation bridge](vh-presentation-bridge.md) — compose VH history in UI views while keeping real accounting and balance isolated.

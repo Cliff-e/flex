@@ -14,6 +14,8 @@ export type TContractInfo = Omit<
     entry_tick_time?: TDateType;
     exit_tick?: TDateType;
     exit_tick_time?: TDateType;
+    /** Presentation-only marker; virtual rows never represent real account contracts. */
+    is_virtual?: boolean;
 };
 
 export interface TSummaryCardProps {

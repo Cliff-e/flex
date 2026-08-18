@@ -32,9 +32,12 @@ type TPopoverContent = {
 
 type TTransaction = {
     contract?: TContractInfo | null;
-    onClickTransaction?: (transaction_id: null | number) => void;
-    active_transaction_id?: number | null;
+    onClickTransaction?: (transaction_id: null | number | string) => void;
+    active_transaction_id?: number | string | null;
 };
+
+const getTransactionKey = (contract?: TContractInfo | null): number | string | null =>
+    contract?.is_virtual ? (contract.contract_id as unknown as string) : contract?.transaction_ids?.buy ?? null;
 
 const TransactionIconWithText = ({ icon, title, message, className }: TTransactionIconWithText) => (
     <React.Fragment>
@@ -193,13 +196,13 @@ const Transaction = ({ contract, active_transaction_id, onClickTransaction }: TT
             zIndex={popover_zindex.TRANSACTION.toString()}
             alignment={isDbotRTL() ? 'right' : 'left'}
             className='transactions__item-wrapper'
-            is_open={!!(contract && active_transaction_id === contract?.transaction_ids?.buy)}
+            is_open={!!(contract && active_transaction_id === getTransactionKey(contract))}
             message={contract && <PopoverContent contract={contract} />}
         >
             <div
                 data-testid='dt_transactions_item'
                 className='transactions__item'
-                onClick={() => onClickTransaction && onClickTransaction(contract?.transaction_ids?.buy || null)}
+                onClick={() => onClickTransaction && onClickTransaction(getTransactionKey(contract))}
             >
                 <div className='transactions__cell transactions__trade-type'>
                     <div className='transactions__loader-container'>

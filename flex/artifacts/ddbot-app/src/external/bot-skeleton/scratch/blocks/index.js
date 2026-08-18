@@ -1,0 +1,25 @@
+// Custom field registrations must be imported BEFORE any block module
+// so they exist in Blockly.fieldRegistry before jsonInit() runs.
+import '../fields/field_vh_settings_button';
+import './Advanced/Functions';
+import './Advanced/List';
+import './Advanced/Loops';
+import './Advanced/Variable';
+import './Binary/After Purchase';
+import './Binary/Before Purchase';
+import './Binary/Contract Modifiers';
+import './Binary/Virtual Hook';
+import './Binary/Runtime State';
+import './Binary/Prediction Controls';
+import './Binary/Symbol Controls';
+import './Binary/Recovery Controls';
+import './Binary/During Purchase';
+import './Binary/Indicators';
+import './Binary/Tick Analysis';
+import './Binary/Tools/Candle';
+import './Binary/Tools/Misc';
+import './Binary/Tools/Time';
+import './Binary/Trade Definition';
+import './Logic';
+import './Math';
+import './Text';

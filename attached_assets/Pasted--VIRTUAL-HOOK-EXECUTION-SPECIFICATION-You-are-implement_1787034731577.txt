@@ -1,0 +1,1799 @@
+# VIRTUAL HOOK — EXECUTION SPECIFICATION
+
+You are implementing the Virtual Hook finishing work in an existing React/TypeScript trading application.
+
+Phase 0 reconnaissance and the existing VH architecture have already been established.
+
+**Do not restart broad repository reconnaissance.**
+
+Inspect the existing implementation and the relevant immediate dependencies, then implement the requirements below.
+
+The most important correction to previous specifications is:
+
+> Virtual Hook has THREE independent authorization conditions, and EACH condition has its own Enable/Disable control inside VH Settings.
+
+The three conditions are:
+
+1. Maximum consecutive virtual wins before real purchase
+2. Maximum consecutive virtual losses before real purchase
+3. Maximum number of Virtual Hook instances/steps before real purchase
+
+The user may enable any combination of these three.
+
+Authorization occurs when **ANY ENABLED condition reaches its configured threshold**.
+
+---
+
+# 1. CORE PRODUCT BEHAVIOR
+
+Virtual Hook is a simulation layer that runs BEFORE real trading.
+
+It is not a second trading account.
+
+The intended flow is:
+
+```text
+LIVE MARKET TICKS
+        ↓
+existing strategy/signal conditions
+        ↓
+VH intercepts the signal
+        ↓
+VH virtual contract starts
+        ↓
+REAL-TIME LIVE TICKS CONTINUE ARRIVING
+        ↓
+virtual entry tick
+        ↓
+duration ticks arrive in real time
+        ↓
+virtual exit tick
+        ↓
+existing settlement logic
+        ↓
+VIRTUAL WIN or VIRTUAL LOSS
+        ↓
+update VH counters
+        ↓
+check enabled authorization conditions
+        ↓
+if threshold reached:
+        VH authorization reached
+        ↓
+CURRENT VH CONTRACT REMAINS VIRTUAL
+        ↓
+VH turns OFF / latch is released for future signals
+        ↓
+NEXT UNLATCHED SIGNAL
+        ↓
+REAL BUY
+```
+
+The current VH contract that causes authorization is NEVER converted into a real trade.
+
+---
+
+# 2. THREE INDEPENDENT AUTHORIZATION CONTROLS
+
+VH Settings must contain THREE separate controls.
+
+Each must have:
+
+```text
+Enable / Disable
+```
+
+and its own numeric threshold.
+
+The UI should conceptually contain:
+
+```text
+Virtual Hook Settings
+
+☑ Enable VH
+
+☑ Max consecutive wins before real buy
+   [ 3 ]
+
+☐ Max consecutive losses before real buy
+   [ 3 ]
+
+☑ Max Virtual Hook instances before real buy
+   [ 5 ]
+```
+
+The exact visual styling should follow the existing VH Settings UI.
+
+Do not invent an unrelated settings interface.
+
+The important behavior is that **each condition is independently enabled or disabled**.
+
+---
+
+# 3. CONTROL 1 — MAX CONSECUTIVE WINS
+
+Configuration:
+
+```ts
+winThreshold: number
+winThresholdEnabled: boolean
+```
+
+Example:
+
+```text
+Enabled
+Win threshold = 3
+```
+
+VH results:
+
+```text
+WIN
+WIN
+WIN
+```
+
+After the third completed VH contract:
+
+```text
+WIN STREAK CONDITION REACHED
+```
+
+Authorization occurs.
+
+The three contracts remain virtual.
+
+The third/current contract is NOT converted to real.
+
+Then:
+
+```text
+VH OFF
+↓
+NEXT UNLATCHED SIGNAL
+↓
+REAL BUY
+```
+
+If this condition is disabled:
+
+```text
+winThresholdEnabled = false
+```
+
+wins must NOT authorize VH.
+
+The threshold value is ignored while disabled.
+
+---
+
+# 4. CONTROL 2 — MAX CONSECUTIVE LOSSES
+
+Configuration:
+
+```ts
+lossThreshold: number
+lossThresholdEnabled: boolean
+```
+
+Example:
+
+```text
+Enabled
+Loss threshold = 3
+```
+
+VH results:
+
+```text
+LOSS
+LOSS
+LOSS
+```
+
+After the third completed VH contract:
+
+```text
+LOSS STREAK CONDITION REACHED
+```
+
+Authorization occurs.
+
+All three contracts remain virtual.
+
+The third/current contract is NOT converted into a real trade.
+
+Then:
+
+```text
+VH OFF
+↓
+NEXT UNLATCHED SIGNAL
+↓
+REAL BUY
+```
+
+If disabled:
+
+```text
+lossThresholdEnabled = false
+```
+
+losses must NOT authorize VH.
+
+---
+
+# 5. CONTROL 3 — MAX VIRTUAL HOOK INSTANCES / STEPS
+
+This is the third authorization condition.
+
+DO NOT remove the existing concept of `maxSteps`.
+
+Instead, correct its meaning.
+
+It represents:
+
+> Maximum number of completed Virtual Hook contract instances allowed before VH authorizes the next real trade.
+
+Configuration:
+
+```ts
+maxSteps: number
+maxStepsEnabled: boolean
+```
+
+It counts ALL completed VH instances regardless of outcome.
+
+For example:
+
+```text
+maxSteps = 5
+maxStepsEnabled = true
+```
+
+Sequence:
+
+```text
+VH #1 → WIN
+VH #2 → LOSS
+VH #3 → LOSS
+VH #4 → WIN
+VH #5 → WIN
+```
+
+After VH #5 settles:
+
+```text
+VIRTUAL INSTANCE LIMIT REACHED
+```
+
+Authorization occurs.
+
+Again:
+
+**VH #5 remains virtual.**
+
+It is NOT converted into a real purchase.
+
+Then:
+
+```text
+VH OFF
+↓
+NEXT UNLATCHED SIGNAL
+↓
+REAL BUY
+```
+
+The step condition is therefore different from the win/loss conditions:
+
+```text
+WIN CONDITION
+→ consecutive wins
+
+LOSS CONDITION
+→ consecutive losses
+
+STEP CONDITION
+→ total completed VH instances in the current VH authorization session
+```
+
+---
+
+# 6. THE THREE CONDITIONS ARE OR CONDITIONS
+
+Authorization is:
+
+```text
+ANY ENABLED CONDITION REACHES ITS THRESHOLD
+```
+
+Equivalent logic:
+
+```ts
+if (
+    winThresholdEnabled &&
+    winThreshold > 0 &&
+    consecutiveVirtualWins >= winThreshold
+) {
+    return AUTHORIZED;
+}
+
+if (
+    lossThresholdEnabled &&
+    lossThreshold > 0 &&
+    consecutiveVirtualLosses >= lossThreshold
+) {
+    return AUTHORIZED;
+}
+
+if (
+    maxStepsEnabled &&
+    maxSteps > 0 &&
+    virtualInstances >= maxSteps
+) {
+    return AUTHORIZED;
+}
+
+if (
+    consecutiveTechnicalFailures >= maxConsecutiveFailures
+) {
+    return STOPPED;
+}
+
+return RETRY;
+```
+
+Use the project's existing enums/result types where appropriate.
+
+---
+
+# 7. ZERO SEMANTICS
+
+Zero must mean:
+
+```text
+DISABLED
+```
+
+for the numeric threshold.
+
+Do NOT normalize zero to one.
+
+Do NOT use:
+
+```ts
+Math.max(1, value)
+```
+
+for these authorization thresholds.
+
+Valid examples:
+
+```text
+Wins:
+0
+
+Losses:
+0
+
+Steps:
+0
+```
+
+A value of zero means that condition does not authorize VH.
+
+The explicit Enable/Disable switch is the primary user-facing control, but zero must also safely behave as disabled.
+
+Therefore:
+
+```text
+wins = 0
+losses = 0
+steps = 0
+```
+
+must never cause immediate authorization.
+
+---
+
+# 8. EXAMPLES OF USER CONFIGURATION
+
+### Configuration A
+
+```text
+Wins: ENABLED → 3
+Losses: DISABLED
+Steps: DISABLED
+```
+
+Only three consecutive wins can authorize.
+
+---
+
+### Configuration B
+
+```text
+Wins: DISABLED
+Losses: ENABLED → 3
+Steps: DISABLED
+```
+
+Only three consecutive losses can authorize.
+
+---
+
+### Configuration C
+
+```text
+Wins: DISABLED
+Losses: DISABLED
+Steps: ENABLED → 5
+```
+
+Exactly five completed VH instances can authorize, regardless of outcome.
+
+Example:
+
+```text
+W
+L
+W
+L
+W
+```
+
+→ authorization after instance 5.
+
+---
+
+### Configuration D
+
+```text
+Wins: ENABLED → 3
+Losses: ENABLED → 3
+Steps: DISABLED
+```
+
+Either streak can authorize.
+
+```text
+W W W
+```
+
+→ AUTHORIZED
+
+or:
+
+```text
+L L L
+```
+
+→ AUTHORIZED
+
+---
+
+### Configuration E
+
+```text
+Wins: ENABLED → 3
+Losses: ENABLED → 3
+Steps: ENABLED → 10
+```
+
+Any of these can authorize first.
+
+```text
+W W W
+```
+
+authorizes after 3.
+
+Or:
+
+```text
+L L L
+```
+
+authorizes after 3.
+
+Or if neither streak reaches 3:
+
+```text
+10 completed VH instances
+```
+
+authorizes.
+
+---
+
+### Configuration F
+
+All three disabled:
+
+```text
+Wins: DISABLED
+Losses: DISABLED
+Steps: DISABLED
+```
+
+VH remains active indefinitely from authorization-threshold perspective.
+
+It must NOT immediately authorize.
+
+Technical safety mechanisms remain active.
+
+---
+
+# 9. CONSECUTIVE WIN/LOSS STREAKS
+
+Maintain:
+
+```ts
+consecutiveVirtualWins
+consecutiveVirtualLosses
+```
+
+When a VH contract wins:
+
+```text
+consecutiveVirtualWins += 1
+consecutiveVirtualLosses = 0
+```
+
+When a VH contract loses:
+
+```text
+consecutiveVirtualLosses += 1
+consecutiveVirtualWins = 0
+```
+
+Examples:
+
+```text
+W W L
+```
+
+must result in:
+
+```text
+wins = 0
+losses = 1
+```
+
+NOT:
+
+```text
+wins = 2
+losses = 1
+```
+
+Likewise:
+
+```text
+L L W
+```
+
+must result in:
+
+```text
+losses = 0
+wins = 1
+```
+
+---
+
+# 10. VIRTUAL INSTANCE COUNTER
+
+Maintain a separate session counter:
+
+```ts
+virtualInstanceCount
+```
+
+Every successfully completed VH contract increments it:
+
+```text
+VH #1 → virtualInstanceCount = 1
+VH #2 → virtualInstanceCount = 2
+VH #3 → virtualInstanceCount = 3
+```
+
+It increments regardless of whether the contract was:
+
+```text
+WIN
+```
+
+or:
+
+```text
+LOSS
+```
+
+A technical failure is NOT a completed VH instance unless the existing architecture explicitly treats it as a settled virtual contract.
+
+Do not count technical failures as wins/losses.
+
+Do not use the step counter as a replacement for the win/loss streak counters.
+
+---
+
+# 11. TECHNICAL FAILURES REMAIN SEPARATE
+
+Do not confuse:
+
+```text
+VALID VIRTUAL LOSS
+```
+
+with:
+
+```text
+TECHNICAL FAILURE
+```
+
+A virtual loss means the simulated contract actually settled and lost.
+
+Technical failures include things such as:
+
+* proposal failure
+* request failure
+* timeout
+* execution infrastructure failure
+* other existing technical failures
+
+Keep:
+
+```ts
+consecutiveTechnicalFailures
+maxConsecutiveFailures
+```
+
+separate.
+
+The three user authorization conditions are:
+
+```text
+win streak
+OR
+loss streak
+OR
+virtual instance count
+```
+
+Technical failure is a separate safety mechanism:
+
+```text
+technical failure streak
+        ↓
+STOPPED
+```
+
+Do not merge these concepts.
+
+---
+
+# 12. RESET BEHAVIOR
+
+When a new VH authorization session begins, reset the session counters:
+
+```text
+consecutiveVirtualWins = 0
+consecutiveVirtualLosses = 0
+virtualInstanceCount = 0
+consecutiveTechnicalFailures = 0
+```
+
+A new VH session must never inherit an old win streak, loss streak, or step count.
+
+---
+
+# 13. REAL-TIME LIVE TICK REQUIREMENT — CRITICAL
+
+This is one of the most important requirements.
+
+VH must simulate a contract **in real time**.
+
+It must behave like a real trade watching the live market.
+
+The production architecture remains:
+
+```text
+PublicTickManager
+        ↓
+AITickObserver
+        ↓
+VirtualHookEngine
+        ↓
+live tick
+        ↓
+VH entry
+        ↓
+live ticks continue arriving
+        ↓
+duration counting
+        ↓
+VH exit
+        ↓
+settlement
+```
+
+Do NOT implement VH as:
+
+```text
+proposal
+↓
+immediately fetch old/historical ticks
+↓
+simulate outcome instantly
+```
+
+Do NOT use historical tick replay.
+
+Do NOT use random values.
+
+Do NOT generate synthetic ticks.
+
+Do NOT create a fake timer that pretends ticks occurred.
+
+---
+
+# 14. WHAT "REAL-TIME" MEANS
+
+When VH starts a virtual contract:
+
+### Entry
+
+Wait for the appropriate live tick from the existing live tick stream.
+
+Record the actual live entry spot/digit.
+
+Then the VH contract is considered active.
+
+### During contract
+
+Wait for actual live ticks arriving from:
+
+```text
+PublicTickManager
+```
+
+through:
+
+```text
+AITickObserver
+```
+
+Consume them according to the configured contract duration.
+
+### Exit
+
+When the correct live duration tick arrives:
+
+Record the actual live exit spot/digit.
+
+### Settlement
+
+Use the existing settlement implementation.
+
+Calculate:
+
+```text
+entry spot
+exit spot
+entry digit
+exit digit
+contract condition
+WIN / LOSS
+virtual stake
+virtual payout
+virtual profit/loss
+```
+
+Only AFTER the virtual contract has genuinely settled should:
+
+```text
+win streak
+loss streak
+instance count
+```
+
+be updated.
+
+Then evaluate the three enabled authorization conditions.
+
+---
+
+# 15. IMPORTANT: VH MUST NOT BLOCK OR FAKE THE LIVE STREAM
+
+VH should subscribe/use the existing tick infrastructure.
+
+It must not create another market-data source.
+
+Do not modify:
+
+```text
+PublicTickManager.ts
+globalTickEngine.ts
+AITickObserver.ts
+```
+
+unless an unavoidable existing integration defect is discovered.
+
+If an integration defect requires modification, explain it before making the change.
+
+---
+
+# 16. PROPOSALS VS BUY
+
+VH may request/obtain a proposal needed to know the contract parameters and potential settlement.
+
+But:
+
+**VH MUST NEVER SEND THE REAL BUY REQUEST.**
+
+The distinction is:
+
+```text
+Proposal
+→ information needed for simulation
+```
+
+versus:
+
+```text
+Buy
+→ real account execution
+```
+
+VH may use the existing proposal mechanism if required by the current architecture.
+
+VH must never invoke:
+
+```text
+real buy
+Purchase.js
+_realTrade()
+```
+
+for the VH contract.
+
+---
+
+# 17. HARD REAL-BUY INVARIANT
+
+For every VH contract:
+
+```text
+real buy calls = 0
+```
+
+VH must never create:
+
+```text
+real account contract ID
+```
+
+The VH contract may have an internal ID such as:
+
+```text
+VH-xxxx
+```
+
+but it must never be treated as a real contract ID.
+
+---
+
+# 18. LATCH BEHAVIOR — DO NOT CHANGE
+
+The existing VH latch behavior must remain intact.
+
+When a signal enters while VH is active:
+
+```text
+enteredWhileVH = true
+```
+
+That signal is permanently classified as the current VH signal.
+
+Even if the authorization threshold is reached while that contract is running:
+
+```text
+CURRENT SIGNAL
+        ↓
+remains virtual
+        ↓
+virtual contract settles
+        ↓
+authorization occurs
+        ↓
+NO REAL BUY
+```
+
+Then:
+
+```text
+VH OFF
+        ↓
+NEXT UNLATCHED SIGNAL
+        ↓
+REAL BUY
+```
+
+Never convert the current authorized VH contract into a real trade.
+
+This is a hard invariant.
+
+---
+
+# 19. USER-FACING TRANSACTION HISTORY
+
+The desired product behavior is visible in the supplied screenshot.
+
+The Transactions view should be able to show:
+
+```text
+REAL TRADE
+REAL TRADE
+Virtual Hook — virtual won
+REAL TRADE
+Virtual Hook — virtual lost
+REAL TRADE
+Virtual Hook — virtual won
+```
+
+VH rows must preserve actual simulated information generated from the live tick process:
+
+```text
+Entry spot
+Exit spot
+Entry digit
+Exit digit
+Contract type
+Virtual stake
+Virtual P/L
+WIN / LOSS
+Timestamp
+VH identifier
+```
+
+The virtual transaction must be clearly labelled:
+
+```text
+Virtual Hook
+```
+
+and:
+
+```text
+virtual won
+```
+
+or:
+
+```text
+virtual lost
+```
+
+---
+
+# 20. REAL ACCOUNT DATA SEPARATION
+
+Displaying a VH transaction in the UI does NOT mean writing it into the real account transaction system.
+
+Keep separate:
+
+```text
+REAL ACCOUNT STATE
+```
+
+from:
+
+```text
+VH SIMULATION HISTORY
+```
+
+Real account state must remain:
+
+```text
+REAL balance
+REAL contracts
+REAL account transactions
+REAL execution state
+```
+
+VH history is:
+
+```text
+VIRTUAL contracts
+VIRTUAL stake
+VIRTUAL payout
+VIRTUAL P/L
+VIRTUAL entry/exit data
+```
+
+The UI can compose them into one chronological user-facing history.
+
+---
+
+# 21. SUMMARY / TRANSACTIONS / JOURNAL
+
+The desired final user experience is:
+
+### Transactions
+
+Display:
+
+```text
+REAL + VH
+```
+
+in chronological order.
+
+### Summary
+
+Display appropriate trading/simulation statistics according to the existing product design, while keeping:
+
+```text
+REAL ACCOUNT BALANCE
+```
+
+REAL ONLY.
+
+Do not add virtual profit/loss to actual account balance.
+
+### Journal
+
+Display:
+
+```text
+REAL + VH
+```
+
+and clearly identify VH events.
+
+The user should be able to see what the Virtual Hook would have done.
+
+---
+
+# 22. ACTIVE CONTRACT / NOTIFY WARNING
+
+Previous investigation identified that:
+
+```text
+ActiveContract.js
+```
+
+and:
+
+```text
+notify()
+```
+
+may allow VH activity to contaminate user-facing Journal behavior.
+
+Do not ignore this.
+
+However, do not blindly modify ActiveContract.js.
+
+First determine whether the current VH history/presentation architecture already provides the required behavior.
+
+If ActiveContract.js genuinely must change to achieve correct VH presentation/separation, explain the exact reason before editing it.
+
+Do not silently alter architecture.
+
+---
+
+# 23. VH SETTINGS UI
+
+The VH Settings modal must expose all three authorization controls.
+
+Conceptually:
+
+```text
+Virtual Hook Settings
+
+Virtual Hook
+[ ON / OFF ]
+
+────────────────────────
+
+Maximum consecutive wins before real buy
+[ ENABLED / DISABLED ]
+Threshold: [ 3 ]
+
+────────────────────────
+
+Maximum consecutive losses before real buy
+[ ENABLED / DISABLED ]
+Threshold: [ 3 ]
+
+────────────────────────
+
+Maximum Virtual Hook instances before real buy
+[ ENABLED / DISABLED ]
+Maximum instances: [ 5 ]
+```
+
+The exact styling should follow the existing application.
+
+Each enable/disable control must persist through the application's existing VH settings mechanism.
+
+Do not create a second settings storage system.
+
+---
+
+# 24. SETTINGS SEMANTICS
+
+The three settings are independent.
+
+For example:
+
+```text
+Wins:
+ENABLED / 3
+
+Losses:
+DISABLED / 3
+
+Steps:
+ENABLED / 5
+```
+
+means:
+
+```text
+3 consecutive wins
+OR
+5 completed VH instances
+```
+
+can authorize.
+
+Losses cannot authorize because that condition is disabled.
+
+Likewise:
+
+```text
+Wins:
+DISABLED
+
+Losses:
+ENABLED / 4
+
+Steps:
+ENABLED / 10
+```
+
+means:
+
+```text
+4 consecutive losses
+OR
+10 completed VH instances
+```
+
+can authorize.
+
+---
+
+# 25. REQUIRED TESTS
+
+Implement/update tests for all three authorization mechanisms.
+
+### Test A — win threshold
+
+```text
+Wins ENABLED = 3
+Losses DISABLED
+Steps DISABLED
+
+W
+W
+W
+```
+
+Expected:
+
+```text
+AUTHORIZED
+reason = WIN_STREAK_REACHED
+```
+
+---
+
+### Test B — loss threshold
+
+```text
+Wins DISABLED
+Losses ENABLED = 3
+Steps DISABLED
+
+L
+L
+L
+```
+
+Expected:
+
+```text
+AUTHORIZED
+reason = LOSS_STREAK_REACHED
+```
+
+---
+
+### Test C — max instances
+
+```text
+Wins DISABLED
+Losses DISABLED
+Steps ENABLED = 3
+
+W
+L
+W
+```
+
+Expected:
+
+```text
+AUTHORIZED
+reason = MAX_STEPS_REACHED
+```
+
+The result does NOT depend on the outcome sequence.
+
+---
+
+### Test D — win streak broken
+
+```text
+W
+W
+L
+```
+
+Expected:
+
+```text
+wins = 0
+losses = 1
+```
+
+---
+
+### Test E — loss streak broken
+
+```text
+L
+L
+W
+```
+
+Expected:
+
+```text
+losses = 0
+wins = 1
+```
+
+---
+
+### Test F — either condition
+
+```text
+Wins ENABLED = 3
+Losses ENABLED = 3
+Steps DISABLED
+```
+
+Both:
+
+```text
+W W W
+```
+
+and:
+
+```text
+L L L
+```
+
+must authorize.
+
+---
+
+### Test G — steps can authorize independently
+
+```text
+Wins DISABLED
+Losses DISABLED
+Steps ENABLED = 3
+```
+
+Sequence:
+
+```text
+W
+W
+L
+```
+
+must authorize after instance 3.
+
+---
+
+### Test H — disabled win trigger
+
+```text
+Wins DISABLED
+Losses ENABLED = 3
+Steps DISABLED
+```
+
+Sequence:
+
+```text
+W W W W W
+```
+
+must NOT authorize.
+
+---
+
+### Test I — disabled loss trigger
+
+```text
+Wins ENABLED = 3
+Losses DISABLED
+Steps DISABLED
+```
+
+Sequence:
+
+```text
+L L L L L
+```
+
+must NOT authorize.
+
+---
+
+### Test J — disabled step trigger
+
+```text
+Wins ENABLED = 3
+Losses DISABLED
+Steps DISABLED
+```
+
+Multiple VH instances below three consecutive wins must continue.
+
+---
+
+### Test K — all three disabled
+
+```text
+Wins DISABLED
+Losses DISABLED
+Steps DISABLED
+```
+
+Multiple virtual outcomes must remain:
+
+```text
+RETRY
+```
+
+unless a technical safety condition occurs.
+
+---
+
+### Test L — real-time live tick path
+
+Verify:
+
+```text
+AITickObserver
+↓
+PublicTickManager
+↓
+VirtualHookEngine
+↓
+actual live entry tick
+↓
+actual live duration ticks
+↓
+actual live exit tick
+↓
+settlement
+```
+
+The implementation must not settle the VH contract immediately using fabricated or historical data.
+
+---
+
+### Test M — buy safety
+
+For a VH session:
+
+```text
+real buy API calls = 0
+real account transaction writes = 0
+real balance mutation = 0
+real contract IDs = 0
+```
+
+---
+
+### Test N — latch
+
+Verify:
+
+```text
+VH ON
+↓
+signal enters
+↓
+VH contract starts
+↓
+authorization condition reached
+↓
+current contract remains virtual
+↓
+NO BUY
+↓
+VH OFF
+↓
+next unlatched signal
+↓
+exactly one REAL BUY
+```
+
+---
+
+### Test O — UI mixed history
+
+Verify that:
+
+```text
+REAL
+VH WIN
+REAL
+VH LOSS
+REAL
+```
+
+can appear in chronological order in the user-facing history.
+
+Verify VH rows remain clearly labelled as virtual.
+
+Verify that the underlying real account state remains unchanged.
+
+---
+
+# 26. FILE SCOPE
+
+Before changing files, report:
+
+```text
+FILES I INTEND TO MODIFY
+```
+
+List every file.
+
+Do not silently modify unrelated files.
+
+Likely areas include:
+
+```text
+VHConfig.ts
+VirtualPolicy.ts
+VirtualHookEngine.ts
+VH settings modal
+VH history/presentation integration
+tests
+```
+
+but determine the actual files from the existing repository.
+
+---
+
+# 27. DO NOT MODIFY THESE CASUALLY
+
+Do not modify:
+
+```text
+PublicTickManager.ts
+globalTickEngine.ts
+AITickObserver.ts
+Purchase.js
+_realTrade()
+```
+
+unless an unavoidable integration problem is discovered.
+
+If one must be changed:
+
+1. explain why
+2. identify the exact acceptance criterion requiring it
+3. make the smallest possible change
+
+Do not redesign the architecture.
+
+---
+
+# 28. PROGRESS TRACKING
+
+Maintain:
+
+```text
+VH_PHASE1_PROGRESS.md
+```
+
+Track:
+
+```text
+Phase
+Current task
+Files inspected
+Files changed
+Decisions
+Contradictions
+Tests added
+Tests executed
+Results
+Remaining work
+```
+
+Update it throughout implementation.
+
+This is required because the coding agent context window may be limited.
+
+---
+
+# 29. IMPLEMENTATION ORDER
+
+Follow this order.
+
+### STEP 1
+
+Inspect the relevant existing VH implementation.
+
+Do not perform unnecessary repository-wide reconnaissance.
+
+### STEP 2
+
+Report:
+
+```text
+FILES I INTEND TO MODIFY
+```
+
+and identify contradictions.
+
+### STEP 3
+
+Implement the three independent configuration controls:
+
+```text
+winThreshold + winThresholdEnabled
+lossThreshold + lossThresholdEnabled
+maxSteps + maxStepsEnabled
+```
+
+### STEP 4
+
+Implement/verify:
+
+```text
+consecutiveVirtualWins
+consecutiveVirtualLosses
+virtualInstanceCount
+```
+
+### STEP 5
+
+Keep:
+
+```text
+consecutiveTechnicalFailures
+maxConsecutiveFailures
+```
+
+separate.
+
+### STEP 6
+
+Implement ANY-enabled-condition authorization.
+
+### STEP 7
+
+Verify real-time live tick simulation.
+
+### STEP 8
+
+Verify latch behavior.
+
+### STEP 9
+
+Verify zero real-buy/account-state mutation.
+
+### STEP 10
+
+Verify VH transaction/history presentation.
+
+### STEP 11
+
+Update VH Settings UI with the three independent enable/disable controls if the current phase includes the settings integration.
+
+### STEP 12
+
+Add/update tests.
+
+### STEP 13
+
+Run relevant tests.
+
+### STEP 14
+
+Inspect the final diff for accidental scope expansion.
+
+### STEP 15
+
+Update:
+
+```text
+VH_PHASE1_PROGRESS.md
+```
+
+### STEP 16
+
+STOP.
+
+Do not proceed to another phase automatically.
+
+---
+
+# 30. HARD ACCEPTANCE CRITERIA
+
+The implementation is complete only when all applicable criteria are true:
+
+* [ ] VH has three independent authorization conditions
+* [ ] max consecutive wins exists
+* [ ] max consecutive losses exists
+* [ ] max VH instances/steps exists
+* [ ] each condition has an Enable/Disable control
+* [ ] disabled conditions cannot authorize
+* [ ] zero is valid
+* [ ] zero cannot cause immediate authorization
+* [ ] win streak works
+* [ ] loss streak works
+* [ ] opposite result resets the previous streak
+* [ ] instance count increments for every completed VH contract
+* [ ] instance count includes both wins and losses
+* [ ] any enabled condition can authorize
+* [ ] all three may be enabled simultaneously
+* [ ] all three may be disabled simultaneously
+* [ ] 0/0/0 does not authorize immediately
+* [ ] technical failures remain separate
+* [ ] maxConsecutiveFailures remains
+* [ ] current authorized VH contract remains virtual
+* [ ] current authorized VH contract never calls buy
+* [ ] next unlatched signal can execute a real buy
+* [ ] VH uses actual live ticks
+* [ ] VH entry uses a real live tick
+* [ ] VH duration consumes real live ticks
+* [ ] VH exit uses a real live tick
+* [ ] no random ticks
+* [ ] no synthetic ticks
+* [ ] no historical tick replay
+* [ ] VH does not mutate real balance
+* [ ] VH does not create real account transactions
+* [ ] VH does not create real contract IDs
+* [ ] VH transactions preserve actual simulated entry/exit information
+* [ ] Transactions can show REAL + VH
+* [ ] Summary can show appropriate VH simulation information without changing real balance
+* [ ] Journal can show REAL + VH
+* [ ] VH rows are clearly labelled Virtual Hook
+* [ ] chronological ordering is preserved
+* [ ] existing latch behavior remains intact
+* [ ] existing technical safety mechanisms remain intact
+* [ ] no unrelated architecture was changed
+
+---
+
+# 31. FINAL REPORT
+
+After implementation, report:
+
+```text
+## VIRTUAL HOOK IMPLEMENTATION REPORT
+
+### FILES CHANGED
+- ...
+
+### FILES NOT CHANGED
+- ...
+
+### THREE AUTHORIZATION CONTROLS
+Wins:
+ENABLED/DISABLED
+
+Losses:
+ENABLED/DISABLED
+
+Max VH instances:
+ENABLED/DISABLED
+
+### AUTHORIZATION LOGIC VERIFIED
+ANY ENABLED CONDITION:
+YES/NO
+
+### REAL-TIME LIVE TICK PATH
+YES/NO
+
+AITickObserver
+→ PublicTickManager
+→ VirtualHookEngine
+→ live entry
+→ live duration ticks
+→ live exit
+→ settlement
+
+### BUY SAFETY
+VH buy calls:
+0
+
+### REAL ACCOUNT SAFETY
+Balance mutation:
+0
+
+Real account transaction writes:
+0
+
+Real contract IDs:
+0
+
+### LATCH
+Current authorized VH contract:
+REMAINS VIRTUAL
+
+Next unlatched signal:
+REAL ELIGIBLE
+
+### USER-FACING HISTORY
+Transactions:
+REAL + VH
+
+Summary:
+REAL + appropriate VH simulation data
+
+Journal:
+REAL + VH
+
+### TESTS
+Commands:
+...
+
+Results:
+...
+
+### PHASE 1 STATUS
+COMPLETE / INCOMPLETE
+
+### REMAINING WORK
+...
+
+STOP.
+Do not start another phase automatically.
+```
+
+Do not claim completion unless the implementation and tests actually prove the acceptance criteria.
+
+The most important architectural invariant is:
+
+**VH simulates the trade in real time using the same live tick flow a real trade would observe, but it never performs the real buy. The three user-selected authorization conditions determine when VH stops and allows the NEXT eligible signal to become real.**

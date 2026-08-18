@@ -1,0 +1,155 @@
+You are performing a forensic audit of the OAuth flow.
+
+Do NOT redesign the application.
+
+Do NOT rewrite authentication.
+
+Do NOT introduce another OAuth implementation.
+
+Do NOT make assumptions.
+
+Your job is to prove, with evidence, whether every OAuth request is flowing through the DigitalOcean backend.
+
+## Intended architecture
+
+The architecture is:
+
+Browser
+→ Vercel Frontend
+→ DigitalOcean Backend
+→ Deriv OAuth
+→ DigitalOcean Backend
+→ Vercel Frontend
+
+The DigitalOcean backend is the single authority for:
+
+* OAuth login
+* PKCE
+* State validation
+* Authorization code exchange
+* Session creation
+* Account bootstrap
+
+The frontend must never bypass the backend for any OAuth step.
+
+---
+
+## Audit
+
+Trace one complete login attempt from beginning to end.
+
+For every step produce:
+
+* File
+* Function
+* URL
+* HTTP method
+* Caller
+* Callee
+
+Produce the complete sequence.
+
+Example:
+
+Frontend
+→ GET /api/auth/login
+→ DigitalOcean
+→ Redirect to Deriv
+→ Deriv callback
+→ DigitalOcean /api/auth/callback
+→ DigitalOcean exchanges code
+→ DigitalOcean creates session
+→ Frontend restores session
+
+No gaps.
+
+No assumptions.
+
+---
+
+## Verify
+
+Determine whether ANY OAuth step bypasses DigitalOcean.
+
+Examples:
+
+* Direct frontend call to Deriv
+* Frontend exchanging authorization code
+* Frontend generating PKCE
+* Frontend validating OAuth state
+* Frontend calling account endpoints that belong on the backend
+
+If even one exists:
+
+Identify:
+
+* file
+* function
+* line
+* why it bypasses the backend
+
+---
+
+## Network verification
+
+Instrument the application temporarily.
+
+For one successful login produce a chronological log containing every OAuth request.
+
+The log must show:
+
+Request URL
+
+Origin
+
+Destination
+
+Response code
+
+Redirect target
+
+At the end answer:
+
+Did every OAuth request pass through the DigitalOcean backend?
+
+YES or NO
+
+Support the answer with logs.
+
+---
+
+## Fix
+
+If the answer is NO:
+
+Implement the minimum changes required so that:
+
+* Every OAuth request first reaches the DigitalOcean backend.
+* Every authorization-code exchange happens only on DigitalOcean.
+* Every session is created only on DigitalOcean.
+* Every account bootstrap happens only on DigitalOcean.
+* The frontend only restores an already-created authenticated session.
+
+Remove any frontend path that bypasses the backend.
+
+---
+
+## Final verification
+
+Run another login.
+
+Produce the final request sequence.
+
+Confirm that:
+
+✓ Browser never exchanges authorization codes.
+
+✓ Browser never completes OAuth.
+
+✓ Browser never bypasses DigitalOcean.
+
+✓ Every OAuth request is observable on the DigitalOcean backend.
+
+✓ The frontend only consumes the completed authenticated session.
+
+If any of those cannot be verified from the current codebase because the deployed DigitalOcean backend source is not present, stop and explicitly identify which backend component is missing instead of inventing or reimplementing it.

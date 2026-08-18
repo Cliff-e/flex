@@ -6,6 +6,8 @@ import { config } from '@/external/bot-skeleton/constants/config';
 import { localize } from '@deriv-com/translations';
 import { isCustomJournalMessage } from '../utils/journal-notifications';
 import { getStoredItemsByKey, getStoredItemsByUser, setStoredItemsByKey } from '../utils/session-storage';
+import { subscribeToVHTransactions } from '../bot/virtualHook/VHRuntime';
+import type { TransactionRecord } from '../bot/virtualHook/TransactionPipeline';
 import { getSetting, storeSetting } from '../utils/settings';
 import { TAccountList } from './client-store';
 import RootStore from './root-store';
@@ -87,7 +89,12 @@ export default class JournalStore {
 
         this.root_store = root_store;
         this.core = core;
-        this.disposeReactionsFn = this.registerReactions();
+        const disposeReactions = this.registerReactions();
+        const unsubscribeVH = subscribeToVHTransactions(this.onVHTransactionCommitted);
+        this.disposeReactionsFn = () => {
+            disposeReactions();
+            unsubscribeVH();
+        };
         this.restoreStoredJournals();
     }
 
@@ -102,6 +109,15 @@ export default class JournalStore {
     ];
     journal_filters: string[] = [];
     unfiltered_messages: TMessageItem[] = [];
+
+    onVHTransactionCommitted(record: TransactionRecord) {
+        this.pushMessage(
+            `Virtual Hook — ${record.won ? 'virtual won' : 'virtual lost'} — ${record.contractType} — ${record.symbol}`,
+            MessageTypes.NOTIFY,
+            'journal__text',
+            { profit: record.profit }
+        );
+    }
 
     restoreStoredJournals() {
         const client = this.core.client as RootStore['client'];
@@ -158,7 +174,7 @@ export default class JournalStore {
         message: Error | string,
         message_type: string,
         className?: string,
-        extra: { current_currency?: string; currency?: string } = {}
+        extra: TExtra = {}
     ) {
         const { client } = this.core;
         const { loginid, account_list } = client as RootStore['client'];

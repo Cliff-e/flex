@@ -4,7 +4,7 @@ import DraggableResizeWrapper from '@/components/draggable/draggable-resize-wrap
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import DesktopTransactionTable from './desktop-transaction-table';
-import { TColumn, TRunPanelStore, TTransactionStore } from './transaction-details.types';
+import { TColumn, TTransactionStore } from './transaction-details.types';
 import './transaction-details-desktop.scss';
 
 const transaction_columns = (): TColumn[] => [
@@ -37,9 +37,9 @@ const TransactionDetailsDesktop = observer(() => {
     const {
         toggleTransactionDetailsModal,
         is_transaction_details_modal_open,
-        transactions: transaction_list,
+        mixed_transactions: transaction_list,
     }: Partial<TTransactionStore> = transactions;
-    const { statistics }: Partial<TRunPanelStore> = transactions;
+    const { display_statistics: statistics }: Partial<TTransactionStore> = transactions;
 
     return (
         <React.Fragment>

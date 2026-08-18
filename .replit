@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-20", "web"]
 
 [deployment]
 router = "application"
@@ -27,3 +27,6 @@ API_BASE_URL = "https://e24c2ef4-8eeb-4b22-8e9a-60c8768de306-00-2ugz9lvskd54f.wo
 FRONTEND_URL = "https://e24c2ef4-8eeb-4b22-8e9a-60c8768de306-00-2ugz9lvskd54f.worf.replit.dev"
 VITE_API_BASE_URL = "https://seahorse-app-lczcg.ondigitalocean.app"
 VITE_DERIV_APP_ID = "33gBzpTA0Py8ehX45PBXr"
+
+[nix]
+channel = "stable-25_05"

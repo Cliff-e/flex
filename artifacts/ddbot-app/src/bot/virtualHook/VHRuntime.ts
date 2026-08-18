@@ -26,6 +26,7 @@ import { TransactionsStore } from './TransactionsStore';
 import { VHTransactionPipeline } from './TransactionPipeline';
 import { SummaryStore } from './SummaryStore';
 import { VHJournalStore } from './VHJournalStore';
+import type { TransactionRecord } from './TransactionPipeline';
 import {
     connectExitDigitHistoryToStore,
     onExitDigitHistoryReset,
@@ -54,6 +55,13 @@ let _everWired = false;
  * resetVHRuntime() is the hard teardown and disarms.
  */
 let _armed = false;
+
+/**
+ * Presentation consumers (the run-panel stores) can subscribe before the
+ * lazily-created VH store exists.  The runtime fans out committed records
+ * without exposing the VH store as part of real-account state.
+ */
+const _transactionListeners = new Set<(record: TransactionRecord) => void>();
 
 onExitDigitHistoryReset(() => {
     _armed = true;
@@ -89,6 +97,9 @@ export function getVHTransactionPipeline(): TransactionPipeline {
 
     store.subscribe(record => summary.onTransactionCommitted(record));
     store.subscribe(record => journal.onTransactionCommitted(record));
+    store.subscribe(record => {
+        _transactionListeners.forEach(listener => listener(record));
+    });
     connectExitDigitHistoryToStore(store);
 
     _store = store;
@@ -97,6 +108,16 @@ export function getVHTransactionPipeline(): TransactionPipeline {
     _pipeline = new VHTransactionPipeline(store);
 
     return _pipeline;
+}
+
+/**
+ * Subscribe to VH commits for presentation-only consumers. Existing records
+ * are replayed once so a panel mounted after VH starts still shows history.
+ */
+export function subscribeToVHTransactions(listener: (record: TransactionRecord) => void): () => void {
+    _transactionListeners.add(listener);
+    _store?.getRecords().forEach(listener);
+    return () => _transactionListeners.delete(listener);
 }
 
 /**

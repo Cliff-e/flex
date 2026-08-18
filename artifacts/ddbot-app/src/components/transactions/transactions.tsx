@@ -20,15 +20,14 @@ type TTransactions = {
 };
 
 type TTransactionItem = {
-    row: {
-        type: string;
-        data: TContractInfo;
-    };
-    onClickTransaction?: (transaction_id: null | number) => void;
-    active_transaction_id?: number | null;
+    row?: any;
+    onClickTransaction?: (transaction_id: null | number | string) => void;
+    active_transaction_id?: number | string | null;
 };
 
-const TransactionItem = ({ row = false, onClickTransaction, active_transaction_id }: TTransactionItem) => {
+const TransactionItem = ({ row, onClickTransaction, active_transaction_id }: TTransactionItem) => {
+    if (!row) return null;
+
     switch (row.type) {
         case transaction_elements.CONTRACT: {
             const { data: contract } = row;
@@ -54,10 +53,10 @@ const TransactionItem = ({ row = false, onClickTransaction, active_transaction_i
 };
 
 const Transactions = observer(({ is_drawer_open }: TTransactions) => {
-    const [active_transaction_id, setActiveTransactionId] = React.useState<number | null>(null);
+    const [active_transaction_id, setActiveTransactionId] = React.useState<number | string | null>(null);
     const { run_panel, transactions } = useStore();
     const { contract_stage } = run_panel;
-    const { transactions: transaction_list, toggleTransactionDetailsModal, recoverPendingContracts } = transactions;
+    const { mixed_transactions: transaction_list, toggleTransactionDetailsModal, recoverPendingContracts } = transactions;
     const { isDesktop } = useDevice();
 
     React.useEffect(() => {
@@ -86,7 +85,7 @@ const Transactions = observer(({ is_drawer_open }: TTransactions) => {
         }
     };
 
-    const onClickTransaction = (transaction_id: null | number) => {
+    const onClickTransaction = (transaction_id: null | number | string) => {
         // Toggle transaction popover if passed transaction_id is the same.
         if (transaction_id && active_transaction_id === transaction_id) {
             setActiveTransactionId(null);
@@ -148,7 +147,7 @@ const Transactions = observer(({ is_drawer_open }: TTransactions) => {
                             keyMapper={row => {
                                 switch (row.type) {
                                     case transaction_elements.CONTRACT: {
-                                        return row.data.transaction_ids.buy;
+                                        return row.data.is_virtual ? row.data.contract_id : row.data.transaction_ids.buy;
                                     }
                                     case transaction_elements.DIVIDER: {
                                         return row.data;

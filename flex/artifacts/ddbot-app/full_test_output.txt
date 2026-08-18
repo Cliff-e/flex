@@ -1,0 +1,2527 @@
+﻿
+> @workspace/ddbot-app@0.0.1 test C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app
+> jest
+
+node.exe : PASS src/bot/virtualHook/__tests__/Phase1Audit.test.ts (337.885 s)
+At C:\Users\cliff\AppData\Roaming\npm\pnpm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/bot/vi....ts (337.885 s) 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS src/components/contract-card-loading/__tests__/contract-card-running-bot.s
+pec.tsx (443.675 s)
+PASS 
+src/components/unhandled-error-modal/__tests__/unhandled-error-modal.spec.tsx 
+(784.824 s)
+  ΓùÅ Console
+
+    console.error
+      Warning: findDOMNode is deprecated and will be removed in the next major 
+release. Instead, add a ref directly to the element you want to reference. 
+Learn more about using refs safely here: 
+https://reactjs.org/link/strict-mode-find-node
+          at Transition (C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\
+react-transition-group@4.4._ea827a607bbb9ce48eba17f05126488f\node_modules\react
+-transition-group\cjs\Transition.js:135:30)
+          at CSSTransition (C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pn
+pm\react-transition-group@4.4._ea827a607bbb9ce48eba17f05126488f\node_modules\re
+act-transition-group\cjs\CSSTransition.js:120:35)
+          at children (C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\s
+rc\components\shared_ui\modal\modal.tsx:243:5)
+          at useState (C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\s
+rc\components\unhandled-error-modal\unhandled-error-modal.tsx:41:69)
+
+    [0m [90m 18 |[39m     it([32m'renders the component with proper 
+messages'[39m[33m,[39m () [33m=>[39m {
+     [90m 19 |[39m         jest[33m.[39mspyOn([33mReact[39m[33m,[39m 
+[32m'useState'[39m)[33m.[39mmockImplementationOnce(() [33m=>[39m [33mRea
+ct[39m[33m.[39museState[33m<[39m[33mboolean[39m[33m>[39m([36mtrue[39
+m))[33m;[39m
+    [31m[1m>[22m[39m[90m 20 |[39m         
+render([33m<[39m[33mUnhandledErrorModal[39m 
+[33m/[39m[33m>[39m)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 21 |[39m         expect(screen[33m.[39mgetByText([35m/Sorry for 
+the interruption/i[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 22 |[39m         expect(screen[33m.[39mgetByText([35m/Our 
+servers hit a bump. LetΓÇÖs refresh to move 
+on./i[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 23 |[39m         expect(screen[33m.[39mgetByText([32m'Refresh'[
+39m))[33m.[39mtoBeInTheDocument()[33m;[39m[0m
+
+      at printWarning (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/n
+ode_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_mod
+ules/react-dom/cjs/react-dom.development.js:60:7)
+      at Object.findDOMNode (../../node_modules/.pnpm/react-dom@18.3.1_react@18
+.3.1/node_modules/react-dom/cjs/react-dom.development.js:29666:7)
+      at Transition.updateStatus (../../node_modules/.pnpm/react-transition-gro
+up@4.4._ea827a607bbb9ce48eba17f05126488f/node_modules/react-transition-group/cj
+s/Transition.js:252:90)
+      at Transition.componentDidMount (../../node_modules/.pnpm/react-transitio
+n-group@4.4._ea827a607bbb9ce48eba17f05126488f/node_modules/react-transition-gro
+up/cjs/Transition.js:195:10)
+      at commitLayoutEffectOnFiber (../../node_modules/.pnpm/react-dom@18.3.1_r
+eact@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:23349:28)
+      at commitLayoutMountEffects_complete (../../node_modules/.pnpm/react-dom@
+18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24727:9
+)
+      at commitLayoutEffects_begin (../../node_modules/.pnpm/react-dom@18.3.1_r
+eact@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24713:7)
+      at commitLayoutEffects (../../node_modules/.pnpm/react-dom@18.3.1_react@1
+8.3.1/node_modules/react-dom/cjs/react-dom.development.js:24651:3)
+      at commitRootImpl (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1
+/node_modules/react-dom/cjs/react-dom.development.js:26862:5)
+      at commitRoot (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/nod
+e_modules/react-dom/cjs/react-dom.development.js:26721:5)
+      at finishConcurrentRender (../../node_modules/.pnpm/react-dom@18.3.1_reac
+t@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:26020:9)
+      at performConcurrentWorkOnRoot (../../node_modules/.pnpm/react-dom@18.3.1
+_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:25848:7)
+      at flushActQueue (../../node_modules/.pnpm/react@18.3.1/node_modules/reac
+t/cjs/react.development.js:2667:24)
+      at act (../../node_modules/.pnpm/react@18.3.1/node_modules/react/cjs/reac
+t.development.js:2582:11)
+      at ../../node_modules/.pnpm/@testing-library+react@16.3_b0bbe147884ef4cbb
+f95e64a97c782e8/node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (../../node_modules/.pnpm/@testing-library+react@16.3_b0bbe
+147884ef4cbbf95e64a97c782e8/node_modules/@testing-library/react/dist/pure.js:18
+9:26)
+      at render (../../node_modules/.pnpm/@testing-library+react@16.3_b0bbe1478
+84ef4cbbf95e64a97c782e8/node_modules/@testing-library/react/dist/pure.js:291:10
+)
+      at Object.<anonymous> (src/components/unhandled-error-modal/__tests__/unh
+andled-error-modal.spec.tsx:20:15)
+
+PASS src/components/error-modal/__tests__/error-modal.spec.tsx (786.718 s)
+  ΓùÅ Console
+
+    console.error
+      Warning: findDOMNode is deprecated and will be removed in the next major 
+release. Instead, add a ref directly to the element you want to reference. 
+Learn more about using refs safely here: 
+https://reactjs.org/link/strict-mode-find-node
+          at Transition (C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\
+react-transition-group@4.4._ea827a607bbb9ce48eba17f05126488f\node_modules\react
+-transition-group\cjs\Transition.js:135:30)
+          at CSSTransition (C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pn
+pm\react-transition-group@4.4._ea827a607bbb9ce48eba17f05126488f\node_modules\re
+act-transition-group\cjs\CSSTransition.js:120:35)
+          at children (C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\s
+rc\components\shared_ui\modal\modal.tsx:243:5)
+          at messages (C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\s
+rc\components\error-modal\error-modal.tsx:17:23)
+
+    [0m [90m 19 |[39m
+     [90m 20 |[39m     it([32m'should render the error modal with modal 
+content'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 21 |[39m         
+render([33m<[39m[33mErrorModal[39m messages[33m=[39m{messages} 
+[33m/[39m[33m>[39m)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 22 |[39m         [36mconst[39m refresh_button [33m=[39m 
+screen[33m.[39mgetByRole([32m'button'[39m[33m,[39m { name[33m:[39m 
+[35m/Refresh/i[39m })[33m;[39m
+     [90m 23 |[39m         expect(screen[33m.[39mgetByText([35m/Sorry for 
+the interruption/i[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 24 |[39m         
+expect(refresh_button)[33m.[39mtoBeInTheDocument()[33m;[39m[0m
+
+      at printWarning (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/n
+ode_modules/react-dom/cjs/react-dom.development.js:86:30)
+      at error (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_mod
+ules/react-dom/cjs/react-dom.development.js:60:7)
+      at Object.findDOMNode (../../node_modules/.pnpm/react-dom@18.3.1_react@18
+.3.1/node_modules/react-dom/cjs/react-dom.development.js:29666:7)
+      at Transition.updateStatus (../../node_modules/.pnpm/react-transition-gro
+up@4.4._ea827a607bbb9ce48eba17f05126488f/node_modules/react-transition-group/cj
+s/Transition.js:252:90)
+      at Transition.componentDidUpdate (../../node_modules/.pnpm/react-transiti
+on-group@4.4._ea827a607bbb9ce48eba17f05126488f/node_modules/react-transition-gr
+oup/cjs/Transition.js:215:10)
+      at commitLayoutEffectOnFiber (../../node_modules/.pnpm/react-dom@18.3.1_r
+eact@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:23377:28)
+      at commitLayoutMountEffects_complete (../../node_modules/.pnpm/react-dom@
+18.3.1_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24727:9
+)
+      at commitLayoutEffects_begin (../../node_modules/.pnpm/react-dom@18.3.1_r
+eact@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:24713:7)
+      at commitLayoutEffects (../../node_modules/.pnpm/react-dom@18.3.1_react@1
+8.3.1/node_modules/react-dom/cjs/react-dom.development.js:24651:3)
+      at commitRootImpl (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1
+/node_modules/react-dom/cjs/react-dom.development.js:26862:5)
+      at commitRoot (../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/nod
+e_modules/react-dom/cjs/react-dom.development.js:26721:5)
+      at finishConcurrentRender (../../node_modules/.pnpm/react-dom@18.3.1_reac
+t@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:26020:9)
+      at performConcurrentWorkOnRoot (../../node_modules/.pnpm/react-dom@18.3.1
+_react@18.3.1/node_modules/react-dom/cjs/react-dom.development.js:25848:7)
+      at flushActQueue (../../node_modules/.pnpm/react@18.3.1/node_modules/reac
+t/cjs/react.development.js:2667:24)
+      at act (../../node_modules/.pnpm/react@18.3.1/node_modules/react/cjs/reac
+t.development.js:2582:11)
+      at ../../node_modules/.pnpm/@testing-library+react@16.3_b0bbe147884ef4cbb
+f95e64a97c782e8/node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (../../node_modules/.pnpm/@testing-library+react@16.3_b0bbe
+147884ef4cbbf95e64a97c782e8/node_modules/@testing-library/react/dist/pure.js:18
+9:26)
+      at render (../../node_modules/.pnpm/@testing-library+react@16.3_b0bbe1478
+84ef4cbbf95e64a97c782e8/node_modules/@testing-library/react/dist/pure.js:291:10
+)
+      at Object.<anonymous> 
+(src/components/error-modal/__tests__/error-modal.spec.tsx:21:15)
+
+PASS src/bot/__tests__/VHSpecInvariants.test.ts (35.983 s)
+  ΓùÅ Console
+
+    console.log
+      [VH] {"timestamp":1786915325113,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915325794,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915325818,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915325865,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=true
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=true
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=true
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=true
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [VH] AUTHORIZED ΓÇö latched purchase spec-uuid-6 discarded | VH runtime 
+deactivated | real buys for this purchase: 0
+
+      at Purchase.log 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:524:29)
+
+    console.log
+      [VH] {"timestamp":1786915326197,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"IDLE","expectedStat
+e":"TRADE_CANDIDATE_RECEIVED","reason":"start() 
+called","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915326900,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"TRADE_CANDIDATE_REC
+EIVED","expectedState":"REQUEST_PROPOSAL","reason":"Candidate 
+validated.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915326974,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"REQUEST_PROPOSAL","
+expectedState":"PROPOSAL_RECEIVED","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915326975,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"PROPOSAL_RECEIVED",
+"expectedState":"CREATE_VIRTUAL_CONTRACT","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915326977,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"CREATE_VIRTUAL_CONT
+RACT","expectedState":"WAIT_FOR_ENTRY","reason":"Virtual contract 
+created.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327011,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"WAIT_FOR_ENTRY","ex
+pectedState":"ACTIVE","reason":"Entry tick observed: 
+1006","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327558,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"ACTIVE","expectedSt
+ate":"WAIT_FOR_EXIT","reason":"Settlement tick 
+observed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327661,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"WAIT_FOR_EXIT","exp
+ectedState":"SETTLED","reason":"Settlement determined: 
+WON","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327667,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"SETTLED","expectedS
+tate":"RECORD_TRANSACTION","reason":"Settlement 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327675,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"RECORD_TRANSACTION"
+,"expectedState":"UPDATE_SHARED_EXIT_HISTORY","reason":"Transaction 
+recorded.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327676,"level":"info","event":"vh.round_complete
+d","context":{"runId":"ai-1-1786915326196","currentState":"UPDATE_SHARED_EXIT_H
+ISTORY","expectedState":"POLICY_DECISION","reason":"Round 0 completed (won=true
+).","timeout":null,"retryCount":null,"recoveryAction":null,"contractId":"VH-1d5
+40137-d988-4b9a-92d5-a19974fc075c","exitDigit":6,"warnings":[]}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327676,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"UPDATE_SHARED_EXIT_
+HISTORY","expectedState":"POLICY_DECISION","reason":"All recording steps 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327677,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"POLICY_DECISION","e
+xpectedState":"REQUEST_PROPOSAL","reason":"Round complete ΓÇö preparing next 
+round.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327678,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"REQUEST_PROPOSAL","
+expectedState":"PROPOSAL_RECEIVED","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327679,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"PROPOSAL_RECEIVED",
+"expectedState":"CREATE_VIRTUAL_CONTRACT","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327680,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"CREATE_VIRTUAL_CONT
+RACT","expectedState":"WAIT_FOR_ENTRY","reason":"Virtual contract 
+created.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915327700,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"WAIT_FOR_ENTRY","ex
+pectedState":"ACTIVE","reason":"Entry tick observed: 
+1006","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328212,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"ACTIVE","expectedSt
+ate":"WAIT_FOR_EXIT","reason":"Settlement tick 
+observed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328214,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"WAIT_FOR_EXIT","exp
+ectedState":"SETTLED","reason":"Settlement determined: 
+WON","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328215,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"SETTLED","expectedS
+tate":"RECORD_TRANSACTION","reason":"Settlement 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328217,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"RECORD_TRANSACTION"
+,"expectedState":"UPDATE_SHARED_EXIT_HISTORY","reason":"Transaction 
+recorded.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328218,"level":"info","event":"vh.round_complete
+d","context":{"runId":"ai-1-1786915326196","currentState":"UPDATE_SHARED_EXIT_H
+ISTORY","expectedState":"POLICY_DECISION","reason":"Round 1 completed (won=true
+).","timeout":null,"retryCount":null,"recoveryAction":null,"contractId":"VH-dcf
+3e28b-57e8-4d14-9ad4-e5db95740e66","exitDigit":6,"warnings":[]}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328280,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"UPDATE_SHARED_EXIT_
+HISTORY","expectedState":"POLICY_DECISION","reason":"All recording steps 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328283,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"POLICY_DECISION","e
+xpectedState":"AUTHORIZE_REAL_TRADE","reason":"MIN_WINS_REACHED","timeout":null
+,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328284,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915326196","currentState":"AUTHORIZE_REAL_TRAD
+E","expectedState":"IDLE","reason":"Engine reset between 
+runs.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915328309,"level":"info","event":"vh.run_completed"
+,"context":{"runId":"ai-1-1786915326196","currentState":"IDLE","expectedState":
+"IDLE","reason":"MIN_WINS_REACHED","timeout":null,"retryCount":0,"recoveryActio
+n":null,"decision":"AUTHORIZED","roundsCompleted":2,"wins":2,"losses":0,"durati
+onMs":2112,"contractId":"VH-dcf3e28b-57e8-4d14-9ad4-e5db95740e66","roundIndex":
+1}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [AI-BOT] Trade opened ΓÇö DIGITOVER barrier:5 stake:1
+
+      at TradingEngine.log (src/bot/tradingEngine.ts:977:17)
+
+    console.log
+      [AI-BOT] Trade closed ΓÇö Profit: +0.90
+
+      at log (src/bot/tradingEngine.ts:1130:29)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915329709,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=true
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [VH] AUTHORIZED ΓÇö latched purchase spec-uuid-7 discarded | VH runtime 
+deactivated | real buys for this purchase: 0
+
+      at Purchase.log 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:524:29)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=false
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [BUY TRACE] VH inactive at entry (unlatched) ΓÇö proceeding directly to 
+real purchase.
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:130:21)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=false
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [BUY TRACE] VH inactive at entry (unlatched) ΓÇö proceeding directly to 
+real purchase.
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:130:21)
+
+    console.log
+      [VH] {"timestamp":1786915329832,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"IDLE","expectedStat
+e":"TRADE_CANDIDATE_RECEIVED","reason":"start() 
+called","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915329833,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"TRADE_CANDIDATE_REC
+EIVED","expectedState":"REQUEST_PROPOSAL","reason":"Candidate 
+validated.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915329839,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"REQUEST_PROPOSAL","
+expectedState":"PROPOSAL_RECEIVED","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915329840,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"PROPOSAL_RECEIVED",
+"expectedState":"CREATE_VIRTUAL_CONTRACT","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915329841,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"CREATE_VIRTUAL_CONT
+RACT","expectedState":"WAIT_FOR_ENTRY","reason":"Virtual contract 
+created.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915329863,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"WAIT_FOR_ENTRY","ex
+pectedState":"ACTIVE","reason":"Entry tick observed: 
+1006","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330523,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"ACTIVE","expectedSt
+ate":"WAIT_FOR_EXIT","reason":"Settlement tick 
+observed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330524,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"WAIT_FOR_EXIT","exp
+ectedState":"SETTLED","reason":"Settlement determined: 
+WON","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330671,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"SETTLED","expectedS
+tate":"RECORD_TRANSACTION","reason":"Settlement 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330673,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"RECORD_TRANSACTION"
+,"expectedState":"UPDATE_SHARED_EXIT_HISTORY","reason":"Transaction 
+recorded.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330679,"level":"info","event":"vh.round_complete
+d","context":{"runId":"ai-1-1786915329832","currentState":"UPDATE_SHARED_EXIT_H
+ISTORY","expectedState":"POLICY_DECISION","reason":"Round 0 completed (won=true
+).","timeout":null,"retryCount":null,"recoveryAction":null,"contractId":"VH-030
+c95c2-a184-4753-94b5-b5a7401b87c1","exitDigit":6,"warnings":[]}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330680,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"UPDATE_SHARED_EXIT_
+HISTORY","expectedState":"POLICY_DECISION","reason":"All recording steps 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330681,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"POLICY_DECISION","e
+xpectedState":"REQUEST_PROPOSAL","reason":"Round complete ΓÇö preparing next 
+round.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330685,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"REQUEST_PROPOSAL","
+expectedState":"PROPOSAL_RECEIVED","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330687,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"PROPOSAL_RECEIVED",
+"expectedState":"CREATE_VIRTUAL_CONTRACT","reason":"Proposal 
+received.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330688,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"CREATE_VIRTUAL_CONT
+RACT","expectedState":"WAIT_FOR_ENTRY","reason":"Virtual contract 
+created.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915330721,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"WAIT_FOR_ENTRY","ex
+pectedState":"ACTIVE","reason":"Entry tick observed: 
+1006","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331342,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"ACTIVE","expectedSt
+ate":"WAIT_FOR_EXIT","reason":"Settlement tick 
+observed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331343,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"WAIT_FOR_EXIT","exp
+ectedState":"SETTLED","reason":"Settlement determined: 
+WON","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331344,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"SETTLED","expectedS
+tate":"RECORD_TRANSACTION","reason":"Settlement 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331344,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"RECORD_TRANSACTION"
+,"expectedState":"UPDATE_SHARED_EXIT_HISTORY","reason":"Transaction 
+recorded.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331350,"level":"info","event":"vh.round_complete
+d","context":{"runId":"ai-1-1786915329832","currentState":"UPDATE_SHARED_EXIT_H
+ISTORY","expectedState":"POLICY_DECISION","reason":"Round 1 completed (won=true
+).","timeout":null,"retryCount":null,"recoveryAction":null,"contractId":"VH-162
+cec18-741a-455d-99fb-84644e4d3dda","exitDigit":6,"warnings":[]}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331351,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"UPDATE_SHARED_EXIT_
+HISTORY","expectedState":"POLICY_DECISION","reason":"All recording steps 
+complete.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331477,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"POLICY_DECISION","e
+xpectedState":"AUTHORIZE_REAL_TRADE","reason":"MIN_WINS_REACHED","timeout":null
+,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331478,"level":"info","event":"vh.state_transiti
+on","context":{"runId":"ai-1-1786915329832","currentState":"AUTHORIZE_REAL_TRAD
+E","expectedState":"IDLE","reason":"Engine reset between 
+runs.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331478,"level":"info","event":"vh.run_completed"
+,"context":{"runId":"ai-1-1786915329832","currentState":"IDLE","expectedState":
+"IDLE","reason":"MIN_WINS_REACHED","timeout":null,"retryCount":0,"recoveryActio
+n":null,"decision":"AUTHORIZED","roundsCompleted":2,"wins":2,"losses":0,"durati
+onMs":1646,"contractId":"VH-162cec18-741a-455d-99fb-84644e4d3dda","roundIndex":
+1}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915331489,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=true
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [VH] AUTHORIZED ΓÇö latched purchase spec-uuid-8 discarded | VH runtime 
+deactivated | real buys for this purchase: 0
+
+      at Purchase.log 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:524:29)
+
+    console.log
+      [BUY TRACE] Purchase.purchase ENTER | scope=BEFORE_PURCHASE | 
+contract_type=DIGITOVER | vhEnabled=false
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:84:21)
+
+    console.log
+      [BUY TRACE] VH inactive at entry (unlatched) ΓÇö proceeding directly to 
+real purchase.
+
+      at Purchase.log [as purchase] 
+(src/external/bot-skeleton/services/tradeEngine/trade/Purchase.js:130:21)
+
+    console.log
+      [VH] {"timestamp":1786915332427,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-spec-d","currentState":"SUMMARY_UPDATED","reason":"C
+ommitted transaction applied to summary.","transactionId":"TX-VH-c5f06d04-62e4-
+4c96-bf97-e31543c6c77b","contractId":"VH-c5f06d04-62e4-4c96-bf97-e31543c6c77b",
+"previousSummary":{"totalTrades":0,"wins":0,"losses":0,"grossProfit":0,"grossLo
+ss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummary":{"totalTrades":
+1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfit":1,"winRate":1,"
+lastTradeTime":1786915332405},"timestamp":1786915332409}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915332533,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-spec-d","currentState":"JOURNAL_UPDATED","reason":"C
+ommitted transaction appended to journal.","entryId":"J-TX-VH-c5f06d04-62e4-4c9
+6-bf97-e31543c6c77b","transactionId":"TX-VH-c5f06d04-62e4-4c96-bf97-e31543c6c77
+b","previousLength":0,"newLength":1,"timestamp":1786915332533}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915332541,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-spec-d","currentState":"EXIT_DIGIT_APPENDED","re
+ason":"Committed digit transaction appended to shared exit digit history.","con
+tractId":"VH-c5f06d04-62e4-4c96-bf97-e31543c6c77b","transactionId":"TX-VH-c5f06
+d04-62e4-4c96-bf97-e31543c6c77b","digit":7,"won":true,"historyLength":1,"timest
+amp":1786915332541}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915332665,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915333701,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-spec-e1","currentState":"SUMMARY_UPDATED","reason":"
+Committed transaction applied to summary.","transactionId":"TX-VH-008bf541-28e1
+-4279-ba5e-4e796fe77839","contractId":"VH-008bf541-28e1-4279-ba5e-4e796fe77839"
+,"previousSummary":{"totalTrades":0,"wins":0,"losses":0,"grossProfit":0,"grossL
+oss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummary":{"totalTrades"
+:1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfit":1,"winRate":1,
+"lastTradeTime":1786915333699},"timestamp":1786915333701}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333702,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-spec-e1","currentState":"JOURNAL_UPDATED","reason":"
+Committed transaction appended to journal.","entryId":"J-TX-VH-008bf541-28e1-42
+79-ba5e-4e796fe77839","transactionId":"TX-VH-008bf541-28e1-4279-ba5e-4e796fe778
+39","previousLength":0,"newLength":1,"timestamp":1786915333702}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333776,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-spec-e1","currentState":"EXIT_DIGIT_APPENDED","r
+eason":"Committed digit transaction appended to shared exit digit history.","co
+ntractId":"VH-008bf541-28e1-4279-ba5e-4e796fe77839","transactionId":"TX-VH-008b
+f541-28e1-4279-ba5e-4e796fe77839","digit":7,"won":true,"historyLength":2,"times
+tamp":1786915333776}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333776,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-spec-e1","currentState":"SUMMARY_UPDATED","reason":"
+Committed transaction applied to summary.","transactionId":"TX-VH-008bf541-28e1
+-4279-ba5e-4e796fe77839","contractId":"VH-008bf541-28e1-4279-ba5e-4e796fe77839"
+,"previousSummary":{"totalTrades":0,"wins":0,"losses":0,"grossProfit":0,"grossL
+oss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummary":{"totalTrades"
+:1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfit":1,"winRate":1,
+"lastTradeTime":1786915333699},"timestamp":1786915333776}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333780,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-spec-e1","currentState":"JOURNAL_UPDATED","reason":"
+Committed transaction appended to journal.","entryId":"J-TX-VH-008bf541-28e1-42
+79-ba5e-4e796fe77839","transactionId":"TX-VH-008bf541-28e1-4279-ba5e-4e796fe778
+39","previousLength":0,"newLength":1,"timestamp":1786915333780}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333782,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-spec-e2","currentState":"SUMMARY_UPDATED","reason":"
+Committed transaction applied to summary.","transactionId":"TX-VH-39d2e482-aa83
+-40b9-8adf-a2ed56a5f60c","contractId":"VH-39d2e482-aa83-40b9-8adf-a2ed56a5f60c"
+,"previousSummary":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossL
+oss":0,"netProfit":1,"winRate":1,"lastTradeTime":1786915333699},"newSummary":{"
+totalTrades":2,"wins":1,"losses":1,"grossProfit":1,"grossLoss":1,"netProfit":0,
+"winRate":0.5,"lastTradeTime":1786915333700},"timestamp":1786915333782}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333782,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-spec-e2","currentState":"JOURNAL_UPDATED","reason":"
+Committed transaction appended to journal.","entryId":"J-TX-VH-39d2e482-aa83-40
+b9-8adf-a2ed56a5f60c","transactionId":"TX-VH-39d2e482-aa83-40b9-8adf-a2ed56a5f6
+0c","previousLength":1,"newLength":2,"timestamp":1786915333782}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333783,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-spec-e2","currentState":"EXIT_DIGIT_APPENDED","r
+eason":"Committed digit transaction appended to shared exit digit history.","co
+ntractId":"VH-39d2e482-aa83-40b9-8adf-a2ed56a5f60c","transactionId":"TX-VH-39d2
+e482-aa83-40b9-8adf-a2ed56a5f60c","digit":2,"won":false,"historyLength":3,"time
+stamp":1786915333783}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333784,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-spec-e2","currentState":"SUMMARY_UPDATED","reason":"
+Committed transaction applied to summary.","transactionId":"TX-VH-39d2e482-aa83
+-40b9-8adf-a2ed56a5f60c","contractId":"VH-39d2e482-aa83-40b9-8adf-a2ed56a5f60c"
+,"previousSummary":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossL
+oss":0,"netProfit":1,"winRate":1,"lastTradeTime":1786915333699},"newSummary":{"
+totalTrades":2,"wins":1,"losses":1,"grossProfit":1,"grossLoss":1,"netProfit":0,
+"winRate":0.5,"lastTradeTime":1786915333700},"timestamp":1786915333784}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915333784,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-spec-e2","currentState":"JOURNAL_UPDATED","reason":"
+Committed transaction appended to journal.","entryId":"J-TX-VH-39d2e482-aa83-40
+b9-8adf-a2ed56a5f60c","transactionId":"TX-VH-39d2e482-aa83-40b9-8adf-a2ed56a5f6
+0c","previousLength":1,"newLength":2,"timestamp":1786915333784}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+PASS src/components/layout/header/mobile-menu/__tests__/toggle-button.spec.tsx 
+(40.847 s)
+PASS src/bot/virtualHook/__tests__/VirtualHookEngine.test.ts (48.23 s)
+PASS src/bot/virtualHook/__tests__/VirtualHookEngineLifecycle.test.ts (8.129 s)
+PASS src/bot/__tests__/SharedExitDigitHistory.test.ts
+PASS src/bot/virtualHook/__tests__/TransactionsStoreAudit.test.ts
+PASS src/bot/virtualHook/__tests__/VHRuntime.test.ts
+  ΓùÅ Console
+
+    console.log
+      [VH] {"timestamp":1786915347414,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-1","contractId
+":"vh-prod-1","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"grossProf
+it":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummary":{
+"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfit":1
+,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347414}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347565,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-1","transactionId
+":"TX-vh-prod-1","previousLength":0,"newLength":1,"timestamp":1786915347565}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347575,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-1","currentState":"EXIT_DIGIT_APPENDED","reason"
+:"Committed digit transaction appended to shared exit digit history.","contract
+Id":"vh-prod-1","transactionId":"TX-vh-prod-1","digit":8,"won":true,"historyLen
+gth":1,"timestamp":1786915347575}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347589,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-1","contractId
+":"vh-prod-1","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"grossProf
+it":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummary":{
+"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfit":1
+,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347589}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347635,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-1","transactionId
+":"TX-vh-prod-1","previousLength":0,"newLength":1,"timestamp":1786915347635}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347649,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-dup","contract
+Id":"vh-prod-dup","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"gross
+Profit":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummar
+y":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfi
+t":1,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347649}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347649,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-dup","transaction
+Id":"TX-vh-prod-dup","previousLength":0,"newLength":1,"timestamp":1786915347649
+}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347650,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-1","currentState":"EXIT_DIGIT_APPENDED","reason"
+:"Committed digit transaction appended to shared exit digit history.","contract
+Id":"vh-prod-dup","transactionId":"TX-vh-prod-dup","digit":8,"won":true,"histor
+yLength":1,"timestamp":1786915347650}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347651,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-dup","contract
+Id":"vh-prod-dup","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"gross
+Profit":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSummar
+y":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netProfi
+t":1,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347651}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347659,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-dup","transaction
+Id":"TX-vh-prod-dup","previousLength":0,"newLength":1,"timestamp":1786915347659
+}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347667,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-call","contrac
+tId":"vh-prod-call","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"gro
+ssProfit":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSumm
+ary":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netPro
+fit":1,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347667}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347668,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-call","transactio
+nId":"TX-vh-prod-call","previousLength":0,"newLength":1,"timestamp":17869153476
+68}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347682,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-reset","contra
+ctId":"vh-prod-reset","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"g
+rossProfit":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSu
+mmary":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netP
+rofit":1,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347682}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347684,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-reset","transacti
+onId":"TX-vh-prod-reset","previousLength":0,"newLength":1,"timestamp":178691534
+7684}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347699,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-1","currentState":"EXIT_DIGIT_APPENDED","reason"
+:"Committed digit transaction appended to shared exit digit history.","contract
+Id":"vh-prod-reset","transactionId":"TX-vh-prod-reset","digit":8,"won":true,"hi
+storyLength":1,"timestamp":1786915347699}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347712,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-prod-wire","contrac
+tId":"vh-prod-wire","previousSummary":{"totalTrades":0,"wins":0,"losses":0,"gro
+ssProfit":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"newSumm
+ary":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"netPro
+fit":1,"winRate":1,"lastTradeTime":1700000000000},"timestamp":1786915347712}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347713,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-prod-wire","transactio
+nId":"TX-vh-prod-wire","previousLength":0,"newLength":1,"timestamp":17869153477
+13}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347766,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-1","currentState":"EXIT_DIGIT_APPENDED","reason"
+:"Committed digit transaction appended to shared exit digit history.","contract
+Id":"vh-prod-wire","transactionId":"TX-vh-prod-wire","digit":8,"won":true,"hist
+oryLength":1,"timestamp":1786915347766}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347777,"level":"info","event":"vh.summary.update
+d","context":{"runId":"run-1","currentState":"SUMMARY_UPDATED","reason":"Commit
+ted transaction applied to summary.","transactionId":"TX-vh-regression-1","cont
+ractId":"vh-regression-1","previousSummary":{"totalTrades":0,"wins":0,"losses":
+0,"grossProfit":0,"grossLoss":0,"netProfit":0,"winRate":0,"lastTradeTime":0},"n
+ewSummary":{"totalTrades":1,"wins":1,"losses":0,"grossProfit":1,"grossLoss":0,"
+netProfit":1,"winRate":1,"lastTradeTime":1700000000000},"timestamp":17869153477
+77}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347779,"level":"info","event":"vh.journal.update
+d","context":{"runId":"run-1","currentState":"JOURNAL_UPDATED","reason":"Commit
+ted transaction appended to journal.","entryId":"J-TX-vh-regression-1","transac
+tionId":"TX-vh-regression-1","previousLength":0,"newLength":1,"timestamp":17869
+15347779}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+    console.log
+      [VH] {"timestamp":1786915347780,"level":"info","event":"vh.exit_digit.app
+ended","context":{"runId":"run-1","currentState":"EXIT_DIGIT_APPENDED","reason"
+:"Committed digit transaction appended to shared exit digit history.","contract
+Id":"vh-regression-1","transactionId":"TX-vh-regression-1","digit":8,"won":true
+,"historyLength":1,"timestamp":1786915347780}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+          at Set.forEach (<anonymous>)
+
+PASS src/bot/virtualHook/__tests__/VHJournalStore.test.ts
+PASS src/bot/__tests__/TradingEngineVHLifecycle.test.ts
+  ΓùÅ Console
+
+    console.log
+      [VH] {"timestamp":1786915349394,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349633,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349732,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349744,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349749,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349751,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349763,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349766,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349780,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349814,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349817,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915349832,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915350125,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915350133,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915350141,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915350149,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+    console.log
+      [VH] {"timestamp":1786915350151,"level":"info","event":"vh.disposed","con
+text":{"runId":"none","currentState":"IDLE","expectedState":"IDLE","reason":"En
+gine disposed.","timeout":null,"retryCount":null,"recoveryAction":null}}
+
+      at ConsoleVHLogger.sink (src/bot/virtualHook/VHLogger.ts:111:14)
+
+PASS src/bot/virtualHook/__tests__/SummaryStore.test.ts
+PASS src/bot/virtualHook/__tests__/VirtualStateMachine.test.ts
+PASS src/bot/virtualHook/__tests__/VirtualPolicy.test.ts
+PASS src/bot/virtualHook/__tests__/SettlementEngine.test.ts
+PASS src/bot/virtualHook/__tests__/VHConfig.test.ts
+PASS src/bot/virtualHook/__tests__/Phase6-XML-Integration.test.ts
+PASS src/bot/virtualHook/__tests__/TransactionsStore.test.ts
+PASS src/bot/virtualHook/__tests__/VirtualContract.test.ts
+FAIL src/components/layout/header/mobile-menu/__tests__/menu-header.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m jest[33m.[39mmock([32m'@deriv-com/ui'[39m[33m,[39m 
+() [33m=>[39m ({
+    [31m[1m>[22m[39m[90m 10 |[39m     
+[33m...[39mjest[33m.[39mrequireActual([32m'@deriv-com/ui'[39m)[33m,[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 11 |[39m     useDevice[33m:[39m jest[33m.[39mfn(() 
+[33m=>[39m ({ isDesktop[33m:[39m [36mfalse[39m }))[33m,[39m
+     [90m 12 |[39m }))[33m;[39m
+     [90m 13 |[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at requireActual 
+(src/components/layout/header/mobile-menu/__tests__/menu-header.spec.tsx:10:13)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/menu-header.spec.tsx:2:1)
+
+PASS src/components/error-modal/__tests__/error-modal-content.spec.tsx (22.308 
+s)
+FAIL src/components/layout/header/mobile-menu/__tests__/back-button.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m  7 |[39m
+     [90m  8 |[39m jest[33m.[39mmock([32m'@deriv-com/ui'[39m[33m,[39m 
+() [33m=>[39m ({
+    [31m[1m>[22m[39m[90m  9 |[39m     
+[33m...[39mjest[33m.[39mrequireActual([32m'@deriv-com/ui'[39m)[33m,[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 10 |[39m     useDevice[33m:[39m jest[33m.[39mfn(() 
+[33m=>[39m ({ isDesktop[33m:[39m [36mfalse[39m }))[33m,[39m
+     [90m 11 |[39m }))[33m;[39m
+     [90m 12 |[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at requireActual 
+(src/components/layout/header/mobile-menu/__tests__/back-button.spec.tsx:9:13)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/back-button.spec.tsx:1:1)
+
+FAIL src/components/layout/header/mobile-menu/__tests__/menu-content.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\src\utils\AuthSessio
+nManager.ts:4654
+    (cov_5flm3ildp().b[0][0]++, typeof import.meta !== 'undefined' ?
+                                              ^^^^
+
+    SyntaxError: Cannot use 'import.meta' outside a module
+
+    [0m [90m 23 |[39m [90m */[39m
+     [90m 24 |[39m
+    [31m[1m>[22m[39m[90m 25 |[39m [36mimport[39m { 
+[33mAuthSessionManager[39m } [36mfrom[39m 
+[32m'./AuthSessionManager'[39m[33m;[39m
+     [90m    |[39m [31m[1m^[22m[39m
+     [90m 26 |[39m [36mimport[39m { initiateDerivAuth } [36mfrom[39m 
+[32m'./pkce'[39m[33m;[39m
+     [90m 27 |[39m
+     [90m 28 |[39m [36mexport[39m type [33mEnterAccountModeOptions[39m 
+[33m=[39m {[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/utils/AccountModeController.ts:25:1)
+      at Object.require 
+(src/external/bot-skeleton/services/api/api-base.ts:3:1)
+      at Object.require (src/external/bot-skeleton/scratch/dbot-store.js:2:1)
+      at Object.require (src/external/bot-skeleton/utils/local-storage.js:5:1)
+      at Object.require (src/external/bot-skeleton/scratch/utils/index.js:8:1)
+      at Object.require (src/external/bot-skeleton/scratch/index.js:3:1)
+      at Object.require (src/external/bot-skeleton/index.js:2:1)
+      at Object.require (src/components/layout/header/utils/index.js:1:1)
+      at Object.require (src/stores/app-store.ts:3:1)
+      at Object.require (src/stores/root-store.ts:1:1)
+      at Object.require (src/hooks/useStore.tsx:2:1)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/menu-content.spec.tsx:2:1)
+
+FAIL src/components/layout/header/mobile-menu/__tests__/mobile-menu.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\src\utils\AuthSessio
+nManager.ts:4654
+    (cov_5flm3ildp().b[0][0]++, typeof import.meta !== 'undefined' ?
+                                              ^^^^
+
+    SyntaxError: Cannot use 'import.meta' outside a module
+
+    [0m [90m 23 |[39m [90m */[39m
+     [90m 24 |[39m
+    [31m[1m>[22m[39m[90m 25 |[39m [36mimport[39m { 
+[33mAuthSessionManager[39m } [36mfrom[39m 
+[32m'./AuthSessionManager'[39m[33m;[39m
+     [90m    |[39m [31m[1m^[22m[39m
+     [90m 26 |[39m [36mimport[39m { initiateDerivAuth } [36mfrom[39m 
+[32m'./pkce'[39m[33m;[39m
+     [90m 27 |[39m
+     [90m 28 |[39m [36mexport[39m type [33mEnterAccountModeOptions[39m 
+[33m=[39m {[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/utils/AccountModeController.ts:25:1)
+      at Object.require 
+(src/external/bot-skeleton/services/api/api-base.ts:3:1)
+      at Object.require (src/external/bot-skeleton/scratch/dbot-store.js:2:1)
+      at Object.require (src/external/bot-skeleton/utils/local-storage.js:5:1)
+      at Object.require (src/external/bot-skeleton/scratch/utils/index.js:8:1)
+      at Object.require (src/external/bot-skeleton/scratch/index.js:3:1)
+      at Object.require (src/external/bot-skeleton/index.js:2:1)
+      at Object.require (src/components/layout/header/utils/index.js:1:1)
+      at Object.require (src/stores/app-store.ts:3:1)
+      at Object.require (src/stores/root-store.ts:1:1)
+      at Object.require (src/hooks/useStore.tsx:2:1)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/mobile-menu.spec.tsx:3:1)
+
+FAIL src/components/page-error/__tests__/page-error.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m jest[33m.[39mmock([32m'@deriv-com/ui'[39m[33m,[39m 
+() [33m=>[39m ({
+    [31m[1m>[22m[39m[90m 10 |[39m     
+[33m...[39mjest[33m.[39mrequireActual([32m'@deriv-com/ui'[39m)[33m,[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 11 |[39m     useDevice[33m:[39m jest[33m.[39mfn(() 
+[33m=>[39m {
+     [90m 12 |[39m         [36mreturn[39m {
+     [90m 13 |[39m             isMobile[33m:[39m 
+[36mfalse[39m[33m,[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at requireActual 
+(src/components/page-error/__tests__/page-error.spec.tsx:10:13)
+      at Object.require 
+(src/components/page-error/__tests__/page-error.spec.tsx:4:1)
+
+FAIL src/app/__tests__/app.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\src\app\App.tsx:1815
+    if (import.meta.env.VITE_DERIV_APP_ID) {
+               ^^^^
+
+    SyntaxError: Cannot use 'import.meta' outside a module
+
+    [0m [90m 2 |[39m [36mimport[39m { [33mMemoryRouter[39m } 
+[36mfrom[39m [32m'react-router-dom'[39m[33m;[39m
+     [90m 3 |[39m [36mimport[39m { render[33m,[39m screen[33m,[39m 
+waitFor } [36mfrom[39m [32m'@testing-library/react'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m [33mApp[39m 
+[36mfrom[39m [32m'../App'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 5 |[39m
+     [90m 6 |[39m [90m// Mock the necessary dependencies[39m
+     [90m 7 |[39m 
+jest[33m.[39mmock([32m'react-router-dom'[39m[33m,[39m () [33m=>[39m 
+({[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/app/__tests__/app.spec.tsx:4:1)
+
+FAIL src/pages/endpoint/__tests__/endpoint.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m 2 |[39m [36mimport[39m { useFormik } [36mfrom[39m 
+[32m'formik'[39m[33m;[39m
+     [90m 3 |[39m [36mimport[39m { getAppId[33m,[39m 
+getDefaultAppIdAndUrl[33m,[39m getSocketURL } [36mfrom[39m 
+[32m'@/components/shared'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m { 
+[33mButton[39m[33m,[39m [33mInput[39m[33m,[39m [33mText[39m } 
+[36mfrom[39m [32m'@deriv-com/ui'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 5 |[39m [36mimport[39m { [33mLocalStorageConstants[39m } 
+[36mfrom[39m [32m'@deriv-com/utils'[39m[33m;[39m
+     [90m 6 |[39m [36mimport[39m [32m'./endpoint.scss'[39m[33m;[39m
+     [90m 7 |[39m [36mconst[39m [33mEndpoint[39m [33m=[39m () 
+[33m=>[39m {[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/pages/endpoint/index.tsx:4:1)
+      at Object.require (src/pages/endpoint/__tests__/endpoint.spec.tsx:3:1)
+
+FAIL src/components/error-component/__tests__/error-component.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m 1 |[39m [36mimport[39m [33mReact[39m [36mfrom[39m 
+[32m'react'[39m[33m;[39m
+     [90m 2 |[39m [36mimport[39m classNames [36mfrom[39m 
+[32m'classnames'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m { 
+[33mButton[39m[33m,[39m useDevice } [36mfrom[39m 
+[32m'@deriv-com/ui'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 4 |[39m [36mimport[39m [33mButtonLink[39m [36mfrom[39m 
+[32m'../button-link/button-link'[39m[33m;[39m
+     [90m 5 |[39m [36mimport[39m [33mDesktopWrapper[39m [36mfrom[39m 
+[32m'../shared_ui/desktop-wrapper'[39m[33m;[39m
+     [90m 6 |[39m [36mimport[39m [33mMobileWrapper[39m [36mfrom[39m 
+[32m'../shared_ui/mobile-wrapper'[39m[33m;[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/components/page-error/page-error.tsx:3:1)
+      at Object.require (src/components/page-error/index.ts:1:1)
+      at Object.require 
+(src/components/page-error-container/page-error-container.tsx:3:1)
+      at Object.require (src/components/page-error-container/index.ts:1:1)
+      at Object.require 
+(src/components/error-component/error-component.tsx:3:1)
+      at Object.require 
+(src/components/error-component/__tests__/error-component.spec.tsx:2:1)
+
+A worker process has failed to exit gracefully and has been force exited. This 
+is likely caused by tests leaking due to improper teardown. Try running with 
+--detectOpenHandles to find leaks. Active timers can also cause this, ensure 
+that .unref() was called on them.
+--------------------------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+File                                              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                                                                                                 
+--------------------------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+All files                                         |   40.22 |    19.13 |   25.88 |   42.48 |                                                                                                                                                                                                   
+ bot                                              |   51.47 |     39.4 |   57.95 |   53.47 |                                                                                                                                                                                                   
+  sharedExitDigitHistory.ts                       |   97.14 |    86.36 |   92.59 |   96.22 | 250,307                                                                                                                                                                                           
+  tradingEngine.ts                                |   45.55 |    35.71 |   42.62 |   48.88 | 204-214,234-235,314-318,327-328,350,368,397-398,411-444,459-548,559-829,888-890,910,1000-1001,1014-1015,1067-1068,1074-1077,1083,1100-1101,1152-1154,1165,1185-1187,1241-1251,1274-1305,1336,1371 
+ bot/virtualHook                                  |   87.38 |    70.95 |   92.43 |   87.42 |                                                                                                                                                                                                   
+  SettlementEngine.ts                             |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  SummaryStore.ts                                 |     100 |     90.9 |     100 |     100 | 139                                                                                                                                                                                               
+  TradeCandidate.ts                               |      75 |    93.33 |     100 |     100 | 85                                                                                                                                                                                                
+  TransactionPipeline.ts                          |     100 |       60 |     100 |     100 | 134-142,196,217-224                                                                                                                                                                               
+  TransactionsStore.ts                            |     100 |    81.25 |     100 |     100 | 176,201                                                                                                                                                                                           
+  VHConfig.ts                                     |   82.85 |    80.35 |     100 |   82.85 | 84,94,99,104,109,114                                                                                                                                                                              
+  VHDecision.ts                                   |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  VHJournalStore.ts                               |     100 |    66.66 |     100 |     100 | 193                                                                                                                                                                                               
+  VHLogger.ts                                     |   57.14 |      100 |      50 |   57.14 | 93-101                                                                                                                                                                                            
+  VHRuntime.ts                                    |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  VirtualContract.ts                              |      90 |    81.81 |   88.88 |   89.28 | 220,239,264                                                                                                                                                                                       
+  VirtualHookEngine.ts                            |   80.85 |    49.45 |   96.42 |   80.95 | 179-188,248-250,341-355,431-445,523-534,555-577,648-660,673-682,706-707,753-754,810-815,841-845,916,930,973                                                                                       
+  VirtualPolicy.ts                                |   94.11 |      100 |   77.77 |   93.93 | 156-160                                                                                                                                                                                           
+  VirtualStateMachine.ts                          |   95.65 |    57.14 |     100 |     100 | 256-292                                                                                                                                                                                           
+  errors.ts                                       |   73.91 |    41.17 |   71.42 |   73.91 | 78-107                                                                                                                                                                                            
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/contract-card-loading                 |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  contract-card-running-bot.tsx                   |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+ components/error-modal                           |    90.9 |      100 |      80 |    90.9 |                                                                                                                                                                                                   
+  error-modal-content.tsx                         |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  error-modal.tsx                                 |    87.5 |      100 |   66.66 |    87.5 | 26                                                                                                                                                                                                
+ components/layout/header/mobile-menu             |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  toggle-button.tsx                               |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+ components/shared                                |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/common                         |   66.66 |      100 |       0 |     100 |                                                                                                                                                                                                   
+  utility.ts                                      |   66.66 |      100 |       0 |     100 |                                                                                                                                                                                                   
+ components/shared/services                       |   28.57 |        0 |       0 |   28.57 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  performance-metrics-methods.ts                  |      20 |        0 |       0 |      20 | 26-44,48-54                                                                                                                                                                                       
+  ws-methods.ts                                   |      50 |      100 |       0 |      50 | 4,11                                                                                                                                                                                              
+ components/shared/utils                          |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  types.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/array                    |   15.38 |        0 |       0 |      20 |                                                                                                                                                                                                   
+  array.ts                                        |   15.38 |        0 |       0 |      20 | 2-11                                                                                                                                                                                              
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/brand                    |   35.29 |        0 |       0 |    37.5 |                                                                                                                                                                                                   
+  brand.ts                                        |   35.29 |        0 |       0 |    37.5 | 47,51,55,59-66,70-71,75                                                                                                                                                                           
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/browser                  |   21.05 |        0 |       0 |   22.22 |                                                                                                                                                                                                   
+  browser_detect.ts                               |   21.05 |        0 |       0 |   22.22 | 9-12,19-30,36                                                                                                                                                                                     
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/config                   |   19.73 |        0 |       0 |   21.12 |                                                                                                                                                                                                   
+  config.ts                                       |   19.73 |        0 |       0 |   21.12 | 35-36,39-40,44,54-71,75-84,90-106,110-115,119-145,149-152                                                                                                                                         
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/constants                |   61.53 |        0 |    6.25 |   70.45 |                                                                                                                                                                                                   
+  auth-status-codes.ts                            |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  barriers.ts                                     |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  content_flags.ts                                |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  contract.ts                                     |      40 |        0 |       0 |   43.47 | 7,40,83,184,202,354-358,362-363,367,370                                                                                                                                                           
+  default-options.ts                              |      50 |        0 |       0 |     100 | 9                                                                                                                                                                                                 
+  error.ts                                        |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  jurisdictions-config.ts                         |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  mt5-login-list-status.ts                        |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  poi-failure-codes.tsx                           |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  signup_fields.ts                                |   57.14 |      100 |       0 |     100 |                                                                                                                                                                                                   
+ components/shared/utils/contract                 |   30.41 |        0 |       0 |   37.82 |                                                                                                                                                                                                   
+  contract-info.ts                                |      50 |        0 |       0 |      50 | 4                                                                                                                                                                                                 
+  contract-types.ts                               |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  contract.tsx                                    |   35.57 |        0 |       0 |   44.16 | 105-106,114,119-120,124,145,156,168,171,184,193-197,201-206,210-215,219-223,231-241,247,250-252,261-267,274-284,290-294,304-306,320,325-326,337-343,348-354,358                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  trade-url-params-config.ts                      |   11.62 |        0 |       0 |    14.7 | 53,56-83,87-98                                                                                                                                                                                    
+ components/shared/utils/currency                 |   34.78 |        0 |    4.76 |   35.82 |                                                                                                                                                                                                   
+  currency.ts                                     |   34.78 |        0 |    4.76 |   35.82 | 50-59,71,75,88-104,108,112-122,126,131,136,141,148,297-300,306,310-316,321-322,326,329,333                                                                                                        
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/date                     |   29.82 |        0 |       0 |      34 |                                                                                                                                                                                                   
+  date-time.ts                                    |   29.82 |        0 |       0 |      34 | 11,16-21,38-51,56-58,68-73,85,90,93,101-102,111-112,126,134-135,144-154,165,172,192,207,215,223,231,239,247,254,262-265,275,283-288,297-309                                                       
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/digital-options          |   33.33 |        0 |       0 |   33.33 |                                                                                                                                                                                                   
+  digital-options.ts                              |   33.33 |        0 |       0 |   33.33 | 32-33,46-48                                                                                                                                                                                       
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/dom                      |   13.63 |        0 |       0 |   13.63 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  position.ts                                     |   13.63 |        0 |       0 |   13.63 | 14,17,25-71                                                                                                                                                                                       
+ components/shared/utils/files                    |   24.32 |        0 |       0 |      25 |                                                                                                                                                                                                   
+  file-uploader-utils.ts                          |   24.32 |        0 |       0 |      25 | 14-15,19-20,24-40,48-85,115                                                                                                                                                                       
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared/utils/files/image              |   10.52 |        0 |       0 |   10.81 |                                                                                                                                                                                                   
+  image_utility.ts                                |   10.52 |        0 |       0 |   10.81 | 18-52,61-66,73                                                                                                                                                                                    
+ components/shared/utils/helpers                  |   16.84 |        0 |       0 |   18.82 |                                                                                                                                                                                                   
+  active-symbols.ts                               |   13.92 |        0 |       0 |   17.74 | 24-40,47-49,54-58,62-79,85-89,93-96,100-105,114-119,125-126,136-137                                                                                                                               
+  barrier.ts                                      |   16.66 |        0 |       0 |      20 | 12-22,28-29                                                                                                                                                                                       
+  barriers.ts                                     |   27.27 |        0 |       0 |   33.33 | 6-8,11-13                                                                                                                                                                                         
+  chart-notifications.tsx                         |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  details.ts                                      |   15.68 |        0 |       0 |   16.66 | 13-37,43,60-79,83-91,101,107                                                                                                                                                                      
+  duration.ts                                     |   14.66 |        0 |       0 |   15.49 | 49-90,94-104,111-112,120-137,141-156,160,170,177-181,187-195                                                                                                                                      
+  format-response.ts                              |   18.51 |        0 |       0 |   19.23 | 15-18,28-37,55,63,66-87,100-116,120-123,127,131,139-143                                                                                                                                           
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  logic.ts                                        |   22.72 |        0 |       0 |   24.39 | 11-23,28-34,38-39,43,46,59-71,75,85-86,90                                                                                                                                                         
+  market-underlying.ts                            |   14.28 |        0 |       0 |      16 | 18-27,38-50,54,57-64                                                                                                                                                                              
+  portfolio-notifications.tsx                     |      50 |      100 |       0 |     100 |                                                                                                                                                                                                   
+  start-date.ts                                   |    9.09 |        0 |       0 |      10 | 18-36                                                                                                                                                                                             
+  validation-rules.ts                             |      10 |        0 |       0 |   11.11 | 21-64                                                                                                                                                                                             
+ components/shared/utils/hooks                    |   14.28 |        0 |       0 |   16.66 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  mounted.tsx                                     |    12.5 |      100 |       0 |   14.28 | 4-13                                                                                                                                                                                              
+  new-row-transition.tsx                          |   16.66 |        0 |       0 |      20 | 4-10                                                                                                                                                                                              
+ components/shared/utils/loader                   |      20 |        0 |       0 |      25 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  lazy-load.tsx                                   |      20 |        0 |       0 |      25 | 5-13                                                                                                                                                                                              
+ components/shared/utils/loader-handler           |    12.5 |        0 |       0 |    12.5 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  loader-handler.ts                               |    12.5 |        0 |       0 |    12.5 | 2-12                                                                                                                                                                                              
+ components/shared/utils/location                 |   16.66 |        0 |       0 |      20 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  location.ts                                     |   16.66 |        0 |       0 |      20 | 4-9                                                                                                                                                                                               
+ components/shared/utils/login                    |      50 |      100 |       0 |   66.66 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  login.ts                                        |      50 |      100 |       0 |   66.66 | 19                                                                                                                                                                                                
+ components/shared/utils/number                   |      25 |      100 |       0 |      25 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  number_util.ts                                  |      25 |      100 |       0 |      25 | 2-4                                                                                                                                                                                               
+ components/shared/utils/object                   |   15.13 |      3.4 |    4.54 |   16.58 |                                                                                                                                                                                                   
+  clone.js                                        |   11.67 |     3.44 |    5.26 |   12.69 | 6,15,22,29-210,221-231,236,241,246,251-255                                                                                                                                                        
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  object.ts                                       |   20.98 |     3.33 |       4 |   23.28 | 4-5,9-12,18-19,26-39,44-54,58,61-63,67,70-76,80-88,94-96,103-123,128-134                                                                                                                          
+ components/shared/utils/os                       |   16.66 |        0 |       0 |      18 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  os_detect.ts                                    |   16.66 |        0 |       0 |      18 | 56-57,61,67-81,85-108,229-233,237-260                                                                                                                                                             
+ components/shared/utils/promise                  |    5.88 |        0 |       0 |    6.25 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  make-cancellable-promise.ts                     |    5.88 |        0 |       0 |    6.25 | 2-26                                                                                                                                                                                              
+ components/shared/utils/routes                   |      75 |     37.5 |     100 |      75 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  routes.ts                                       |      75 |     37.5 |     100 |      75 | 56-59                                                                                                                                                                                             
+ components/shared/utils/screen                   |   83.33 |       30 |      60 |    87.5 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  responsive.ts                                   |   83.33 |       30 |      60 |    87.5 | 15                                                                                                                                                                                                
+ components/shared/utils/shortcode                |   21.95 |        0 |       0 |    22.5 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  shortcode.ts                                    |   21.95 |        0 |       0 |    22.5 | 38-80,84-85,89-91,95-96,100-101                                                                                                                                                                   
+ components/shared/utils/storage                  |   33.01 |    14.03 |   13.33 |   34.34 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  storage.ts                                      |   33.01 |    14.03 |   13.33 |   34.34 | 16,20-22,36,45,57-81,91,102-103,109-129,142-147,153-164,169-202,210-224                                                                                                                           
+ components/shared/utils/string                   |   22.72 |        0 |       0 |   25.64 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  string_util.ts                                  |   22.72 |        0 |       0 |   25.64 | 2,5-6,10-25,29-31,37-38,46-54,58,61,64-67                                                                                                                                                         
+ components/shared/utils/url                      |   27.96 |     4.81 |    3.84 |   29.35 |                                                                                                                                                                                                   
+  constants.ts                                    |     100 |       80 |     100 |     100 | 9                                                                                                                                                                                                 
+  helpers.ts                                      |   26.31 |        0 |       0 |   26.31 | 5-8,15-18,22-29,37-39,43-45                                                                                                                                                                       
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  url.ts                                          |   21.11 |        0 |       0 |   23.17 | 24,27-35,39,43-50,66-91,95-114,120-124,128,134,143-159,163-164,176-178,182-184                                                                                                                    
+ components/shared/utils/validation               |   25.75 |        0 |       0 |   29.82 |                                                                                                                                                                                                   
+  declarative-validation-rules.ts                 |   27.83 |        0 |       0 |   33.75 | 30-35,39-55,64,76,83,86-134,159-160,182-184,189,193                                                                                                                                               
+  form-validations.ts                             |   17.64 |        0 |       0 |   18.18 | 20-24,28,37-67,86-87,97-109,114                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  regex-validation.ts                             |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+ components/shared/utils/validator                |    1.75 |        0 |       0 |    1.78 |                                                                                                                                                                                                   
+  errors.ts                                       |       0 |        0 |       0 |       0 | 5-38                                                                                                                                                                                              
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  validator.ts                                    |    2.27 |        0 |       0 |    2.32 | 7-120                                                                                                                                                                                             
+ components/shared_ui/button                      |      80 |    70.96 |   33.33 |      80 |                                                                                                                                                                                                   
+  button.tsx                                      |    87.5 |    70.96 |      50 |    87.5 | 49                                                                                                                                                                                                
+  button_loading.tsx                              |      50 |      100 |       0 |      50 | 8                                                                                                                                                                                                 
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared_ui/desktop-wrapper             |      75 |       50 |     100 |     100 |                                                                                                                                                                                                   
+  desktop-wrapper.tsx                             |      75 |       50 |     100 |     100 | 9                                                                                                                                                                                                 
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared_ui/div100vh-container          |    12.5 |        0 |       0 |   14.28 |                                                                                                                                                                                                   
+  div100vh-container.tsx                          |    12.5 |        0 |       0 |   14.28 | 36-46                                                                                                                                                                                             
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+ components/shared_ui/loading                     |      20 |        0 |       0 |      20 |                                                                                                                                                                                                   
+  loading.tsx                                     |      20 |        0 |       0 |      20 | 14-38                                                                                                                                                                                             
+ components/shared_ui/mobile-dialog               |    2.77 |        0 |       0 |    3.22 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  mobile-dialog.tsx                               |    2.77 |        0 |       0 |    3.22 | 41-89                                                                                                                                                                                             
+ components/shared_ui/mobile-wrapper              |      75 |       50 |     100 |   66.66 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  mobile-wrapper.tsx                              |      75 |       50 |     100 |   66.66 | 11                                                                                                                                                                                                
+ components/shared_ui/modal                       |      75 |    37.28 |   53.84 |   77.77 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  modal-body.tsx                                  |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  modal-footer.tsx                                |      25 |        0 |       0 |   33.33 | 11-12                                                                                                                                                                                             
+  modal.tsx                                       |   78.57 |    38.59 |   54.54 |      80 | 90,93-101,106,132-133                                                                                                                                                                             
+ components/shared_ui/money                       |   14.28 |        0 |       0 |   14.28 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  money.tsx                                       |   14.28 |        0 |       0 |   14.28 | 21-30                                                                                                                                                                                             
+ components/shared_ui/text                        |      80 |    77.77 |     100 |      80 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  text.tsx                                        |      80 |    77.77 |     100 |      80 | 35-36                                                                                                                                                                                             
+ components/shared_ui/themed-scrollbars           |    12.5 |        0 |       0 |   14.28 |                                                                                                                                                                                                   
+  index.ts                                        |       0 |        0 |       0 |       0 |                                                                                                                                                                                                   
+  themed-scrollbars.tsx                           |    12.5 |        0 |       0 |   14.28 | 41-51                                                                                                                                                                                             
+ components/unhandled-error-modal                 |      90 |      100 |      80 |      90 |                                                                                                                                                                                                   
+  unhandled-error-modal.tsx                       |      90 |      100 |      80 |      90 | 48                                                                                                                                                                                                
+ constants                                        |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+  transactions.ts                                 |     100 |      100 |     100 |     100 |                                                                                                                                                                                                   
+ external/bot-skeleton/services/tradeEngine/trade |   27.31 |    22.43 |   16.66 |   29.01 |                                                                                                                                                                                                   
+  ActiveContract.js                               |   25.31 |     7.57 |   17.39 |   25.97 | 67-70,76,97-165,191-229,284-419                                                                                                                                                                   
+  Purchase.js                                     |    28.3 |    33.33 |      16 |   30.61 | 73,79,155-461,505-506,519,562                                                                                                                                                                     
+ hooks                                            |    25.8 |    18.51 |   35.29 |   29.09 |                                                                                                                                                                                                   
+  useEventListener.ts                             |   85.71 |       75 |   83.33 |     100 | 61                                                                                                                                                                                                
+  useHover.ts                                     |       5 |        0 |       0 |    5.55 | 7-38,42-65                                                                                                                                                                                        
+  useIsomorphicLayoutEffect.ts                    |     100 |       50 |     100 |     100 | 3                                                                                                                                                                                                 
+  useOnClickOutside.tsx                           |   14.28 |    11.11 |      50 |   16.66 | 12-21                                                                                                                                                                                             
+ stores                                           |   51.28 |    25.68 |    40.9 |    51.3 |                                                                                                                                                                                                   
+  transactions-store.ts                           |   51.28 |    25.68 |    40.9 |    51.3 | 62,89,111-115,156-157,204-212,225,235-240,250-252,261,265-341                                                                                                                                     
+ utils                                            |   25.92 |    16.66 |      20 |   25.92 |                                                                                                                                                                                                   
+  pkce.ts                                         |   66.66 |      100 |       0 |   66.66 | 33                                                                                                                                                                                                
+  safe-json.ts                                    |       0 |        0 |       0 |       0 | 14-22                                                                                                                                                                                             
+  session-storage.ts                              |   27.77 |    16.66 |   33.33 |   27.77 | 8-9,13-25,29-34                                                                                                                                                                                   
+--------------------------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Summary of all failing tests
+FAIL src/components/layout/header/mobile-menu/__tests__/menu-header.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m jest[33m.[39mmock([32m'@deriv-com/ui'[39m[33m,[39m 
+() [33m=>[39m ({
+    [31m[1m>[22m[39m[90m 10 |[39m     
+[33m...[39mjest[33m.[39mrequireActual([32m'@deriv-com/ui'[39m)[33m,[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 11 |[39m     useDevice[33m:[39m jest[33m.[39mfn(() 
+[33m=>[39m ({ isDesktop[33m:[39m [36mfalse[39m }))[33m,[39m
+     [90m 12 |[39m }))[33m;[39m
+     [90m 13 |[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at requireActual 
+(src/components/layout/header/mobile-menu/__tests__/menu-header.spec.tsx:10:13)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/menu-header.spec.tsx:2:1)
+
+FAIL src/components/layout/header/mobile-menu/__tests__/back-button.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m  7 |[39m
+     [90m  8 |[39m jest[33m.[39mmock([32m'@deriv-com/ui'[39m[33m,[39m 
+() [33m=>[39m ({
+    [31m[1m>[22m[39m[90m  9 |[39m     
+[33m...[39mjest[33m.[39mrequireActual([32m'@deriv-com/ui'[39m)[33m,[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 10 |[39m     useDevice[33m:[39m jest[33m.[39mfn(() 
+[33m=>[39m ({ isDesktop[33m:[39m [36mfalse[39m }))[33m,[39m
+     [90m 11 |[39m }))[33m;[39m
+     [90m 12 |[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at requireActual 
+(src/components/layout/header/mobile-menu/__tests__/back-button.spec.tsx:9:13)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/back-button.spec.tsx:1:1)
+
+FAIL src/components/layout/header/mobile-menu/__tests__/menu-content.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\src\utils\AuthSessio
+nManager.ts:4654
+    (cov_5flm3ildp().b[0][0]++, typeof import.meta !== 'undefined' ?
+                                              ^^^^
+
+    SyntaxError: Cannot use 'import.meta' outside a module
+
+    [0m [90m 23 |[39m [90m */[39m
+     [90m 24 |[39m
+    [31m[1m>[22m[39m[90m 25 |[39m [36mimport[39m { 
+[33mAuthSessionManager[39m } [36mfrom[39m 
+[32m'./AuthSessionManager'[39m[33m;[39m
+     [90m    |[39m [31m[1m^[22m[39m
+     [90m 26 |[39m [36mimport[39m { initiateDerivAuth } [36mfrom[39m 
+[32m'./pkce'[39m[33m;[39m
+     [90m 27 |[39m
+     [90m 28 |[39m [36mexport[39m type [33mEnterAccountModeOptions[39m 
+[33m=[39m {[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/utils/AccountModeController.ts:25:1)
+      at Object.require 
+(src/external/bot-skeleton/services/api/api-base.ts:3:1)
+      at Object.require (src/external/bot-skeleton/scratch/dbot-store.js:2:1)
+      at Object.require (src/external/bot-skeleton/utils/local-storage.js:5:1)
+      at Object.require (src/external/bot-skeleton/scratch/utils/index.js:8:1)
+      at Object.require (src/external/bot-skeleton/scratch/index.js:3:1)
+      at Object.require (src/external/bot-skeleton/index.js:2:1)
+      at Object.require (src/components/layout/header/utils/index.js:1:1)
+      at Object.require (src/stores/app-store.ts:3:1)
+      at Object.require (src/stores/root-store.ts:1:1)
+      at Object.require (src/hooks/useStore.tsx:2:1)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/menu-content.spec.tsx:2:1)
+
+FAIL src/components/layout/header/mobile-menu/__tests__/mobile-menu.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\src\utils\AuthSessio
+nManager.ts:4654
+    (cov_5flm3ildp().b[0][0]++, typeof import.meta !== 'undefined' ?
+                                              ^^^^
+
+    SyntaxError: Cannot use 'import.meta' outside a module
+
+    [0m [90m 23 |[39m [90m */[39m
+     [90m 24 |[39m
+    [31m[1m>[22m[39m[90m 25 |[39m [36mimport[39m { 
+[33mAuthSessionManager[39m } [36mfrom[39m 
+[32m'./AuthSessionManager'[39m[33m;[39m
+     [90m    |[39m [31m[1m^[22m[39m
+     [90m 26 |[39m [36mimport[39m { initiateDerivAuth } [36mfrom[39m 
+[32m'./pkce'[39m[33m;[39m
+     [90m 27 |[39m
+     [90m 28 |[39m [36mexport[39m type [33mEnterAccountModeOptions[39m 
+[33m=[39m {[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/utils/AccountModeController.ts:25:1)
+      at Object.require 
+(src/external/bot-skeleton/services/api/api-base.ts:3:1)
+      at Object.require (src/external/bot-skeleton/scratch/dbot-store.js:2:1)
+      at Object.require (src/external/bot-skeleton/utils/local-storage.js:5:1)
+      at Object.require (src/external/bot-skeleton/scratch/utils/index.js:8:1)
+      at Object.require (src/external/bot-skeleton/scratch/index.js:3:1)
+      at Object.require (src/external/bot-skeleton/index.js:2:1)
+      at Object.require (src/components/layout/header/utils/index.js:1:1)
+      at Object.require (src/stores/app-store.ts:3:1)
+      at Object.require (src/stores/root-store.ts:1:1)
+      at Object.require (src/hooks/useStore.tsx:2:1)
+      at Object.require 
+(src/components/layout/header/mobile-menu/__tests__/mobile-menu.spec.tsx:3:1)
+
+FAIL src/components/page-error/__tests__/page-error.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m  8 |[39m
+     [90m  9 |[39m jest[33m.[39mmock([32m'@deriv-com/ui'[39m[33m,[39m 
+() [33m=>[39m ({
+    [31m[1m>[22m[39m[90m 10 |[39m     
+[33m...[39mjest[33m.[39mrequireActual([32m'@deriv-com/ui'[39m)[33m,[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 11 |[39m     useDevice[33m:[39m jest[33m.[39mfn(() 
+[33m=>[39m {
+     [90m 12 |[39m         [36mreturn[39m {
+     [90m 13 |[39m             isMobile[33m:[39m 
+[36mfalse[39m[33m,[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at requireActual 
+(src/components/page-error/__tests__/page-error.spec.tsx:10:13)
+      at Object.require 
+(src/components/page-error/__tests__/page-error.spec.tsx:4:1)
+
+FAIL src/app/__tests__/app.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\artifacts\ddbot-app\src\app\App.tsx:1815
+    if (import.meta.env.VITE_DERIV_APP_ID) {
+               ^^^^
+
+    SyntaxError: Cannot use 'import.meta' outside a module
+
+    [0m [90m 2 |[39m [36mimport[39m { [33mMemoryRouter[39m } 
+[36mfrom[39m [32m'react-router-dom'[39m[33m;[39m
+     [90m 3 |[39m [36mimport[39m { render[33m,[39m screen[33m,[39m 
+waitFor } [36mfrom[39m [32m'@testing-library/react'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m [33mApp[39m 
+[36mfrom[39m [32m'../App'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 5 |[39m
+     [90m 6 |[39m [90m// Mock the necessary dependencies[39m
+     [90m 7 |[39m 
+jest[33m.[39mmock([32m'react-router-dom'[39m[33m,[39m () [33m=>[39m 
+({[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/app/__tests__/app.spec.tsx:4:1)
+
+FAIL src/pages/endpoint/__tests__/endpoint.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m 2 |[39m [36mimport[39m { useFormik } [36mfrom[39m 
+[32m'formik'[39m[33m;[39m
+     [90m 3 |[39m [36mimport[39m { getAppId[33m,[39m 
+getDefaultAppIdAndUrl[33m,[39m getSocketURL } [36mfrom[39m 
+[32m'@/components/shared'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m { 
+[33mButton[39m[33m,[39m [33mInput[39m[33m,[39m [33mText[39m } 
+[36mfrom[39m [32m'@deriv-com/ui'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 5 |[39m [36mimport[39m { [33mLocalStorageConstants[39m } 
+[36mfrom[39m [32m'@deriv-com/utils'[39m[33m;[39m
+     [90m 6 |[39m [36mimport[39m [32m'./endpoint.scss'[39m[33m;[39m
+     [90m 7 |[39m [36mconst[39m [33mEndpoint[39m [33m=[39m () 
+[33m=>[39m {[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/pages/endpoint/index.tsx:4:1)
+      at Object.require (src/pages/endpoint/__tests__/endpoint.spec.tsx:3:1)
+
+FAIL src/components/error-component/__tests__/error-component.spec.tsx
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\cliff\Desktop\WARNER\flex\node_modules\.pnpm\@deriv-com+ui@1.37.2_
+react-_601a14ccd6c464890e01ebf6ea9e15fc\node_modules\@deriv-com\ui\dist\main.js
+:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import { Accordion as e } from "./components/Accordion/index.js";
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m 1 |[39m [36mimport[39m [33mReact[39m [36mfrom[39m 
+[32m'react'[39m[33m;[39m
+     [90m 2 |[39m [36mimport[39m classNames [36mfrom[39m 
+[32m'classnames'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m { 
+[33mButton[39m[33m,[39m useDevice } [36mfrom[39m 
+[32m'@deriv-com/ui'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 4 |[39m [36mimport[39m [33mButtonLink[39m [36mfrom[39m 
+[32m'../button-link/button-link'[39m[33m;[39m
+     [90m 5 |[39m [36mimport[39m [33mDesktopWrapper[39m [36mfrom[39m 
+[32m'../shared_ui/desktop-wrapper'[39m[33m;[39m
+     [90m 6 |[39m [36mimport[39m [33mMobileWrapper[39m [36mfrom[39m 
+[32m'../shared_ui/mobile-wrapper'[39m[33m;[39m[0m
+
+      at Runtime.createScriptFromCode (../../node_modules/.pnpm/jest-runtime@29
+.7.0/node_modules/jest-runtime/build/index.js:1505:14)
+      at Object.require (src/components/page-error/page-error.tsx:3:1)
+      at Object.require (src/components/page-error/index.ts:1:1)
+      at Object.require 
+(src/components/page-error-container/page-error-container.tsx:3:1)
+      at Object.require (src/components/page-error-container/index.ts:1:1)
+      at Object.require 
+(src/components/error-component/error-component.tsx:3:1)
+      at Object.require 
+(src/components/error-component/__tests__/error-component.spec.tsx:2:1)
+
+
+Test Suites: 8 failed, 22 passed, 30 total
+Tests:       293 passed, 293 total
+Snapshots:   0 total
+Time:        1043.665 s
+Ran all test suites.
+ΓÇëELIFECYCLEΓÇë Test failed. See above for more details.

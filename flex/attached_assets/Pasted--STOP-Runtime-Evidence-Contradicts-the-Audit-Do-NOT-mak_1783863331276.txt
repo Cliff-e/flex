@@ -1,0 +1,244 @@
+# STOP — Runtime Evidence Contradicts the Audit
+
+Do **NOT** make any code changes yet.
+
+The latest runtime logs directly contradict the previous audit.
+
+The audit concluded:
+
+* `__pending__` exists only in a comment.
+* `__pending__` is never written to runtime.
+* `active_loginid` can never become `__pending__`.
+* OTP requests can never use `__pending__`.
+* `authorize()` can never send `account_id="__pending__"`.
+
+However, the runtime proves the opposite.
+
+---
+
+# Actual Runtime Logs
+
+```
+[App] Canonical access token found — enabling account mode
+
+[AccountModeController] Account Mode ENABLED
+
+[App] Restoring from ASM state — loginid: __pending__
+
+[AUTH-ASM][setActiveAccount] switching to loginid: __pending__ | token: ory_at_S…3pRc
+
+[AUTH-DESYNC][AuthSessionManager]
+logged_state=true cookie + token present but WS has not authorized yet
+
+[PublicMarketSocket] ✓ Connected (public WS, no auth)
+
+[AUTH 11][WSManager._doConnect]
+Starting connection
+accountModeActive: true
+accountId (ASM): __pending__
+hasAuthToken (ASM): true
+
+[AUTH 12][WSManager._doConnect]
+→ Requesting OTP WS URL…
+
+[AUTH-ASM][_fetchOtp]
+→ POST https://api.derivws.com/trading/v1/options/accounts/__pending__/otp
+
+403 Insufficient scopes
+
+[AUTH 12]
+OTP fetch FAILED — falling back to PUBLIC WS
+
+PUBLIC_WS_URL:
+wss://api.derivws.com/trading/v1/options/ws/public
+
+[AUTH 13]
+WebSocket OPEN
+
+[AUTH 14][api-base.authorizeAndSubscribe]
+
+Token selection:
+
+wasLastConnectionOtp: false
+
+otpToken: (none)
+
+asmToken: ory_at_S…3pRc
+
+USING: ASM token
+
+api ready: true
+
+[AUTH-ASM][setWsAuthorized]
+false → false
+
+loginid: (none)
+
+[AUTH 14]
+
+→ Sending authorize payload
+
+account_id: __pending__
+
+token: ory_at_S…3pRc
+
+[AUTH 15]
+
+authorize WS message
+
+ERROR:
+
+InputValidationFailed
+
+Input validation failed: authorize
+
+[AuthReady]
+
+auth:failed
+
+code: InputValidationFailed
+
+[AUTH 15]
+
+authorize() threw
+
+[AUTH-ASM][setWsAuthorized]
+
+false → false
+
+loginid: (none)
+
+[AUTH-DESYNC]
+
+logged_state=true
+
+cookie + token present
+
+but WS has not authorized yet
+```
+
+---
+
+# This Contradiction Must Be Resolved First
+
+The previous audit stated:
+
+* `__pending__` no longer exists at runtime.
+
+Yet the runtime clearly shows:
+
+```
+Restoring from ASM state — loginid: __pending__
+```
+
+followed by
+
+```
+accountId (ASM): __pending__
+```
+
+which directly causes
+
+```
+POST /options/accounts/__pending__/otp
+```
+
+and later
+
+```
+account_id: __pending__
+```
+
+inside the authorize request.
+
+Those logs prove that **`__pending__` still exists in the runtime authentication state.**
+
+---
+
+# Investigation Required
+
+Do **NOT** patch symptoms.
+
+Determine **why** the runtime still contains `__pending__`.
+
+There are only two possibilities.
+
+## Possibility A
+
+The deployed application is running an older bundle.
+
+Verify:
+
+* deployed commit
+* latest commit
+* generated bundle hash
+* deployment logs
+* service worker cache
+* browser cache
+
+If the deployment is stale, stop and explain exactly why.
+
+---
+
+## Possibility B
+
+The audit missed a code path.
+
+Search beyond grep.
+
+Trace every write to:
+
+```
+active_loginid
+
+accountId
+
+AuthSessionManager
+
+setActiveAccount()
+
+localStorage
+
+sessionStorage
+```
+
+Instrument the application.
+
+Log every call to:
+
+```
+AuthSessionManager.setActiveAccount()
+
+AuthSessionManager.getAuthInfo()
+
+AuthSessionManager.getCanonicalAuthState()
+
+localStorage.setItem('active_loginid')
+
+localStorage.getItem('active_loginid')
+```
+
+Include stack traces.
+
+The objective is **not** to find where `__pending__` is consumed.
+
+The objective is to identify **the very first place where `__pending__` is introduced into runtime.**
+
+---
+
+# Important
+
+The runtime shows the application restoring `__pending__` **before**:
+
+* OTP
+* WebSocket authorization
+* account loading
+* balances
+* Bot Builder
+* wallet initialization
+
+Therefore every downstream authentication failure is almost certainly a consequence of that initial corrupted authentication state.
+
+Do not continue making fixes until the origin of `__pending__` has been proven with code references and runtime evidence.
+
+I want a root-cause analysis, not another workaround.

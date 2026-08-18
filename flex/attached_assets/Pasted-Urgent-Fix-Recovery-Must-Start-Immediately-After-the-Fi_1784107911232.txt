@@ -1,0 +1,96 @@
+Urgent Fix – Recovery Must Start Immediately After the First Loss (No Martingale Before Recovery)
+
+The previous fix successfully connected DIFFER_SEQUENCE to the shared recovery engine, but runtime testing has revealed another issue.
+
+Observed behavior
+
+After the first losing trade, the bot does not immediately enter recovery.
+
+Instead, it first executes what appears to be the next strategy trade (effectively behaving like a martingale/progression), and only afterward does it begin recovery.
+
+This is incorrect.
+
+The recovery trade itself is also not immediately switching to the expected recovery contract (OVER 5 or UNDER 4).
+
+The attached runtime results demonstrate this behavior.
+
+Expected behavior
+
+For every AI Bot, the sequence must be:
+
+Execute the normal strategy.
+If the trade wins:
+Continue the normal strategy.
+If the trade loses:
+Stop the normal strategy immediately.
+Do not execute another normal trade.
+Do not advance the sequence.
+Do not apply any martingale or progression within the strategy.
+The very next trade must be the shared recovery trade:
+OVER 5 when appropriate.
+UNDER 4 when appropriate.
+Only after recovery succeeds should the bot resume its original strategy.
+
+There should never be an intermediate trade between the loss and the recovery trade.
+
+Apply this consistently to all AI Bot strategies
+
+Verify and enforce this behavior for:
+
+OVER 1
+UNDER 8
+DIFFER (manual)
+DIFFER Auto Sequence
+
+Every strategy should:
+
+Loss → Immediate Recovery → Resume Strategy
+
+with no extra strategy trade in between.
+
+Investigation
+
+Determine why the engine is allowing another strategy trade before entering recovery.
+
+Check for:
+
+recovery state being set too late
+next strategy trade already queued before settlement
+asynchronous race conditions
+delayed inRecovery flag
+sequence loop advancing before recovery begins
+purchase scheduling occurring before recovery state is active
+contract settlement callback ordering
+duplicate execution paths
+strategy loop not checking inRecovery before placing another trade
+
+Do not patch symptoms—identify the actual root cause.
+
+Requirements
+Use the existing shared RecoveryStrategyEngine.
+Do not redesign the recovery logic.
+Do not change the recovery rules.
+Do not change stake progression.
+Do not change TP/SL.
+Do not change entry conditions.
+Make the minimum necessary code changes.
+Verification
+
+For each strategy (OVER 1, UNDER 8, DIFFER manual, DIFFER Auto Sequence), confirm:
+
+Winning trade → normal strategy continues.
+Losing trade → the very next executed contract is the recovery contract.
+The first recovery trade is immediately OVER 5 or UNDER 4, according to the existing recovery rules.
+No normal strategy trade occurs before recovery.
+No martingale/progression occurs before recovery.
+After recovery succeeds, the bot resumes its original strategy exactly where appropriate.
+Virtual mode and real mode behave identically.
+Deliverables
+
+Provide:
+
+The root cause.
+The minimal code changes made.
+The files modified.
+Confirmation that the first trade after every loss is now always the recovery trade (OVER 5 or UNDER 4) for OVER 1, UNDER 8, DIFFER (manual), and DIFFER Auto Sequence.
+Push the verified fix to the GitHub repository.

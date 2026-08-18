@@ -7,6 +7,8 @@ import { TPortfolioPosition, TStores } from '@deriv/stores/types';
 import { TContractInfo } from '../components/summary/summary-card.types';
 import { transaction_elements } from '../constants/transactions';
 import { appendExitDigit, extractLastDigit } from '../bot/sharedExitDigitHistory';
+import { subscribeToVHTransactions } from '../bot/virtualHook/VHRuntime';
+import type { TransactionRecord } from '../bot/virtualHook/TransactionPipeline';
 import { getStoredItemsByKey, getStoredItemsByUser, setStoredItemsByKey } from '../utils/session-storage';
 import RootStore from './root-store';
 
@@ -28,7 +30,6 @@ export default class TransactionsStore {
         this.root_store = root_store;
         this.core = core;
         this.is_transaction_details_modal_open = false;
-        this.disposeReactionsFn = this.registerReactions();
 
         makeObservable(this, {
             elements: observable,
@@ -37,8 +38,12 @@ export default class TransactionsStore {
             recovered_transactions: observable,
             is_called_proposal_open_contract: observable,
             is_transaction_details_modal_open: observable,
+            virtual_transactions: observable.shallow,
             transactions: computed,
+            mixed_transactions: computed,
+            display_statistics: computed,
             onBotContractEvent: action.bound,
+            onVHTransactionCommitted: action.bound,
             pushTransaction: action.bound,
             clear: action.bound,
             registerReactions: action.bound,
@@ -47,6 +52,13 @@ export default class TransactionsStore {
             sortOutPositionsBeforeAction: action.bound,
             recoverPendingContractsById: action.bound,
         });
+
+        const disposeReactions = this.registerReactions();
+        const unsubscribeVH = subscribeToVHTransactions(this.onVHTransactionCommitted);
+        this.disposeReactionsFn = () => {
+            disposeReactions();
+            unsubscribeVH();
+        };
     }
     TRANSACTION_CACHE = 'transaction_cache';
 
@@ -56,16 +68,45 @@ export default class TransactionsStore {
     recovered_transactions: number[] = [];
     is_called_proposal_open_contract = false;
     is_transaction_details_modal_open = false;
+    /** VH rows remain separate from the real-account transaction cache. */
+    virtual_transactions: TransactionRecord[] = [];
 
     get transactions(): TTransaction[] {
         if (this.core?.client?.loginid) return this.elements[this.core?.client?.loginid] ?? [];
         return [];
     }
 
+    /**
+     * Presentation-only history used by the Transactions tab and details
+     * modal. Virtual rows are composed with real rows but never written to
+     * `elements`, the account cache, or the real account balance.
+     */
+    get mixed_transactions(): TTransaction[] {
+        const realRows = this.transactions
+            .filter(row => row.type === transaction_elements.CONTRACT && typeof row.data === 'object')
+            .map(row => ({ type: transaction_elements.CONTRACT, data: row.data as TContractInfo }));
+        const virtualRows = this.virtual_transactions.map(record => ({
+            type: transaction_elements.CONTRACT,
+            data: this.toVirtualContract(record),
+        }));
+
+        return [...realRows, ...virtualRows].sort(
+            (a, b) => this.transactionTimestamp(b.data) - this.transactionTimestamp(a.data)
+        );
+    }
+
     get statistics() {
+        return this.calculateStatistics(this.transactions);
+    }
+
+    /** Combined REAL + VH figures for presentation surfaces only. */
+    get display_statistics() {
+        return this.calculateStatistics(this.mixed_transactions);
+    }
+
+    private calculateStatistics(rows: TTransaction[]) {
         let total_runs = 0;
-        // Filter out only contract transactions and remove dividers
-        const trxs = this.transactions.filter(
+        const trxs = rows.filter(
             trx => trx.type === transaction_elements.CONTRACT && typeof trx.data === 'object'
         );
         const statistics = trxs.reduce(
@@ -105,6 +146,12 @@ export default class TransactionsStore {
         );
         statistics.number_of_runs = total_runs;
         return statistics;
+    }
+
+    onVHTransactionCommitted(record: TransactionRecord) {
+        if (!this.virtual_transactions.some(existing => existing.contractId === record.contractId)) {
+            this.virtual_transactions = [...this.virtual_transactions, record];
+        }
     }
 
     toggleTransactionDetailsModal = (is_open: boolean) => {
@@ -238,6 +285,43 @@ export default class TransactionsStore {
         this.recovered_completed_transactions = this.recovered_completed_transactions?.slice(0, 0);
         this.recovered_transactions = this.recovered_transactions?.slice(0, 0);
         this.is_transaction_details_modal_open = false;
+        this.virtual_transactions = [];
+    }
+
+    private transactionTimestamp(data: TContractInfo): number {
+        if (typeof data.date_start === 'number') return data.date_start;
+        const parsed = Date.parse(String(data.date_start ?? '').replace('[GMT]', 'GMT'));
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    private toVirtualContract(record: TransactionRecord): TContractInfo {
+        const currency = this.core?.client?.currency ?? 'USD';
+        const entryTick = record.entryTick ?? record.entryDigit ?? undefined;
+        const exitTick = record.exitTick ?? record.exitDigit ?? undefined;
+        const payout = record.won ? record.stake + record.profit : 0;
+
+        return {
+            contract_id: record.contractId as unknown as number,
+            transaction_ids: {
+                buy: record.transactionId as unknown as number,
+                sell: record.transactionId as unknown as number,
+            },
+            contract_type: record.contractType,
+            underlying: record.symbol,
+            display_name: 'Virtual Hook',
+            currency,
+            date_start: record.settledAt,
+            entry_tick: entryTick,
+            exit_tick: exitTick,
+            buy_price: record.stake,
+            payout,
+            bid_price: payout,
+            profit: record.profit,
+            is_completed: true,
+            is_sold: true,
+            is_virtual: true,
+            run_id: record.runId,
+        } as unknown as TContractInfo;
     }
 
     registerReactions() {

@@ -1,0 +1,227 @@
+import { localize } from '@deriv-com/translations';
+import { api_base } from '../../api/api-base';
+import { doUntilDone, tradeOptionToProposal } from '../utils/helpers';
+import { clearProposals, proposalsReady } from './state/actions';
+
+export default Engine =>
+    class Proposal extends Engine {
+        makeProposals(trade_option) {
+            if (!this.isNewTradeOption(trade_option)) {
+                return;
+            }
+
+            // Generate a purchase reference when trade options are different from previous trade options.
+            // This will ensure the bot doesn't mistakenly purchase the wrong proposal.
+            this.regeneratePurchaseReference();
+            this.trade_option = trade_option;
+            this.proposal_templates = tradeOptionToProposal(trade_option, this.getPurchaseReference());
+            this.renewProposalsOnPurchase();
+        }
+
+        selectProposal(contract_type) {
+            const { proposals } = this.data;
+
+            // eslint-disable-next-line no-console
+            console.log(
+                `[BUY TRACE] selectProposal() CALLED` +
+                ` | contractType=${contract_type}` +
+                ` | proposalsCount=${proposals.length}` +
+                ` | purchaseRef=${this.getPurchaseReference()}`
+            );
+
+            if (proposals.length === 0) {
+                // eslint-disable-next-line no-console
+                console.error('[BUY TRACE] selectProposal() FAILED — proposals array is empty.');
+                throw Error(localize('Proposals are not ready'));
+            }
+
+            // Log every proposal for diagnostics
+            proposals.forEach((p, i) => {
+                // eslint-disable-next-line no-console
+                console.log(
+                    `[BUY TRACE] selectProposal() proposal[${i}]` +
+                    ` | id=${p.id}` +
+                    ` | contract_type=${p.contract_type}` +
+                    ` | purchase_reference=${p.purchase_reference}` +
+                    ` | ask_price=${p.ask_price}` +
+                    ` | hasError=${!!p.error}`
+                );
+            });
+
+            const to_buy = proposals.find(proposal => {
+                if (
+                    proposal.contract_type === contract_type &&
+                    proposal.purchase_reference === this.getPurchaseReference()
+                ) {
+                    // Below happens when a user has had one of the proposals return
+                    // with a ContractBuyValidationError. We allow the logic to continue
+                    // to here cause the opposite proposal may still be valid. Only once
+                    // they attempt to purchase the errored proposal we will intervene.
+                    if (proposal.error) {
+                        throw proposal.error;
+                    }
+
+                    return proposal;
+                }
+
+                return false;
+            });
+
+            if (!to_buy) {
+                // eslint-disable-next-line no-console
+                console.error(
+                    `[BUY TRACE] selectProposal() FAILED — no matching proposal` +
+                    ` | wanted contractType=${contract_type}` +
+                    ` | wanted purchaseRef=${this.getPurchaseReference()}` +
+                    ` | available proposals=${proposals.length}`
+                );
+                throw new Error(localize('Selected proposal does not exist'));
+            }
+
+            // eslint-disable-next-line no-console
+            console.log(
+                `[BUY TRACE] selectProposal() OK` +
+                ` | id=${to_buy.id}` +
+                ` | askPrice=${to_buy.ask_price}`
+            );
+
+            return {
+                id: to_buy.id,
+                askPrice: to_buy.ask_price,
+            };
+        }
+
+        renewProposalsOnPurchase() {
+            this.data.proposals = [];
+            this.store.dispatch(clearProposals());
+            this.requestProposals();
+        }
+
+        requestProposals() {
+            // Since there are two proposals (in most cases), an error may be logged twice, to avoid this
+            // flip this boolean on error.
+            let has_informed_error = false;
+
+            Promise.all(
+                this.proposal_templates.map(proposal => {
+                    // eslint-disable-next-line no-console
+                    console.log('[TRADE][Proposal] Sending proposal request:', JSON.stringify(proposal));
+                    return doUntilDone(() => api_base.api.send(proposal))
+                        .then(response => {
+                            // eslint-disable-next-line no-console
+                            console.log('[TRADE][Proposal] Proposal response:', JSON.stringify(response));
+                            return response;
+                        })
+                        .catch(error => {
+                            console.error(
+                                '[TRADE][Proposal] Proposal request failed',
+                                JSON.stringify({
+                                    request: proposal,
+                                    response: error,
+                                    errorCode: error?.error?.code,
+                                    errorMessage: error?.error?.message,
+                                    errorDetails: error?.error?.details,
+                                })
+                            );
+
+                            // We intercept ContractBuyValidationError as user may have specified
+                            // e.g. a DIGITUNDER 0 or DIGITOVER 9, while one proposal may be invalid
+                            // the other is valid. We will error on Purchase rather than here.
+
+                            if (error?.error?.code === 'ContractBuyValidationError') {
+                                this.data.proposals.push({
+                                    ...error.error.echo_req,
+                                    ...(error?.error?.echo_req?.passthrough ?? {}),
+                                    error,
+                                });
+
+                                return null;
+                            }
+                            if (!has_informed_error) {
+                                has_informed_error = true;
+                                this.$scope.observer.emit('Error', error.error);
+                            }
+                            return null;
+                        });
+                })
+            );
+        }
+
+        observeProposals() {
+            if (!api_base.api) return;
+            const subscription = api_base.api.onMessage().subscribe(response => {
+                if (response.data.msg_type === 'proposal') {
+                    // api.derivws.com may not echo `passthrough` at the top level of the
+                    // response (that is a Deriv v3 WS feature). Fall back to echo_req.passthrough
+                    // so matching still works on both endpoints.
+                    const { passthrough, proposal, echo_req } = response.data;
+                    const passthroughData = passthrough || echo_req?.passthrough || {};
+                    // ── VH ISOLATION ──────────────────────────────────────────
+                    // The Virtual Hook submits its own virtual proposals using a
+                    // dedicated purchase reference (`VH-...`).  Those proposals must
+                    // NEVER enter the real proposal cache — otherwise they could
+                    // interfere with checkProposalReady() matching or be selected
+                    // by selectProposal() for the real trade.  The Virtual Hook
+                    // consumes its own proposal response directly inside
+                    // Purchase._submitVirtualProposal().
+                    const purchase_reference = passthroughData.purchase_reference;
+                    const is_virtual_proposal =
+                        typeof purchase_reference === 'string' &&
+                        purchase_reference.startsWith('VH-');
+                    if (is_virtual_proposal) {
+                        return;
+                    }
+                    if (proposal && this.data.proposals.findIndex(p => p.id === proposal.id) === -1) {
+                        // Add proposals based on the ID returned by the API.
+                        this.data.proposals.push({ ...proposal, ...passthroughData });
+                        this.checkProposalReady();
+                    }
+                }
+            });
+            api_base.pushSubscription(subscription);
+        }
+
+        checkProposalReady() {
+            // Proposals are considered ready when the proposals in our memory match the ones
+            // we've requested from the API, we determine this by checking the passthrough of the response.
+            const { proposals } = this.data;
+
+            if (proposals.length > 0 && this.proposal_templates) {
+                const has_equal_proposals = this.proposal_templates.every(template => {
+                    return (
+                        proposals.findIndex(proposal => {
+                            return (
+                                proposal.purchase_reference === template.passthrough.purchase_reference &&
+                                proposal.contract_type === template.contract_type
+                            );
+                        }) !== -1
+                    );
+                });
+
+                if (has_equal_proposals) {
+                    this.startPromise.then(() => this.store.dispatch(proposalsReady()));
+                }
+            }
+        }
+
+        isNewTradeOption(trade_option) {
+            if (!this.trade_option) {
+                this.trade_option = trade_option;
+                return true;
+            }
+
+            // Compare incoming "trade_option" argument with "this.trade_option", if any
+            // of the values is different, this is a new tradeOption and new proposals
+            // should be generated.
+            return [
+                'amount',
+                'barrierOffset',
+                'basis',
+                'duration',
+                'duration_unit',
+                'prediction',
+                'secondBarrierOffset',
+                'symbol',
+            ].some(value => this.trade_option[value] !== trade_option[value]);
+        }
+    };

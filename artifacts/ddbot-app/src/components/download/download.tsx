@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
-import { downloadFile, getSuccessJournalMessage, TTransaction } from '@/utils/download';
+import { downloadFile, getSuccessJournalMessage } from '@/utils/download';
 import { Localize, localize } from '@deriv-com/translations';
 import Button from '../shared_ui/button';
 import Popover from '../shared_ui/popover';
@@ -13,7 +13,7 @@ const Download = observer(({ tab }: TDownloadProps) => {
     const { run_panel, transactions, journal } = useStore();
     const { is_clear_stat_disabled, is_running } = run_panel;
     const { filtered_messages } = journal;
-    const { transactions: transaction_list } = transactions;
+    const { mixed_transactions: transaction_list } = transactions;
     let disabled = false;
     let clickFunction, popover_message;
 
@@ -33,20 +33,21 @@ const Download = observer(({ tab }: TDownloadProps) => {
                 localize('Profit/Loss'),
             ],
         ];
-        transaction_list.forEach(({ data }: { data: TTransaction }) => {
-            if (typeof data === 'string') return;
+        transaction_list.forEach(row => {
+            const { data } = row;
+            if (typeof data === 'string' || !data) return;
             items.push([
-                data.display_name,
-                data.transaction_ids.buy,
-                data.transaction_ids.sell,
-                data.barrier,
-                data.date_start,
-                data.entry_tick,
-                data.entry_tick_time,
-                data.exit_tick,
-                data.exit_tick_time,
-                data.buy_price,
-                data.profit,
+                String(data.display_name ?? ''),
+                String(data.transaction_ids?.buy ?? ''),
+                String(data.transaction_ids?.sell ?? ''),
+                String(data.barrier ?? ''),
+                String(data.date_start ?? ''),
+                String(data.entry_tick ?? ''),
+                String(data.entry_tick_time ?? ''),
+                String(data.exit_tick ?? ''),
+                String(data.exit_tick_time ?? ''),
+                String(data.buy_price ?? ''),
+                String(data.profit ?? ''),
             ]);
         });
 
@@ -62,9 +63,12 @@ const Download = observer(({ tab }: TDownloadProps) => {
             if (item.message_type !== 'success') {
                 array_message = JSON.stringify(item.message);
             } else {
-                array_message = getSuccessJournalMessage(item.message.toString(), item.extra);
+                array_message = getSuccessJournalMessage(item.message.toString(), {
+                    profit: item.extra.profit == null ? undefined : String(item.extra.profit),
+                    current_currency: item.extra.current_currency,
+                });
             }
-            const arr = [item.date, item.time, array_message?.replace('&#x2F;', '/')];
+            const arr = [item.date ?? '', item.time ?? '', array_message?.replace('&#x2F;', '/') ?? ''];
             items.push(arr);
         });
         const content = items.map(e => e.join(',')).join('\n');
