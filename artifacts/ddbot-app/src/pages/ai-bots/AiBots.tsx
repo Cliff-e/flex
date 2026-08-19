@@ -52,7 +52,11 @@ const STATE_COLORS: Record<string, string> = {
 // ── Virtual Hook persistence (localStorage convention — same as theme) ──
 const VH_ENABLED_KEY = 'ai_bots_vh_enabled';
 const VH_MAX_STEPS_KEY = 'ai_bots_vh_max_steps';
-const VH_MIN_WINS_KEY = 'ai_bots_vh_min_wins';
+const VH_WIN_THRESHOLD_KEY = 'ai_bots_vh_win_threshold';
+const VH_WIN_ENABLED_KEY = 'ai_bots_vh_win_enabled';
+const VH_LOSS_THRESHOLD_KEY = 'ai_bots_vh_loss_threshold';
+const VH_LOSS_ENABLED_KEY = 'ai_bots_vh_loss_enabled';
+const VH_STEPS_ENABLED_KEY = 'ai_bots_vh_steps_enabled';
 const VH_VIRTUAL_STAKE_KEY = 'ai_bots_vh_virtual_stake';
 
 function readStoredBoolean(key: string, fallback: boolean): boolean {
@@ -229,7 +233,11 @@ const AiBots: React.FC = () => {
     // Virtual Hook — pre-start settings persisted in localStorage (page convention)
     const [vhEnabled, setVhEnabled] = useState(() => readStoredBoolean(VH_ENABLED_KEY, false));
     const [vhMaxSteps, setVhMaxSteps] = useState(() => readStoredNumber(VH_MAX_STEPS_KEY, 5));
-    const [vhMinWins, setVhMinWins] = useState(() => readStoredNumber(VH_MIN_WINS_KEY, 3));
+    const [vhWinThreshold, setVhWinThreshold] = useState(() => readStoredNumber(VH_WIN_THRESHOLD_KEY, 3));
+    const [vhWinEnabled, setVhWinEnabled] = useState(() => readStoredBoolean(VH_WIN_ENABLED_KEY, true));
+    const [vhLossThreshold, setVhLossThreshold] = useState(() => readStoredNumber(VH_LOSS_THRESHOLD_KEY, 3));
+    const [vhLossEnabled, setVhLossEnabled] = useState(() => readStoredBoolean(VH_LOSS_ENABLED_KEY, false));
+    const [vhStepsEnabled, setVhStepsEnabled] = useState(() => readStoredBoolean(VH_STEPS_ENABLED_KEY, true));
     const [vhVirtualStake, setVhVirtualStake] = useState(() => readStoredNumber(VH_VIRTUAL_STAKE_KEY, 1));
     const [vhSettingsOpen, setVhSettingsOpen] = useState(false);
 
@@ -265,8 +273,20 @@ const AiBots: React.FC = () => {
         localStorage.setItem(VH_MAX_STEPS_KEY, String(vhMaxSteps));
     }, [vhMaxSteps]);
     useEffect(() => {
-        localStorage.setItem(VH_MIN_WINS_KEY, String(vhMinWins));
-    }, [vhMinWins]);
+        localStorage.setItem(VH_WIN_THRESHOLD_KEY, String(vhWinThreshold));
+    }, [vhWinThreshold]);
+    useEffect(() => {
+        localStorage.setItem(VH_WIN_ENABLED_KEY, String(vhWinEnabled));
+    }, [vhWinEnabled]);
+    useEffect(() => {
+        localStorage.setItem(VH_LOSS_THRESHOLD_KEY, String(vhLossThreshold));
+    }, [vhLossThreshold]);
+    useEffect(() => {
+        localStorage.setItem(VH_LOSS_ENABLED_KEY, String(vhLossEnabled));
+    }, [vhLossEnabled]);
+    useEffect(() => {
+        localStorage.setItem(VH_STEPS_ENABLED_KEY, String(vhStepsEnabled));
+    }, [vhStepsEnabled]);
     useEffect(() => {
         localStorage.setItem(VH_VIRTUAL_STAKE_KEY, String(vhVirtualStake));
     }, [vhVirtualStake]);
@@ -337,7 +357,16 @@ const AiBots: React.FC = () => {
             stopLoss,
             ...(strategy === 'DIFFER' && differSubStrat === 'MANUAL' ? { differDigits } : {}),
             vhConfig: vhEnabled
-                ? { enabled: true, maxSteps: vhMaxSteps, minWins: vhMinWins, virtualStake: vhVirtualStake }
+                ? {
+                    enabled: true,
+                    winThreshold: vhWinThreshold,
+                    winThresholdEnabled: vhWinEnabled,
+                    lossThreshold: vhLossThreshold,
+                    lossThresholdEnabled: vhLossEnabled,
+                    maxSteps: vhMaxSteps,
+                    maxStepsEnabled: vhStepsEnabled,
+                    virtualStake: vhVirtualStake,
+                }
                 : { enabled: false },
         };
 
@@ -357,7 +386,7 @@ const AiBots: React.FC = () => {
         } catch {
             // errors surface via logs
         }
-    }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss, store, vhEnabled, vhMaxSteps, vhMinWins, vhVirtualStake]);
+    }, [isRunning, token, strategy, differSubStrat, differDigits, symbol, stake, martingaleMultiplier, targetProfit, stopLoss, store, vhEnabled, vhWinThreshold, vhWinEnabled, vhLossThreshold, vhLossEnabled, vhMaxSteps, vhStepsEnabled, vhVirtualStake]);
 
     /**
      * Live Virtual Hook ON/OFF toggle.
@@ -391,7 +420,11 @@ const AiBots: React.FC = () => {
     const handleVhSettingsApply = useCallback(
         (next: VHSettingsValues) => {
             setVhMaxSteps(next.maxSteps);
-            setVhMinWins(next.minWins);
+            setVhWinThreshold(next.winThreshold);
+            setVhWinEnabled(next.winThresholdEnabled);
+            setVhLossThreshold(next.lossThreshold);
+            setVhLossEnabled(next.lossThresholdEnabled);
+            setVhStepsEnabled(next.maxStepsEnabled);
             setVhVirtualStake(next.virtualStake);
 
             const engine = engineRef.current;
@@ -832,7 +865,11 @@ const AiBots: React.FC = () => {
                 values={{
                     enabled: status.vhEnabled || (!engineRef.current && vhEnabled),
                     maxSteps: vhMaxSteps,
-                    minWins: vhMinWins,
+                    winThreshold: vhWinThreshold,
+                    winThresholdEnabled: vhWinEnabled,
+                    lossThreshold: vhLossThreshold,
+                    lossThresholdEnabled: vhLossEnabled,
+                    maxStepsEnabled: vhStepsEnabled,
                     virtualStake: vhVirtualStake,
                 }}
                 numbers_disabled={isRunning}

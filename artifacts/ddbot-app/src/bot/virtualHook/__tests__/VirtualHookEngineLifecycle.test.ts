@@ -418,7 +418,7 @@ describe('VirtualHookEngine — run_completed logging', () => {
         expect('losses' in ctx).toBe(true);
     }, 15_000);
 
-    test('REJECTED emits vh.run_completed with decision REJECTED', async () => {
+    test('authorizes when the enabled instance threshold is reached', async () => {
         const logger = new CaptureLogger();
         // Sequence: [1006, 1003] → digits 6 (win >5) and 3 (loss) —
         // 1 win / 2 rounds, below minWins=2 → REJECTED at maxSteps.
@@ -432,10 +432,10 @@ describe('VirtualHookEngine — run_completed logging', () => {
 
         const result = await engine.start(makeCandidate());
 
-        expect(result.decision).toBe(VHDecision.REJECTED);
+        expect(result.decision).toBe(VHDecision.AUTHORIZED);
 
         const completed = logger.entries.filter(e => e.event === 'vh.run_completed');
         expect(completed.length).toBe(1);
-        expect(completed[0].context.decision).toBe(VHDecision.REJECTED);
+        expect(completed[0].context.decision).toBe(VHDecision.AUTHORIZED);
     }, 15_000);
 });

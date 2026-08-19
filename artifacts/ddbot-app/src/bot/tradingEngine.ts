@@ -278,8 +278,8 @@ export class TradingEngine {
         this._disposeVHEngine();
         // Initialize VH config from TradingConfig overrides (always safe —
         // DEFAULT_VH_CONFIG.enabled === false so the gate is inert by default).
-        // resolveVHConfig validates and clamps the merged values, rejecting
-        // impossible combinations (minWins > maxSteps) early.
+        // resolveVHConfig validates and clamps the merged values. Each VH
+        // authorization control is independent; zero thresholds are disabled.
         this._vhConfig = resolveVHConfig(this.config.vhConfig ?? {});
         // Initialize the runtime VH mode flag from the session config.
         this._vhActive = this._vhConfig.enabled;
@@ -299,7 +299,7 @@ export class TradingEngine {
         this.log('🤖 Bot starting — virtual monitoring active');
         if (this._vhConfig.enabled) {
             this.log(
-                `🛡 Virtual Hook enabled — maxSteps=${this._vhConfig.maxSteps} minWins=${this._vhConfig.minWins} virtualStake=${this._vhConfig.virtualStake}`
+                `🛡 Virtual Hook enabled — wins=${this._vhConfig.winThreshold}(${this._vhConfig.winThresholdEnabled ? 'on' : 'off'}) losses=${this._vhConfig.lossThreshold}(${this._vhConfig.lossThresholdEnabled ? 'on' : 'off'}) steps=${this._vhConfig.maxSteps}(${this._vhConfig.maxStepsEnabled ? 'on' : 'off'}) virtualStake=${this._vhConfig.virtualStake}`
             );
         }
         const mult = this.config.martingaleMultiplier;
@@ -946,7 +946,7 @@ export class TradingEngine {
      * VirtualHookEngine.start(). Clears the runtime mode flag so the
      * NEXT new signal latches `enteredWhileVH: false` and uses the
      * existing real pipeline unchanged. The discarded signal itself
-     * never buys. minWins/policy semantics are untouched — the VH
+     * never buys. Policy counters are untouched — the VH
      * engine is merely disabled, never reconfigured.
      */
     private _deactivateVHRuntime(): void {

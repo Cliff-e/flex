@@ -45,28 +45,41 @@ window.Blockly.Blocks.trade_definition_market = {
                     name: 'VH_SETTINGS_BTN',
                 },
             ],
-            message2: localize('Max Steps {{ num }}', { num: '%1' }),
+            message2: localize('Max Wins {{ enabled }} {{ num }}', { enabled: '%1', num: '%2' }),
             args2: [
+                { type: 'field_checkbox', name: 'VH_WIN_ENABLED', checked: true },
+                {
+                    type: 'field_number',
+                    name: 'VH_WIN_THRESHOLD',
+                    value: 3,
+                    min: 0,
+                    precision: 1,
+                },
+            ],
+            message3: localize('Max Losses {{ enabled }} {{ num }}', { enabled: '%1', num: '%2' }),
+            args3: [
+                { type: 'field_checkbox', name: 'VH_LOSS_ENABLED', checked: false },
+                {
+                    type: 'field_number',
+                    name: 'VH_LOSS_THRESHOLD',
+                    value: 3,
+                    min: 0,
+                    precision: 1,
+                },
+            ],
+            message4: localize('Max VH Instances / Steps {{ enabled }} {{ num }}', { enabled: '%1', num: '%2' }),
+            args4: [
+                { type: 'field_checkbox', name: 'VH_STEPS_ENABLED', checked: true },
                 {
                     type: 'field_number',
                     name: 'VH_VIRTUAL_TRADES',
                     value: 5,
-                    min: 1,
+                    min: 0,
                     precision: 1,
                 },
             ],
-            message3: localize('Min Wins Required {{ num }}', { num: '%1' }),
-            args3: [
-                {
-                    type: 'field_number',
-                    name: 'VH_REAL_WINS',
-                    value: 3,
-                    min: 1,
-                    precision: 1,
-                },
-            ],
-            message4: localize('Virtual Stake {{ num }}', { num: '%1' }),
-            args4: [
+            message5: localize('Virtual Stake {{ num }}', { num: '%1' }),
+            args5: [
                 {
                     type: 'field_number',
                     name: 'VH_STAKE',
@@ -89,8 +102,12 @@ window.Blockly.Blocks.trade_definition_market = {
         // mutationToDom/domToMutation and code generation keep working),
         // but they are hidden from the block UI — editing happens in the
         // bundled VH Settings modal opened by the button field above.
+        this.getField('VH_WIN_THRESHOLD')?.setVisible(false);
+        this.getField('VH_WIN_ENABLED')?.setVisible(false);
+        this.getField('VH_LOSS_THRESHOLD')?.setVisible(false);
+        this.getField('VH_LOSS_ENABLED')?.setVisible(false);
         this.getField('VH_VIRTUAL_TRADES')?.setVisible(false);
-        this.getField('VH_REAL_WINS')?.setVisible(false);
+        this.getField('VH_STEPS_ENABLED')?.setVisible(false);
         this.getField('VH_STAKE')?.setVisible(false);
     },
     /**
@@ -99,21 +116,25 @@ window.Blockly.Blocks.trade_definition_market = {
      * bots that were saved with VH settings, and ensures all four VH attributes
      * are persisted even if Blockly's standard field serialization changes.
      *
-     * Saved attributes: vh_enabled, vh_max_steps, vh_min_wins, vh_stake
+     * Saved attributes: vh_enabled, vh_win_threshold, vh_win_enabled,
+     * vh_loss_threshold, vh_loss_enabled, vh_max_steps, vh_steps_enabled,
+     * vh_stake
      */
     mutationToDom() {
         const container = document.createElement('mutation');
         container.setAttribute('vh_enabled',   this.getFieldValue('VH_ENABLED') ?? 'FALSE');
+        container.setAttribute('vh_win_threshold', this.getFieldValue('VH_WIN_THRESHOLD') ?? '3');
+        container.setAttribute('vh_win_enabled', this.getFieldValue('VH_WIN_ENABLED') ?? 'TRUE');
+        container.setAttribute('vh_loss_threshold', this.getFieldValue('VH_LOSS_THRESHOLD') ?? '3');
+        container.setAttribute('vh_loss_enabled', this.getFieldValue('VH_LOSS_ENABLED') ?? 'FALSE');
         container.setAttribute('vh_max_steps', this.getFieldValue('VH_VIRTUAL_TRADES') ?? '5');
-        container.setAttribute('vh_min_wins',  this.getFieldValue('VH_REAL_WINS') ?? '3');
+        container.setAttribute('vh_steps_enabled', this.getFieldValue('VH_STEPS_ENABLED') ?? 'TRUE');
         container.setAttribute('vh_stake',     this.getFieldValue('VH_STAKE') ?? '1');
         return container;
     },
     /**
      * Restore Virtual Hook settings from a <mutation> XML element.
-     * Handles both new XML (vh_max_steps / vh_min_wins) and any legacy XML that
-     * stored these values under older attribute names — silently ignoring any
-     * unrecognised attributes so old bots never fail to load.
+     * Older XML used vh_min_wins; that value is migrated to the win threshold.
      */
     domToMutation(xmlElement) {
         const getBool = attr =>
@@ -124,13 +145,21 @@ window.Blockly.Blocks.trade_definition_market = {
         };
 
         const enabled   = getBool('vh_enabled');
+        const win_threshold = getNum('vh_win_threshold', getNum('vh_min_wins', '3'));
+        const win_enabled = getBool('vh_win_enabled');
+        const loss_threshold = getNum('vh_loss_threshold', '3');
+        const loss_enabled = getBool('vh_loss_enabled');
         const max_steps = getNum('vh_max_steps', '5');
-        const min_wins  = getNum('vh_min_wins',  '3');
+        const steps_enabled = getBool('vh_steps_enabled');
         const stake     = getNum('vh_stake',     '1');
 
         this.getField('VH_ENABLED')?.setValue(enabled);
+        this.getField('VH_WIN_THRESHOLD')?.setValue(win_threshold);
+        this.getField('VH_WIN_ENABLED')?.setValue(win_enabled);
+        this.getField('VH_LOSS_THRESHOLD')?.setValue(loss_threshold);
+        this.getField('VH_LOSS_ENABLED')?.setValue(loss_enabled);
         this.getField('VH_VIRTUAL_TRADES')?.setValue(max_steps);
-        this.getField('VH_REAL_WINS')?.setValue(min_wins);
+        this.getField('VH_STEPS_ENABLED')?.setValue(steps_enabled);
         this.getField('VH_STAKE')?.setValue(stake);
     },
     customContextMenu(menu) {

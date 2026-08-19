@@ -190,12 +190,15 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
 
     // Virtual Hook configuration — read from the Market block where the VH fields live.
     // Falls back gracefully when the market block predates VH (old bots).
-    // VH_VIRTUAL_TRADES → vh_max_steps (max virtual observations per signal)
-    // VH_REAL_WINS      → vh_min_wins  (min wins required to permit a real trade)
+    // VH_* fields are read from the Market block where the VH settings live.
     // VH_STAKE          → vh_stake     (virtual stake — display only, never affects real trades)
     const vh_enabled   = market_block ? market_block.getFieldValue('VH_ENABLED') === 'TRUE' : false;
-    const vh_max_steps = market_block ? parseInt(market_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 5 : 5;
-    const vh_min_wins  = market_block ? parseInt(market_block.getFieldValue('VH_REAL_WINS'), 10) || 3 : 3;
+    const vh_win_threshold = market_block ? parseInt(market_block.getFieldValue('VH_WIN_THRESHOLD'), 10) || 0 : 3;
+    const vh_win_enabled = market_block ? market_block.getFieldValue('VH_WIN_ENABLED') === 'TRUE' : true;
+    const vh_loss_threshold = market_block ? parseInt(market_block.getFieldValue('VH_LOSS_THRESHOLD'), 10) || 0 : 3;
+    const vh_loss_enabled = market_block ? market_block.getFieldValue('VH_LOSS_ENABLED') === 'TRUE' : false;
+    const vh_max_steps = market_block ? parseInt(market_block.getFieldValue('VH_VIRTUAL_TRADES'), 10) || 0 : 5;
+    const vh_steps_enabled = market_block ? market_block.getFieldValue('VH_STEPS_ENABLED') === 'TRUE' : true;
     const vh_stake     = market_block ? parseFloat(market_block.getFieldValue('VH_STAKE')) || 1.0 : 1.0;
 
     const initialization = window.Blockly.JavaScript.javascriptGenerator.statementToCode(block, 'INITIALIZATION');
@@ -210,7 +213,7 @@ window.Blockly.JavaScript.javascriptGenerator.forBlock.trade_definition = block 
           shouldRestartOnError: ${should_restart_on_error},
           timeMachineEnabled  : ${should_restart_on_buy_sell},
         });
-        Bot.setVirtualHookSettings(${vh_max_steps}, ${vh_min_wins}, ${vh_stake});
+        Bot.setVirtualHookSettings(${vh_win_threshold}, ${vh_win_enabled}, ${vh_loss_threshold}, ${vh_loss_enabled}, ${vh_max_steps}, ${vh_steps_enabled}, ${vh_stake});
         Bot.setVirtualHookEnabled(${vh_enabled});
         ${initialization.trim()}
     };

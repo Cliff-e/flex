@@ -1,12 +1,3 @@
-// =============================================================
-// VHConfig Tests — Phase 8 configuration hardening
-//
-// Proves:
-//   • resolveVHConfig normalizes (clamps) invalid values.
-//   • validateVHConfig rejects impossible configurations.
-//   • Partial configuration preserves previously-set fields.
-// =============================================================
-
 import {
     DEFAULT_VH_CONFIG,
     DERIV_MINIMUM_STAKE,
@@ -14,68 +5,57 @@ import {
     validateVHConfig,
 } from '../VHConfig';
 
-describe('VHConfig — resolveVHConfig normalization', () => {
-    test('returns defaults when no overrides provided', () => {
+describe('VHConfig', () => {
+    test('returns defaults when no overrides are provided', () => {
         expect(resolveVHConfig()).toEqual(DEFAULT_VH_CONFIG);
     });
 
-    test('merges partial overrides onto defaults', () => {
-        const config = resolveVHConfig({ maxSteps: 7, minWins: 4 });
-        expect(config.maxSteps).toBe(7);
-        expect(config.minWins).toBe(4);
-        // Untouched fields keep defaults.
-        expect(config.enabled).toBe(false);
-        expect(config.virtualStake).toBe(DEFAULT_VH_CONFIG.virtualStake);
+    test('merges all three independent controls', () => {
+        const config = resolveVHConfig({
+            winThreshold: 7,
+            winThresholdEnabled: false,
+            lossThreshold: 4,
+            lossThresholdEnabled: true,
+            maxSteps: 9,
+            maxStepsEnabled: false,
+        });
+
+        expect(config.winThreshold).toBe(7);
+        expect(config.winThresholdEnabled).toBe(false);
+        expect(config.lossThreshold).toBe(4);
+        expect(config.lossThresholdEnabled).toBe(true);
+        expect(config.maxSteps).toBe(9);
+        expect(config.maxStepsEnabled).toBe(false);
     });
 
-    test('clamps maxSteps below 1 to 1', () => {
-        expect(resolveVHConfig({ maxSteps: 0 }).maxSteps).toBe(1);
-        expect(resolveVHConfig({ maxSteps: -5 }).maxSteps).toBe(1);
+    test('zero thresholds remain zero and are valid disabled conditions', () => {
+        const config = resolveVHConfig({
+            winThreshold: 0,
+            lossThreshold: 0,
+            maxSteps: 0,
+        });
+
+        expect(config.winThreshold).toBe(0);
+        expect(config.lossThreshold).toBe(0);
+        expect(config.maxSteps).toBe(0);
+        expect(() => validateVHConfig(config)).not.toThrow();
     });
 
-    test('clamps minWins below 1 to 1', () => {
-        expect(resolveVHConfig({ minWins: 0 }).minWins).toBe(1);
-        expect(resolveVHConfig({ minWins: -3 }).minWins).toBe(1);
+    test('legacy minWins is migrated to winThreshold at the boundary', () => {
+        const config = resolveVHConfig({ minWins: 4 });
+        expect(config.winThreshold).toBe(4);
     });
 
-    test('clamps virtualStake below Deriv minimum', () => {
-        expect(resolveVHConfig({ virtualStake: 0.1 }).virtualStake).toBe(DERIV_MINIMUM_STAKE);
-    });
-
-    test('clamps negative retry counts to 0', () => {
-        expect(resolveVHConfig({ maxProposalRetries: -1 }).maxProposalRetries).toBe(0);
-        expect(resolveVHConfig({ maxConsecutiveFailures: -2 }).maxConsecutiveFailures).toBe(0);
-        expect(resolveVHConfig({ aiMaxRetries: -3 }).aiMaxRetries).toBe(0);
-    });
-
-    test('clamps non-positive timeouts to 1ms', () => {
-        expect(resolveVHConfig({ proposalTimeoutMs: 0 }).proposalTimeoutMs).toBe(1);
-        expect(resolveVHConfig({ settlementTimeoutMs: -100 }).settlementTimeoutMs).toBe(1);
-    });
-});
-
-describe('VHConfig — validateVHConfig rejection', () => {
-    test('rejects minWins > maxSteps', () => {
-        expect(() => resolveVHConfig({ maxSteps: 3, minWins: 5 })).toThrow(RangeError);
-        expect(() => resolveVHConfig({ maxSteps: 3, minWins: 5 })).toThrow(/minWins.*maxSteps/);
-    });
-
-    test('rejects non-positive maxSteps', () => {
-        const invalid = { ...DEFAULT_VH_CONFIG, maxSteps: 0 };
-        expect(() => validateVHConfig(invalid)).toThrow(RangeError);
-    });
-
-    test('rejects non-positive minWins', () => {
-        const invalid = { ...DEFAULT_VH_CONFIG, minWins: 0 };
-        expect(() => validateVHConfig(invalid)).toThrow(RangeError);
-    });
-
-    test('rejects virtualStake below Deriv minimum', () => {
-        const invalid = { ...DEFAULT_VH_CONFIG, virtualStake: 0.1 };
-        expect(() => validateVHConfig(invalid)).toThrow(RangeError);
-    });
-
-    test('accepts a full valid config', () => {
-        expect(() => validateVHConfig({ ...DEFAULT_VH_CONFIG })).not.toThrow();
+    test('clamps virtual stake and retry values safely', () => {
+        const config = resolveVHConfig({
+            virtualStake: 0.1,
+            maxProposalRetries: -1,
+            maxConsecutiveFailures: -2,
+            aiMaxRetries: -3,
+        });
+        expect(config.virtualStake).toBe(DERIV_MINIMUM_STAKE);
+        expect(config.maxProposalRetries).toBe(0);
+        expect(config.maxConsecutiveFailures).toBe(0);
+        expect(config.aiMaxRetries).toBe(0);
     });
 });

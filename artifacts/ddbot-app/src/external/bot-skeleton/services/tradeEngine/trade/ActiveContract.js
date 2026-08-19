@@ -261,8 +261,8 @@ export default Engine =>
          * purchase itself is DISCARDED (zero real buys); this method only
          * clears the runtime mode so the NEXT new purchase enters
          * unlatched and uses the existing real pipeline unchanged.
-         * minWins/policy semantics are untouched — the engine is merely
-         * disabled, never reconfigured.
+         * Policy counters are untouched — the engine is merely disabled,
+         * never reconfigured.
          */
         deactivateVirtualHookRuntime() {
             this._vhRuntimeActive = false;
@@ -276,19 +276,31 @@ export default Engine =>
          * Called by Bot.setVirtualHookSettings() from the Trade Parameters block
          * and the Virtual Hook Settings Blockly block.
          *
-         * @param {number} maxSteps  Maximum virtual observations per signal (default 5).
-         * @param {number} minWins   Minimum wins required to permit a real trade (default 3).
+         * @param {number} winThreshold    Consecutive wins threshold.
+         * @param {boolean} winEnabled     Whether the win threshold is enabled.
+         * @param {number} lossThreshold   Consecutive losses threshold.
+         * @param {boolean} lossEnabled    Whether the loss threshold is enabled.
+         * @param {number} maxSteps        Completed VH instances threshold.
+         * @param {boolean} stepsEnabled    Whether the instance threshold is enabled.
          * @param {number} [stake]   Virtual stake — display only, never affects real trades.
          */
-        setVirtualHookSettings(maxSteps, minWins, stake) {
+        setVirtualHookSettings(
+            winThreshold,
+            winEnabled,
+            lossThreshold,
+            lossEnabled,
+            maxSteps,
+            stepsEnabled,
+            stake
+        ) {
             const overrides = {
-                maxSteps: Math.max(1, Number(maxSteps) || 5),
-                minWins: Math.max(1, Number(minWins) || 3),
+                winThreshold: Math.max(0, Number(winThreshold) || 0),
+                winThresholdEnabled: winEnabled !== false,
+                lossThreshold: Math.max(0, Number(lossThreshold) || 0),
+                lossThresholdEnabled: lossEnabled === true,
+                maxSteps: Math.max(0, Number(maxSteps) || 0),
+                maxStepsEnabled: stepsEnabled !== false,
             };
-            // minWins can never exceed maxSteps — clamp so the engine
-            // never receives an impossible configuration (resolveVHConfig
-            // would otherwise reject it and break the block runtime).
-            overrides.minWins = Math.min(overrides.minWins, overrides.maxSteps);
             if (stake !== undefined && stake !== null) {
                 // Clamp to the Deriv minimum so virtualStake is always valid.
                 overrides.virtualStake = Math.max(Number(stake) || 1.0, 0.35);

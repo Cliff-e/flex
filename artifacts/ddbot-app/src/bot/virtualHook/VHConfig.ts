@@ -142,10 +142,7 @@ export function validateVHConfig(config: VHConfig): void {
  * Always produces a complete, valid VHConfig object.
  */
 export function resolveVHConfig(overrides?: Partial<VHConfig>): VHConfig {
-    const legacyWinThreshold =
-        overrides?.winThreshold === undefined && overrides?.minWins !== undefined
-            ? overrides.minWins
-            : undefined;
+    const legacyWinThreshold = overrides?.minWins !== undefined ? overrides.minWins : undefined;
     const merged: VHConfig = {
         ...DEFAULT_VH_CONFIG,
         ...overrides,

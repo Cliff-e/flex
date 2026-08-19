@@ -90,6 +90,28 @@ class FakeTickObserver implements TickObserver {
     }
 }
 
+/** Emits an entry tick, then deliberately provides no exit event. */
+class EntryOnlyTickObserver implements TickObserver {
+    private active = false;
+    private starts = 0;
+
+    async start(_symbol: string, onTick: (tick: VHTick) => void): Promise<void> {
+        this.active = true;
+        this.starts++;
+        if (this.starts === 1) {
+            onTick({ quote: 1006, epoch: 1_700_000_000, digit: 6 });
+        }
+    }
+
+    async stop(): Promise<void> {
+        this.active = false;
+    }
+
+    isActive(): boolean {
+        return this.active;
+    }
+}
+
 /**
  * Test transaction pipeline that captures processed contracts.
  */
@@ -191,7 +213,7 @@ describe('VirtualHookEngine', () => {
         expect(transitions[0].context.currentState).toBeDefined();
     }, 15_000);
 
-    test('REJECTED when max steps exhausted without enough wins', async () => {
+    test('AUTHORIZES when the enabled instance threshold is reached', async () => {
         // Sequence: digits [4, 3, 2] — all LOSERS for DIGITOVER > 5.
         const adapter = new FakeProposalAdapter();
         const ticks = new FakeTickObserver([1004, 1003, 1002]);
@@ -200,7 +222,9 @@ describe('VirtualHookEngine', () => {
 
         const engine = new VirtualHookEngine(adapter, ticks, pipeline, logger, {
             maxSteps: 3,
-            minWins: 2,
+            maxStepsEnabled: true,
+            winThresholdEnabled: false,
+            lossThresholdEnabled: false,
             virtualStake: 1,
             enabled: true,
             settlementTimeoutMs: 5_000,
@@ -208,7 +232,7 @@ describe('VirtualHookEngine', () => {
 
         const result = await engine.start(makeCandidate());
 
-        expect(result.decision).toBe(VHDecision.REJECTED);
+        expect(result.decision).toBe(VHDecision.AUTHORIZED);
         expect(result.roundsCompleted).toBe(3);
     }, 15_000);
 
@@ -255,6 +279,32 @@ describe('VirtualHookEngine', () => {
         expect(result.decision).toBe(VHDecision.AUTHORIZED);
         // 2 successful proposals + 2 failed initial attempts.
         expect(adapter.calls).toBe(4);
+    }, 15_000);
+
+    test('Missing exit tick is a technical failure, not a settled loss', async () => {
+        const pipeline = new FakeTransactionPipeline();
+        const engine = new VirtualHookEngine(
+            new FakeProposalAdapter(),
+            new EntryOnlyTickObserver(),
+            pipeline,
+            new TestLogger(),
+            {
+                enabled: true,
+                winThresholdEnabled: false,
+                lossThresholdEnabled: false,
+                maxStepsEnabled: false,
+                maxConsecutiveFailures: 1,
+                settlementTimeoutMs: 10,
+            }
+        );
+
+        const result = await engine.start(makeCandidate());
+
+        expect(result.decision).toBe(VHDecision.STOPPED);
+        expect(result.roundsCompleted).toBe(0);
+        expect(result.wins).toBe(0);
+        expect(result.losses).toBe(0);
+        expect(pipeline.processed).toHaveLength(0);
     }, 15_000);
 
     test('Busy engine rejects a second start() call', async () => {

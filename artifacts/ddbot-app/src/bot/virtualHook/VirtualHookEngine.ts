@@ -210,6 +210,8 @@ export class VirtualHookEngine {
         lossThresholdEnabled: boolean;
         maxSteps: number;
         maxStepsEnabled: boolean;
+        /** @deprecated Use winThreshold. */
+        minWins: number;
     } {
         return {
             active: this._busy,
@@ -225,6 +227,7 @@ export class VirtualHookEngine {
             lossThresholdEnabled: this._config.lossThresholdEnabled,
             maxSteps: this._config.maxSteps,
             maxStepsEnabled: this._config.maxStepsEnabled,
+            minWins: this._config.winThreshold,
         };
     }
 
@@ -649,7 +652,7 @@ export class VirtualHookEngine {
         // ── WAIT_FOR_EXIT / ACTIVE ─────────────────────────────────
         let exitTick: VHTick | null;
         try {
-            exitTick = await this._waitForExitTick(candidate, entryTick);
+            exitTick = await this._waitForExitTick(candidate);
         } catch (err) {
             // VHAbortError — the round was aborted/disposed before a genuine
             // exit tick arrived. Rethrow so the run terminates STOPPED with NO
@@ -795,8 +798,8 @@ export class VirtualHookEngine {
      * and returns the last observed. For other units: waits the
      * time duration and returns the last observed tick.
      */
-    private async _waitForExitTick(candidate: TradeCandidate, entryTick: VHTick): Promise<VHTick> {
-        let lastTick = entryTick;
+    private async _waitForExitTick(candidate: TradeCandidate): Promise<VHTick> {
+        let lastTick: VHTick | null = null;
 
         const onTick = (tick: VHTick) => {
             lastTick = tick;
@@ -822,7 +825,7 @@ export class VirtualHookEngine {
             while (Date.now() - startTime < tickBudgetMs) {
                 await this._sleep(100);
             }
-            return this._finalizeExitTick(entryTick, lastTick);
+            return this._finalizeExitTick(lastTick);
         }
 
         const waitMs = Math.min(
@@ -830,20 +833,26 @@ export class VirtualHookEngine {
             Math.max(1, this._durationToMs(candidate.duration, candidate.durationUnit))
         );
         await this._sleep(waitMs);
-        return this._finalizeExitTick(entryTick, lastTick);
+        return this._finalizeExitTick(lastTick);
     }
 
     /**
-     * Verify the observed exit tick is a GENUINE exit tick before returning it.
+     * Verify the observed exit tick is a GENUINE exit event before returning it.
      *
-     * When an abort/dispose was requested AND no tick newer than the entry tick
-     * was observed, the round must NOT settle using the entry tick as an exit.
-     * Throwing VHAbortError terminates the round without settlement (STOPPED).
+     * A callback received after the exit observer starts is the only accepted
+     * exit source. If no callback arrived, the round must not settle using the
+     * entry tick or any synthetic fallback.
      */
-    private _finalizeExitTick(entryTick: VHTick, lastTick: VHTick): VHTick {
-        if (this._runAbortRequested && lastTick.epoch <= entryTick.epoch) {
-            throw new VHAbortError(
-                'VH round aborted before a genuine exit tick arrived — no settlement recorded.'
+    private _finalizeExitTick(lastTick: VHTick | null): VHTick {
+        if (!lastTick) {
+            if (this._runAbortRequested) {
+                throw new VHAbortError(
+                    'VH round aborted before a genuine exit tick arrived — no settlement recorded.'
+                );
+            }
+            throw new SettlementTimeoutError(
+                'exit',
+                this._config.settlementTimeoutMs
             );
         }
         return lastTick;

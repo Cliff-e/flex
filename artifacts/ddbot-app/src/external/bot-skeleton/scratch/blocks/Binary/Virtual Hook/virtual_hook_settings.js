@@ -4,12 +4,7 @@ import { modifyContextMenu } from '../../../utils';
 /**
  * Virtual Hook (Settings) block.
  *
- * Configures how many virtual (simulated) trades run before live trading
- * begins, and how many consecutive real wins cause the virtual sequence
- * to reset and run again.
- *
- * Internal field names (VIRTUAL_TRADES / REAL_WINS) are preserved so that
- * existing saved bots and XML imports continue to work without modification.
+     * Configures the three independent VH authorization conditions.
  */
 window.Blockly.Blocks.virtual_hook_settings = {
     init() {
@@ -19,19 +14,30 @@ window.Blockly.Blocks.virtual_hook_settings = {
         return {
             message0: localize('set Virtual Hook Settings'),
             args0: [],
-            message1: localize('No. of Virtual losses %1'),
+            message1: localize('Max wins enabled %1 threshold %2'),
             args1: [
+                { type: 'field_checkbox', name: 'WIN_ENABLED', checked: true },
                 {
                     type: 'input_value',
-                    name: 'VIRTUAL_TRADES',
+                    name: 'WIN_THRESHOLD',
                     check: 'Number',
                 },
             ],
-            message2: localize('No. of Wins on Real Trades %1'),
+            message2: localize('Max losses enabled %1 threshold %2'),
             args2: [
+                { type: 'field_checkbox', name: 'LOSS_ENABLED', checked: false },
                 {
                     type: 'input_value',
-                    name: 'REAL_WINS',
+                    name: 'LOSS_THRESHOLD',
+                    check: 'Number',
+                },
+            ],
+            message3: localize('Max VH instances enabled %1 threshold %2'),
+            args3: [
+                { type: 'field_checkbox', name: 'STEPS_ENABLED', checked: true },
+                {
+                    type: 'input_value',
+                    name: 'MAX_STEPS',
                     check: 'Number',
                 },
             ],
@@ -61,17 +67,26 @@ window.Blockly.Blocks.virtual_hook_settings = {
 };
 
 window.Blockly.JavaScript.javascriptGenerator.forBlock.virtual_hook_settings = block => {
-    const virtual_trades =
+            const win_threshold =
         window.Blockly.JavaScript.javascriptGenerator.valueToCode(
             block,
-            'VIRTUAL_TRADES',
+                    'WIN_THRESHOLD',
             window.Blockly.JavaScript.javascriptGenerator.ORDER_ATOMIC
-        ) || '21';
-    const real_wins =
+                ) || '3';
+            const loss_threshold =
         window.Blockly.JavaScript.javascriptGenerator.valueToCode(
             block,
-            'REAL_WINS',
+                    'LOSS_THRESHOLD',
             window.Blockly.JavaScript.javascriptGenerator.ORDER_ATOMIC
-        ) || '1';
-    return `Bot.setVirtualHookSettings(${virtual_trades}, ${real_wins});\n`;
+                ) || '3';
+            const max_steps =
+                window.Blockly.JavaScript.javascriptGenerator.valueToCode(
+                    block,
+                    'MAX_STEPS',
+                    window.Blockly.JavaScript.javascriptGenerator.ORDER_ATOMIC
+                ) || '5';
+            const win_enabled = block.getFieldValue('WIN_ENABLED') === 'TRUE';
+            const loss_enabled = block.getFieldValue('LOSS_ENABLED') === 'TRUE';
+            const steps_enabled = block.getFieldValue('STEPS_ENABLED') === 'TRUE';
+            return `Bot.setVirtualHookSettings(${win_threshold}, ${win_enabled}, ${loss_threshold}, ${loss_enabled}, ${max_steps}, ${steps_enabled});\n`;
 };

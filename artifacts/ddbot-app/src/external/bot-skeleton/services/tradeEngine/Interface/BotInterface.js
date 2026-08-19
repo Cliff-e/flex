@@ -137,11 +137,31 @@ const getBotInterface = tradeEngine => {
          * Configure the Virtual Hook engine.
          * Called by the Virtual Hook Settings Blockly block.
          *
-         * @param {number} virtualTradeCount    How many virtual trades to run (default 21).
-         * @param {number} realWinsBeforeReset  Real wins before a new virtual sequence (default 1).
+         * @param {number} winThreshold
+         * @param {boolean} winEnabled
+         * @param {number} lossThreshold
+         * @param {boolean} lossEnabled
+         * @param {number} maxSteps
+         * @param {boolean} stepsEnabled
          */
-        setVirtualHookSettings: (virtualTradeCount, realWinsBeforeReset) =>
-            tradeEngine.setVirtualHookSettings(virtualTradeCount, realWinsBeforeReset),
+        setVirtualHookSettings: (
+            winThreshold,
+            winEnabled,
+            lossThreshold,
+            lossEnabled,
+            maxSteps,
+            stepsEnabled,
+            stake
+        ) =>
+            tradeEngine.setVirtualHookSettings(
+                winThreshold,
+                winEnabled,
+                lossThreshold,
+                lossEnabled,
+                maxSteps,
+                stepsEnabled,
+                stake
+            ),
         /**
          * Returns true when the Virtual Hook is actively running virtual
          * (simulated) trades.  Called by the Virtual Hook Status Blockly block.
