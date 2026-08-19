@@ -18,8 +18,12 @@ import { readVHValues, writeVHValues } from '@/components/virtual-hook/vh-block-
 
 const DEFAULT_VALUES: VHSettingsValues = {
     enabled: false,
+    winThreshold: 3,
+    winThresholdEnabled: true,
+    lossThreshold: 3,
+    lossThresholdEnabled: false,
     maxSteps: 5,
-    minWins: 3,
+    maxStepsEnabled: true,
     virtualStake: 1,
 };
 

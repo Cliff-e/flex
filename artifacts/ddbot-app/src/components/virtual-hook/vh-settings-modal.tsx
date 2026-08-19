@@ -18,8 +18,12 @@ import { localize } from '@deriv-com/translations';
 
 export interface VHSettingsValues {
     enabled: boolean;
+    winThreshold: number;
+    winThresholdEnabled: boolean;
+    lossThreshold: number;
+    lossThresholdEnabled: boolean;
     maxSteps: number;
-    minWins: number;
+    maxStepsEnabled: boolean;
     virtualStake: number;
 }
 
@@ -57,20 +61,9 @@ const VHSettingsModal: React.FC<TVHSettingsModal> = ({
 
     const setEnabled = (v: boolean) => setDraft(d => ({ ...d, enabled: v }));
 
-    const setMaxSteps = (v: number) => {
-        const n = Math.max(1, Math.min(MAX_STEPS_LIMIT, Math.floor(Number(v)) || 1));
-        setDraft(d => {
-            // minWins can never exceed maxSteps (VHConfig invariant).
-            const minWins = Math.min(d.minWins, n);
-            return { ...d, maxSteps: n, minWins };
-        });
-    };
-
-    const setMinWins = (v: number) => {
-        setDraft(d => {
-            const n = Math.max(1, Math.min(d.maxSteps, Math.floor(Number(v)) || 1));
-            return { ...d, minWins: n };
-        });
+    const setThreshold = (key: 'winThreshold' | 'lossThreshold' | 'maxSteps', v: number) => {
+        const n = Math.max(0, Math.min(MAX_STEPS_LIMIT, Math.floor(Number(v)) || 0));
+        setDraft(d => ({ ...d, [key]: n }));
     };
 
     const setStake = (v: number) => {
@@ -182,57 +175,50 @@ const VHSettingsModal: React.FC<TVHSettingsModal> = ({
                     </button>
                 </div>
 
-                <div style={cardStyle}>
-                    <div style={labelStyle}>{localize('No. of Consecutive Virtual Losses')}</div>
-                    <div style={hintStyle}>
-                        {localize('Virtual rounds per signal before authorizing real.')}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                        <button
-                            type='button'
-                            onClick={() => setMaxSteps(draft.maxSteps - 1)}
-                            disabled={numbers_disabled || draft.maxSteps <= 1}
-                            style={stepperBtnStyle(numbers_disabled || draft.maxSteps <= 1)}
-                        >
-                            −
-                        </button>
-                        <span style={valueStyle}>{draft.maxSteps}</span>
-                        <button
-                            type='button'
-                            onClick={() => setMaxSteps(draft.maxSteps + 1)}
-                            disabled={numbers_disabled || draft.maxSteps >= MAX_STEPS_LIMIT}
-                            style={stepperBtnStyle(numbers_disabled || draft.maxSteps >= MAX_STEPS_LIMIT)}
-                        >
-                            +
-                        </button>
-                    </div>
-                </div>
-
-                <div style={cardStyle}>
-                    <div style={labelStyle}>{localize('No. of Wins on Real before switching to VH')}</div>
-                    <div style={hintStyle}>
-                        {localize('Wins required on real trades to keep VH active.')}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                        <button
-                            type='button'
-                            onClick={() => setMinWins(draft.minWins - 1)}
-                            disabled={numbers_disabled || draft.minWins <= 1}
-                            style={stepperBtnStyle(numbers_disabled || draft.minWins <= 1)}
-                        >
-                            −
-                        </button>
-                        <span style={valueStyle}>{draft.minWins}</span>
-                        <button
-                            type='button'
-                            onClick={() => setMinWins(draft.minWins + 1)}
-                            disabled={numbers_disabled || draft.minWins >= draft.maxSteps}
-                            style={stepperBtnStyle(numbers_disabled || draft.minWins >= draft.maxSteps)}
-                        >
-                            +
-                        </button>
-                    </div>
-                </div>
+                {([
+                    ['winThreshold', 'winThresholdEnabled', localize('Max wins before real buy'), localize('Authorize after this many consecutive virtual wins.')],
+                    ['lossThreshold', 'lossThresholdEnabled', localize('Max losses before real buy'), localize('Authorize after this many consecutive virtual losses.')],
+                    ['maxSteps', 'maxStepsEnabled', localize('Max Virtual Hook instances / steps before real buy'), localize('Authorize after this many completed virtual contracts.')],
+                ] as const).map(([valueKey, enabledKey, title, hint]) => {
+                    const value = draft[valueKey];
+                    const enabled = draft[enabledKey];
+                    const disabled = numbers_disabled || !enabled;
+                    return (
+                        <div style={cardStyle} key={valueKey}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <div style={labelStyle}>{title}</div>
+                                <button
+                                    type='button'
+                                    onClick={() => setDraft(d => ({ ...d, [enabledKey]: !enabled }))}
+                                    disabled={numbers_disabled}
+                                    style={toggleBtnStyle(enabled, numbers_disabled)}
+                                >
+                                    {enabled ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
+                            <div style={hintStyle}>{hint} {localize('Set to 0 to disable.')}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                                <button
+                                    type='button'
+                                    onClick={() => setThreshold(valueKey, value - 1)}
+                                    disabled={disabled || value <= 0}
+                                    style={stepperBtnStyle(disabled || value <= 0)}
+                                >
+                                    −
+                                </button>
+                                <span style={valueStyle}>{value}</span>
+                                <button
+                                    type='button'
+                                    onClick={() => setThreshold(valueKey, value + 1)}
+                                    disabled={disabled || value >= MAX_STEPS_LIMIT}
+                                    style={stepperBtnStyle(disabled || value >= MAX_STEPS_LIMIT)}
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
 
                 <div style={cardStyle}>
                     <div style={labelStyle}>{localize('Virtual Stake')}</div>

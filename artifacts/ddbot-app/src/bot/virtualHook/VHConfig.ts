@@ -20,11 +20,29 @@ export interface VHConfig {
     /** Enable or disable the Virtual Hook entirely. */
     enabled: boolean;
 
-    /** Maximum number of virtual rounds allowed per signal (min 1). */
+    /** Maximum consecutive virtual wins before the next real trade. */
+    winThreshold: number;
+
+    /** Whether the consecutive-win authorization condition is enabled. */
+    winThresholdEnabled: boolean;
+
+    /** Maximum consecutive virtual losses before the next real trade. */
+    lossThreshold: number;
+
+    /** Whether the consecutive-loss authorization condition is enabled. */
+    lossThresholdEnabled: boolean;
+
+    /** Maximum completed virtual contracts in the current VH session. */
     maxSteps: number;
 
-    /** Minimum virtual wins required to authorize the real trade (min 1). */
-    minWins: number;
+    /** Whether the completed-instance authorization condition is enabled. */
+    maxStepsEnabled: boolean;
+
+    /**
+     * @deprecated Use winThreshold. Accepted only so older callers can be
+     * migrated without breaking at the configuration boundary.
+     */
+    minWins?: number;
 
     /** Virtual stake — used only for virtual contracts, never for real trades. */
     virtualStake: number;
@@ -54,8 +72,12 @@ export interface VHConfig {
  */
 export const DEFAULT_VH_CONFIG: VHConfig = {
     enabled: false,
+    winThreshold: 3,
+    winThresholdEnabled: true,
+    lossThreshold: 3,
+    lossThresholdEnabled: false,
     maxSteps: 5,
-    minWins: 3,
+    maxStepsEnabled: true,
     virtualStake: 1.0,
     proposalTimeoutMs: 15_000,
     settlementTimeoutMs: 30_000,
@@ -67,23 +89,18 @@ export const DEFAULT_VH_CONFIG: VHConfig = {
 /**
  * Validate a complete VHConfig.
  *
- * Throws RangeError when the configuration is impossible —
- * these cannot be safely normalized and must be rejected early:
- *   • minWins > maxSteps (an authorization can never be reached)
- *
- * All other invalid inputs are normalized (clamped) by resolveVHConfig.
+ * Threshold values are allowed to be zero. Zero means that condition is
+ * disabled, regardless of its explicit enable flag.
  */
 export function validateVHConfig(config: VHConfig): void {
-    if (!Number.isFinite(config.maxSteps) || config.maxSteps <= 0) {
-        throw new RangeError(`VHConfig.maxSteps must be a positive number (got ${config.maxSteps}).`);
+    if (!Number.isFinite(config.winThreshold) || config.winThreshold < 0) {
+        throw new RangeError(`VHConfig.winThreshold must be >= 0 (got ${config.winThreshold}).`);
     }
-    if (!Number.isFinite(config.minWins) || config.minWins <= 0) {
-        throw new RangeError(`VHConfig.minWins must be a positive number (got ${config.minWins}).`);
+    if (!Number.isFinite(config.lossThreshold) || config.lossThreshold < 0) {
+        throw new RangeError(`VHConfig.lossThreshold must be >= 0 (got ${config.lossThreshold}).`);
     }
-    if (config.minWins > config.maxSteps) {
-        throw new RangeError(
-            `VHConfig.minWins (${config.minWins}) must not exceed maxSteps (${config.maxSteps}).`
-        );
+    if (!Number.isFinite(config.maxSteps) || config.maxSteps < 0) {
+        throw new RangeError(`VHConfig.maxSteps must be >= 0 (got ${config.maxSteps}).`);
     }
     if (!Number.isFinite(config.virtualStake) || config.virtualStake < DERIV_MINIMUM_STAKE) {
         throw new RangeError(
@@ -122,17 +139,23 @@ export function validateVHConfig(config: VHConfig): void {
  *
  * Values are normalized to valid ranges (clamped) so callers can never
  * construct an engine with broken timeouts / negative retry counts.
- * Impossible combinations (minWins > maxSteps) throw RangeError so the
- * caller is rejected early rather than failing mid-run.
- *
  * Always produces a complete, valid VHConfig object.
  */
 export function resolveVHConfig(overrides?: Partial<VHConfig>): VHConfig {
-    const merged: VHConfig = { ...DEFAULT_VH_CONFIG, ...overrides };
+    const legacyWinThreshold =
+        overrides?.winThreshold === undefined && overrides?.minWins !== undefined
+            ? overrides.minWins
+            : undefined;
+    const merged: VHConfig = {
+        ...DEFAULT_VH_CONFIG,
+        ...overrides,
+        ...(legacyWinThreshold !== undefined ? { winThreshold: legacyWinThreshold } : {}),
+    };
 
-    // Normalize integer fields (clamp to valid ranges).
-    merged.maxSteps = Math.max(1, Math.floor(Number(merged.maxSteps)) || 1);
-    merged.minWins = Math.max(1, Math.floor(Number(merged.minWins)) || 1);
+    // Normalize integer fields. Authorization thresholds intentionally allow 0.
+    merged.winThreshold = Math.max(0, Math.floor(Number(merged.winThreshold)) || 0);
+    merged.lossThreshold = Math.max(0, Math.floor(Number(merged.lossThreshold)) || 0);
+    merged.maxSteps = Math.max(0, Math.floor(Number(merged.maxSteps)) || 0);
     merged.virtualStake = Math.max(
         DERIV_MINIMUM_STAKE,
         Number(merged.virtualStake) || DERIV_MINIMUM_STAKE
@@ -145,22 +168,6 @@ export function resolveVHConfig(overrides?: Partial<VHConfig>): VHConfig {
         Math.floor(Number(merged.maxConsecutiveFailures)) || 0
     );
     merged.aiMaxRetries = Math.max(0, Math.floor(Number(merged.aiMaxRetries)) || 0);
-
-    // Reject impossible explicit configurations only.
-    // An explicit minWins that exceeds maxSteps is a caller bug — reject early.
-    const minWinsExplicit =
-        overrides?.minWins !== undefined && overrides?.minWins !== null;
-    if (minWinsExplicit && merged.minWins > merged.maxSteps) {
-        throw new RangeError(
-            `VHConfig.minWins (${merged.minWins}) must not exceed maxSteps (${merged.maxSteps}).`
-        );
-    }
-
-    // Implicit combinations self-heal: if the default minWins (or a clamped
-    // maxSteps) would produce minWins > maxSteps, clamp minWins down so the
-    // config remains valid. Example: resolveVHConfig({ maxSteps: 0 }) →
-    // maxSteps 1, minWins 1 (not an error).
-    merged.minWins = Math.min(merged.minWins, merged.maxSteps);
 
     validateVHConfig(merged);
 

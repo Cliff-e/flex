@@ -4,7 +4,8 @@
 //
 // The single source of truth for XML VH config is the
 // `trade_definition_market` block's fields:
-//   VH_ENABLED, VH_VIRTUAL_TRADES, VH_REAL_WINS, VH_STAKE
+//   VH_ENABLED, VH_WIN_THRESHOLD, VH_LOSS_THRESHOLD, VH_VIRTUAL_TRADES,
+//   VH_WIN_ENABLED, VH_LOSS_ENABLED, VH_STEPS_ENABLED, VH_STAKE
 //
 // Consumers (e.g. VHSettingsHost) are a VIEW + EDITOR over those
 // fields. They never duplicate the configuration into a second
@@ -49,13 +50,18 @@ export function readVHValues(): VHSettingsValues | null {
     const block = findMarketBlock();
     if (!block) return null;
     const enabledStr = block.getFieldValue('VH_ENABLED') ?? 'FALSE';
-    const maxSteps = parseInt(block.getFieldValue('VH_VIRTUAL_TRADES') ?? '5', 10) || 5;
-    const minWins = parseInt(block.getFieldValue('VH_REAL_WINS') ?? '3', 10) || 3;
+    const winThreshold = parseInt(block.getFieldValue('VH_WIN_THRESHOLD') ?? '3', 10) || 0;
+    const lossThreshold = parseInt(block.getFieldValue('VH_LOSS_THRESHOLD') ?? '3', 10) || 0;
+    const maxSteps = parseInt(block.getFieldValue('VH_VIRTUAL_TRADES') ?? '5', 10) || 0;
     const stake = parseFloat(block.getFieldValue('VH_STAKE') ?? '1') || 1;
     return {
         enabled: enabledStr === 'TRUE',
+        winThreshold,
+        winThresholdEnabled: (block.getFieldValue('VH_WIN_ENABLED') ?? 'TRUE') === 'TRUE',
+        lossThreshold,
+        lossThresholdEnabled: (block.getFieldValue('VH_LOSS_ENABLED') ?? 'FALSE') === 'TRUE',
         maxSteps,
-        minWins: Math.min(minWins, maxSteps),
+        maxStepsEnabled: (block.getFieldValue('VH_STEPS_ENABLED') ?? 'TRUE') === 'TRUE',
         virtualStake: stake,
     };
 }
@@ -69,8 +75,12 @@ export function writeVHValues(values: VHSettingsValues): void {
     blockly?.Events?.setGroup?.('vh_settings_apply');
     try {
         block.setFieldValue(values.enabled ? 'TRUE' : 'FALSE', 'VH_ENABLED');
+        block.setFieldValue(String(values.winThreshold), 'VH_WIN_THRESHOLD');
+        block.setFieldValue(values.winThresholdEnabled ? 'TRUE' : 'FALSE', 'VH_WIN_ENABLED');
+        block.setFieldValue(String(values.lossThreshold), 'VH_LOSS_THRESHOLD');
+        block.setFieldValue(values.lossThresholdEnabled ? 'TRUE' : 'FALSE', 'VH_LOSS_ENABLED');
         block.setFieldValue(String(values.maxSteps), 'VH_VIRTUAL_TRADES');
-        block.setFieldValue(String(values.minWins), 'VH_REAL_WINS');
+        block.setFieldValue(values.maxStepsEnabled ? 'TRUE' : 'FALSE', 'VH_STEPS_ENABLED');
         block.setFieldValue(String(values.virtualStake), 'VH_STAKE');
     } finally {
         blockly?.Events?.setGroup?.('');

@@ -196,13 +196,35 @@ export class VirtualHookEngine {
     /**
      * Current policy snapshot (counters, etc.) for status display.
      */
-    getStatus(): { active: boolean; steps: number; wins: number; maxSteps: number; minWins: number } {
+    getStatus(): {
+        active: boolean;
+        steps: number;
+        wins: number;
+        losses: number;
+        consecutiveVirtualWins: number;
+        consecutiveVirtualLosses: number;
+        virtualInstanceCount: number;
+        winThreshold: number;
+        winThresholdEnabled: boolean;
+        lossThreshold: number;
+        lossThresholdEnabled: boolean;
+        maxSteps: number;
+        maxStepsEnabled: boolean;
+    } {
         return {
             active: this._busy,
             steps: this._policy.roundsCompleted,
             wins: this._policy.wins,
+            losses: this._policy.losses,
+            consecutiveVirtualWins: this._policy.consecutiveVirtualWins,
+            consecutiveVirtualLosses: this._policy.consecutiveVirtualLosses,
+            virtualInstanceCount: this._policy.virtualInstanceCount,
+            winThreshold: this._config.winThreshold,
+            winThresholdEnabled: this._config.winThresholdEnabled,
+            lossThreshold: this._config.lossThreshold,
+            lossThresholdEnabled: this._config.lossThresholdEnabled,
             maxSteps: this._config.maxSteps,
-            minWins: this._config.minWins,
+            maxStepsEnabled: this._config.maxStepsEnabled,
         };
     }
 
@@ -608,17 +630,8 @@ export class VirtualHookEngine {
                 recoveryAction: 'No entry tick — round treated as a failure.',
             });
 
-            // The round ended without a settlement tick. Advance the state
-            // machine through SETTLED → RECORD_TRANSACTION →
-            // UPDATE_SHARED_EXIT_HISTORY → POLICY_DECISION so the run loop
-            // always lands in POLICY_DECISION (see the _runOneRound contract
-            // in start()). Without this, a RETRY decision on the failure would
-            // attempt an illegal transition out of WAIT_FOR_ENTRY on the next
-            // round and abort the run with IllegalStateTransitionError.
-            sm.transition(VHState.SETTLED, 'Entry timeout — no settlement tick.');
-            sm.transition(VHState.RECORD_TRANSACTION, 'Entry timeout — no transaction to record (failure counted).');
-            sm.transition(VHState.UPDATE_SHARED_EXIT_HISTORY, 'Entry timeout — no exit digit to record.');
-            sm.transition(VHState.POLICY_DECISION, 'Entry timeout — round treated as failure.');
+            sm.transition(VHState.TECHNICAL_FAILURE, 'Entry timeout — no settlement tick.');
+            sm.transition(VHState.POLICY_DECISION, 'Entry timeout — technical failure recorded.');
 
             return {
                 contract,
@@ -653,11 +666,16 @@ export class VirtualHookEngine {
                 reason,
                 timeout: this._config.settlementTimeoutMs,
                 retryCount: null,
-                recoveryAction: 'Using last observed tick as fallback exit digit.',
+                recoveryAction: 'No exit tick available — round treated as a technical failure.',
             });
-            // Fallback: use the entry tick digit (last known) — ONLY for a
-            // bounded exit timeout when NO abort was requested.
-            exitTick = entryTick;
+            sm.transition(VHState.TECHNICAL_FAILURE, 'Exit timeout — no real exit tick.');
+            sm.transition(VHState.POLICY_DECISION, 'Exit timeout — technical failure recorded.');
+            return {
+                contract,
+                ok: false,
+                won: false,
+                settledAt: Date.now(),
+            };
         }
 
         sm.transition(VHState.WAIT_FOR_EXIT, 'Settlement tick observed.');
