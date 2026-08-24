@@ -599,3 +599,32 @@ describe('getLastNConfirmedDigits — recovery consumes only confirmed exit digi
         expect(getLastNConfirmedDigits(5)).toEqual([8]);
     });
 });
+
+describe('21-entry rolling history consumed by XML bots', () => {
+    test('returns the latest available shared entries, capped at 21, without fabrication', () => {
+        appendExitDigit({ digit: 8, source: 'VH', contractId: 'vh-1', ts: 1 });
+        appendExitDigit({ digit: 4, source: 'REAL', contractId: 'real-1', won: true, ts: 2 });
+
+        expect(getLastNDigits(21)).toEqual([8, 4]);
+    });
+
+    test('updates from the same shared history as new confirmed entries arrive', () => {
+        for (let i = 0; i < 25; i++) {
+            appendExitDigit({
+                digit: i % 10,
+                source: 'REAL',
+                contractId: `real-rolling-${i}`,
+                won: i % 2 === 0,
+                ts: i,
+            });
+        }
+
+        expect(getLastNDigits(21)).toEqual([
+            4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4,
+        ]);
+
+        appendExitDigit({ digit: 9, source: 'REAL', contractId: 'real-rolling-new', won: true, ts: 26 });
+        expect(getLastNDigits(21)).toHaveLength(21);
+        expect(getLastNDigits(21).at(-1)).toBe(9);
+    });
+});
