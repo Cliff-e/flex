@@ -2,6 +2,7 @@ import { observer as globalObserver } from '../../../utils/observer';
 import { createDetails } from '../utils/helpers';
 import {
     getExitDigitHistory,
+    getLastNDigits,
     getLastExitDigit,
     getExitDigitCount,
     clearExitDigitHistory,
@@ -88,6 +89,12 @@ const getBotInterface = tradeEngine => {
          * the runtime records every settled contract automatically.
          */
         getExitDigitList: () => getExitDigitHistory().map(e => e.digit),
+        /**
+         * Return the latest 21 confirmed exit digits in chronological order.
+         * This reads the same shared history as the Transactions panel and
+         * returns fewer than 21 values when fewer confirmed entries exist.
+         */
+        getRollingExitDigitHistory: () => getLastNDigits(21),
         /**
          * Return the exit digit at position index (1 = most recent).
          * Returns null when the position is out of range.

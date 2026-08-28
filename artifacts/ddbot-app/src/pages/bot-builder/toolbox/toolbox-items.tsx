@@ -434,6 +434,7 @@ export const ToolboxItems = () => {
                         <Field name='POSITION'>1</Field>
                     </Block>
                     <Block type='get_exit_digit_list' />
+                    <Block type='get_rolling_exit_digit_history' />
                     <Block type='get_exit_digit_count' />
                     <Block type='clear_exit_digit_history' />
                 </Category>
