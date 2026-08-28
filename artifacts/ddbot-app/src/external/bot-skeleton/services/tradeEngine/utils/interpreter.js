@@ -146,31 +146,20 @@ const Interpreter = () => {
             'purchaseCurrentContract',
             createAsync(js_interpreter, bot_interface.purchaseCurrentContract)
         );
-        js_interpreter.setProperty(
-            pseudo_bot_interface,
+        // History accessors are synchronous snapshots of the shared in-memory
+        // store. They must not use createAsync: that wrapper unconditionally
+        // calls `.then()` on the return value, while these methods return an
+        // array, number, null, or undefined.
+        [
             'getExitDigitList',
-            createAsync(js_interpreter, bot_interface.getExitDigitList)
-        );
-        js_interpreter.setProperty(
-            pseudo_bot_interface,
+            'getRollingExitDigitHistory',
             'getExitDigitAt',
-            createAsync(js_interpreter, bot_interface.getExitDigitAt)
-        );
-        js_interpreter.setProperty(
-            pseudo_bot_interface,
             'getLastExitDigit',
-            createAsync(js_interpreter, bot_interface.getLastExitDigit)
-        );
-        js_interpreter.setProperty(
-            pseudo_bot_interface,
             'getExitDigitCount',
-            createAsync(js_interpreter, bot_interface.getExitDigitCount)
-        );
-        js_interpreter.setProperty(
-            pseudo_bot_interface,
             'clearExitDigitHistory',
-            createAsync(js_interpreter, bot_interface.clearExitDigitHistory)
-        );
+        ].forEach(name => {
+            js_interpreter.setProperty(pseudo_bot_interface, name, js_interpreter.nativeToPseudo(bot_interface[name]));
+        });
         js_interpreter.setProperty(scope, 'Bot', pseudo_bot_interface);
         js_interpreter.setProperty(
             scope,

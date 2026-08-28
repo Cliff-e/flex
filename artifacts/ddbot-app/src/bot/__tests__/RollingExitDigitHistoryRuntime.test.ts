@@ -1,6 +1,12 @@
 import { getVHTransactionPipeline, resetVHRuntime } from '../virtualHook/VHRuntime';
 import type { VirtualContract } from '../virtualHook/VirtualContract';
-import { appendExitDigit, getLastNDigits, resetExitDigitHistory } from '../sharedExitDigitHistory';
+import {
+    appendExitDigit,
+    clearExitDigitHistory,
+    getExitDigitCount,
+    getLastNDigits,
+    resetExitDigitHistory,
+} from '../sharedExitDigitHistory';
 import getBotInterface from '../../external/bot-skeleton/services/tradeEngine/Interface/BotInterface';
 
 const makeSettledContract = (contractId: string, exitDigit: number): VirtualContract => ({
@@ -46,6 +52,17 @@ const makeSettledContract = (contractId: string, exitDigit: number): VirtualCont
 const getRollingHistoryFromBot = () => {
     const bot = getBotInterface({}) as { getRollingExitDigitHistory: () => number[] };
     return bot.getRollingExitDigitHistory();
+};
+
+const getHistoryAccessorsFromBot = () => {
+    return getBotInterface({}) as {
+        getExitDigitList: () => number[];
+        getRollingExitDigitHistory: () => number[];
+        getExitDigitAt: (position: number) => number | null;
+        getLastExitDigit: () => number | null;
+        getExitDigitCount: () => number;
+        clearExitDigitHistory: () => void;
+    };
 };
 
 describe('21 Rolling Exit Digit History production runtime chain', () => {
@@ -101,5 +118,43 @@ describe('21 Rolling Exit Digit History production runtime chain', () => {
 
         expect(getRollingHistoryFromBot()).toEqual([]);
         expect(getLastNDigits(21)).toEqual([]);
+    });
+
+    test.each([0, 1, 20, 21, 22, 25])(
+        'history accessors preserve chronological data at %i entries',
+        count => {
+            const digits = Array.from({ length: count }, (_, index) => index % 10);
+            digits.forEach((digit, index) => {
+                appendExitDigit({
+                    digit,
+                    source: 'REAL',
+                    contractId: `accessor-${index}`,
+                    won: true,
+                    ts: index,
+                });
+            });
+
+
+            const bot = getHistoryAccessorsFromBot();
+            expect(bot.getExitDigitCount()).toBe(count);
+            expect(bot.getExitDigitList()).toEqual(digits);
+            expect(bot.getRollingExitDigitHistory()).toEqual(digits.slice(-21));
+            expect(bot.getLastExitDigit()).toBe(count ? digits[count - 1] : null);
+
+            for (let position = 1; position <= 25; position++) {
+                const expected = position <= count ? digits[count - position] : null;
+                expect(bot.getExitDigitAt(position)).toBe(expected);
+            }
+        }
+    );
+
+    test('clear history is synchronous and leaves an empty snapshot', () => {
+        appendExitDigit({ digit: 7, source: 'REAL', contractId: 'clear-1', won: true, ts: 1 });
+
+        const bot = getHistoryAccessorsFromBot();
+        expect(() => bot.clearExitDigitHistory()).not.toThrow();
+        expect(getExitDigitCount()).toBe(0);
+        expect(bot.getExitDigitList()).toEqual([]);
+        expect(bot.getExitDigitAt(1)).toBeNull();
     });
 });
