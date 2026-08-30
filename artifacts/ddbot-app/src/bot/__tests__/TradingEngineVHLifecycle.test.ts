@@ -429,7 +429,7 @@ describe('TradingEngine — VH mode-gate latch (AUTHORIZED semantics)', () => {
         jest.clearAllMocks();
     });
 
-    test('AUTHORIZED on a latched signal → zero real buys + VH runtime deactivated', async () => {
+    test('AUTHORIZED on a latched signal → one real buy + VH runtime deactivated', async () => {
         const engine = new TradingEngine(baseConfig);
         await engine.start();
 
@@ -444,10 +444,11 @@ describe('TradingEngine — VH mode-gate latch (AUTHORIZED semantics)', () => {
         // Signal N enters while VH is active → latched.
         await expect(
             (engine as any)._executeTrade('DIGITDIFF', '5', 1)
-        ).rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+        ).resolves.toEqual({ won: true, profit: 0.9, exitDigit: 5 });
 
-        // ZERO real buys for signal N — the latch blocks the real path.
-        expect(realSpy).not.toHaveBeenCalled();
+        // The same authorized signal is promoted exactly once.
+        expect(realSpy).toHaveBeenCalledTimes(1);
+        expect(realSpy).toHaveBeenCalledWith('DIGITDIFF', '5', 1);
         expect(startSpy).toHaveBeenCalledTimes(1);
 
         // VH runtime mode is now inactive.
@@ -468,16 +469,16 @@ describe('TradingEngine — VH mode-gate latch (AUTHORIZED semantics)', () => {
         const vh = getVHEngine(engine)!;
         jest.spyOn(vh, 'start').mockResolvedValue(AUTHORIZED_RESULT);
 
-        // Signal N — latched, discarded.
+        // Signal N — latched, authorized, then promoted once.
         await expect(
             (engine as any)._executeTrade('DIGITDIFF', '5', 1)
-        ).rejects.toThrow(/VH AUTHORIZED: signal discarded/);
-        expect(realSpy).not.toHaveBeenCalled();
+        ).resolves.toEqual(realResult);
+        expect(realSpy).toHaveBeenCalledTimes(1);
 
         // Signal N+1 — new signal, enters unlatched → real path, buys once.
         const result = await (engine as any)._executeTrade('DIGITDIFF', '5', 1);
         expect(result).toEqual(realResult);
-        expect(realSpy).toHaveBeenCalledTimes(1);
+        expect(realSpy).toHaveBeenCalledTimes(2);
         // The VH gate is never consulted for an unlatched signal.
         expect(vh.start).toHaveBeenCalledTimes(1);
 
@@ -500,10 +501,11 @@ describe('TradingEngine — VH mode-gate latch (AUTHORIZED semantics)', () => {
 
         await expect(
             (engine as any)._executeTrade('DIGITDIFF', '5', 1)
-        ).rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+        ).resolves.toEqual({ won: true, profit: 0.9, exitDigit: 5 });
 
-        // Still zero real buys — the latch, not the mutable flag, governs.
-        expect(realSpy).not.toHaveBeenCalled();
+        // The latch still controls the handoff even though VH was disabled
+        // while the virtual round was in flight.
+        expect(realSpy).toHaveBeenCalledTimes(1);
         expect((engine as any)._vhActive).toBe(false);
 
         engine.stop();

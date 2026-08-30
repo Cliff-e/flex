@@ -845,8 +845,8 @@ export class TradingEngine {
      *   1. Build a TradeCandidate (source:'ai').
      *   2. Submit to VirtualHookEngine.start().
      *   3. AUTHORIZED → virtual settlement/records already committed;
-     *      deactivate the VH runtime mode, DISCARD this signal.
-     *      _executeRealTrade is NEVER called for this context.
+     *      deactivate the VH runtime mode, then promote this same signal
+     *      into _executeRealTrade exactly once.
      *   4. REJECTED / STOPPED → throw (treated as trade failure).
      *   5. RETRY → re-submit VH only (bounded loop, never re-runs
      *      strategy; exhaustion throws — never falls through to a buy).
@@ -896,14 +896,10 @@ export class TradingEngine {
 
             if (result.decision === VHDecision.AUTHORIZED) {
                 // LATCH GUARD — ctx.enteredWhileVH === true here.
-                // A signal that entered while VH was active can NEVER
-                // become a real trade. Virtual settlement and record
-                // commit already completed inside engine.start(); the
-                // switch-to-real decision therefore deactivates the VH
-                // runtime mode and DISCARDS this signal — zero real buys.
-                // The NEXT new signal (unlatched) uses the real pipeline
-                // unchanged. _executeRealTrade is never reached for this
-                // context, in any async continuation.
+                // Virtual settlement and record commit already completed
+                // inside engine.start(). The switch-to-real decision
+                // deactivates VH, then promotes this same signal into the
+                // existing real pipeline exactly once.
                 if (!ctx.enteredWhileVH) {
                     // Unreachable for a latched context — kept as the
                     // explicit latch guard on the sole real call site.
@@ -911,9 +907,9 @@ export class TradingEngine {
                 }
                 this._deactivateVHRuntime();
                 this.log(
-                    `🛡 VH AUTHORIZED — signal ${candidate.signalId} discarded | VH runtime deactivated | real buys for this signal: 0`
+                    `🛡 VH AUTHORIZED — signal ${candidate.signalId} promoted to real pipeline | VH runtime deactivated`
                 );
-                throw new Error('VH AUTHORIZED: signal discarded — VH runtime deactivated (zero real buys)');
+                return this._executeRealTrade(contractType, barrier, stake);
             }
 
             if (result.decision === VHDecision.REJECTED) {
@@ -929,8 +925,8 @@ export class TradingEngine {
             // RETRY — retry the VH gate only
             retries++;
             if (retries >= maxRetries) {
-                // Latch guard: exhaustion of a latched signal throws —
-                // it can never fall through to _executeRealTrade.
+                // Latch guard: exhaustion of a latched signal throws — it
+                // can never fall through to _executeRealTrade.
                 this.log(`⚠️ VH RETRY exhausted (${maxRetries} max)`);
                 throw new Error(`VH RETRY exhausted after ${maxRetries} attempts`);
             }
@@ -943,11 +939,9 @@ export class TradingEngine {
      *
      * Called exclusively when a latched signal receives AUTHORIZED —
      * after virtual settlement and record commit have completed inside
-     * VirtualHookEngine.start(). Clears the runtime mode flag so the
-     * NEXT new signal latches `enteredWhileVH: false` and uses the
-     * existing real pipeline unchanged. The discarded signal itself
-     * never buys. Policy counters are untouched — the VH
-     * engine is merely disabled, never reconfigured.
+     * VirtualHookEngine.start(). Clears the runtime mode flag before the
+     * same signal enters the existing real pipeline. Policy counters are
+     * untouched — the VH engine is merely disabled, never reconfigured.
      */
     private _deactivateVHRuntime(): void {
         this._vhActive = false;

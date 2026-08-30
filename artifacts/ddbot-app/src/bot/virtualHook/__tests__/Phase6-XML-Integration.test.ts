@@ -92,14 +92,10 @@ describe('Phase 6 — XML VirtualHookEngine Integration', () => {
         expect(purchase.virtualHookEngine.start).not.toHaveBeenCalled();
     });
 
-    // ── Test 2: VH enabled + AUTHORIZED → latched purchase discarded ────
-    // NEW SEMANTICS (2026-08-16 governing spec): AUTHORIZED on a purchase
-    // that ENTERED while VH was active never becomes a real buy. Virtual
-    // settlement + record commit completed inside engine.start(); the
-    // switch-to-real decision deactivates the VH runtime mode and
-    // DISCARDS the purchase. Only a subsequent NEW (unlatched) purchase
-    // may use the real pipeline.
-    test('VH AUTHORIZED discards the latched purchase (zero buys) and deactivates VH runtime', async () => {
+    // ── Test 2: VH enabled + AUTHORIZED → same purchase promoted ────────
+    // AUTHORIZED settles the virtual hook first, then deactivates VH and
+    // sends the same purchase through the existing real pipeline once.
+    test('VH AUTHORIZED promotes the latched purchase once and deactivates VH runtime', async () => {
         const engine = mockEngine(true, {
             decision: VHDecision.AUTHORIZED,
             reason: 'MIN_WINS_REACHED',
@@ -120,26 +116,27 @@ describe('Phase 6 — XML VirtualHookEngine Integration', () => {
         expect(result.decision).toBe(VHDecision.AUTHORIZED);
         expect(engine.start).toHaveBeenCalledTimes(1);
 
-        // AUTHORIZED branch of _runVirtualHookGate with the latch guard.
+        // AUTHORIZED branch of _runVirtualHookGate.
         if (result.decision === VHDecision.AUTHORIZED) {
             if (!vhContext.enteredWhileVH) {
-                realBuys.push('signal-N'); // unreachable for a latched context
+                realBuys.push('signal-N'); // unlatched fallback
             } else {
                 runtime.vhRuntimeActive = false; // deactivateVirtualHookRuntime()
+                realBuys.push('signal-N'); // promote the same purchase
             }
         }
 
-        // Zero real buys for signal N; VH runtime is now inactive.
-        expect(realBuys).toHaveLength(0);
+        // Exactly one real buy for signal N; VH runtime is now inactive.
+        expect(realBuys).toEqual(['signal-N']);
         expect(runtime.vhRuntimeActive).toBe(false);
 
-        // ── Signal N+1: new purchase enters UNLATCHED → real path ──
+        // ── Signal N+1: new purchase enters UNLATCHED → real path too ──
         const nextContext = { enteredWhileVH: runtime.vhRuntimeActive };
         expect(nextContext.enteredWhileVH).toBe(false);
         if (!nextContext.enteredWhileVH) {
             realBuys.push('signal-N+1'); // existing real pipeline, unchanged
         }
-        expect(realBuys).toEqual(['signal-N+1']); // the new signal buys once
+        expect(realBuys).toEqual(['signal-N', 'signal-N+1']); // each signal buys once
     });
 
     // ── Test 3: VH enabled + REJECTED → zero purchases ─────────────

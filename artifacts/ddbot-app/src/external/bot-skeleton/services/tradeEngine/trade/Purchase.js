@@ -113,7 +113,7 @@ export default Engine =>
             // When latched (VH active at entry), delegate to the VH gate:
             //   AUTHORIZED → virtual settlement/records already
             //                committed; deactivate the VH runtime mode,
-            //                DISCARD this purchase — zero real buys.
+            //                then promote this same purchase once.
             //   REJECTED   → drop the signal, no purchase
             //   STOPPED    → abort, no purchase
             //   RETRY      → re-submit the candidate (bounded)
@@ -506,26 +506,22 @@ export default Engine =>
                     return Promise.resolve();
                 }
                 if (result.decision === VHDecision.AUTHORIZED) {
-                    // LATCH GUARD — a purchase latched while VH was active
-                    // can NEVER become a real buy, not even on AUTHORIZED.
                     // Virtual settlement and record commit already completed
-                    // inside virtualHookEngine.start(); the switch-to-real
-                    // decision therefore deactivates the VH runtime mode and
-                    // DISCARDS this purchase — zero real buys. The NEXT new
-                    // purchase (unlatched) uses the real pipeline unchanged.
+                    // inside virtualHookEngine.start(). Deactivate VH before
+                    // promoting this same purchase into the existing real
+                    // pipeline exactly once.
                     if (!vhContext.enteredWhileVH) {
                         // Unreachable for a latched context — kept as the
                         // explicit latch guard on the sole real call site.
                         return this._executeRealPurchase(contract_type, effective_type);
                     }
                     this.deactivateVirtualHookRuntime?.();
-                    this._purchaseInProgress = false;
                     // eslint-disable-next-line no-console
                     console.log(
-                        `[VH] AUTHORIZED — latched purchase ${candidate.signalId} discarded` +
-                        ' | VH runtime deactivated | real buys for this purchase: 0'
+                        `[VH] AUTHORIZED — latched purchase ${candidate.signalId} promoted` +
+                        ' | VH runtime deactivated'
                     );
-                    return Promise.resolve();
+                    return this._executeRealPurchase(contract_type, effective_type);
                 }
                 if (result.decision === VHDecision.REJECTED || result.decision === VHDecision.STOPPED) {
                     this._purchaseInProgress = false;

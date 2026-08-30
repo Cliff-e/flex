@@ -76,6 +76,7 @@ export default class JournalStore {
             onLogSuccess: action.bound,
             onError: action.bound,
             onNotify: action.bound,
+            onVHTransactionCommitted: action.bound,
             pushMessage: action.bound,
             filtered_messages: computed,
             getServerTime: action.bound,

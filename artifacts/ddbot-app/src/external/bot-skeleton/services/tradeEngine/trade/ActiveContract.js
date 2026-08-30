@@ -45,12 +45,12 @@ export default Engine =>
          * and cleared by deactivateVirtualHookRuntime() (switch-to-real on
          * AUTHORIZED).
          *
-         * IMPORTANT: this flag is never consulted directly mid-flight for
-         * a gate decision. Every purchase latches its value at entry
-         * (`enteredWhileVH`) and the latch alone governs that purchase's
-         * whole async lifecycle — a manual disable, policy deactivation,
-         * or AUTHORIZED before settlement can never promote a latched
-         * purchase to a real buy.
+          * IMPORTANT: this flag is never consulted directly mid-flight for
+          * a gate decision. Every purchase latches its value at entry
+          * (`enteredWhileVH`) and the latch alone governs that purchase's
+          * whole async lifecycle. A manual disable before settlement cannot
+          * alter the latched path; AUTHORIZED deactivates VH before the same
+          * purchase is promoted once.
          */
         _vhRuntimeActive = false;
 
@@ -257,10 +257,9 @@ export default Engine =>
          *
          * Called exclusively when a purchase latched while VH was active
          * receives AUTHORIZED — after virtual settlement and record commit
-         * have completed inside virtualHookEngine.start(). The latched
-         * purchase itself is DISCARDED (zero real buys); this method only
-         * clears the runtime mode so the NEXT new purchase enters
-         * unlatched and uses the existing real pipeline unchanged.
+         * have completed inside virtualHookEngine.start(). This method
+         * clears the runtime mode before that same purchase enters the
+         * existing real pipeline exactly once.
          * Policy counters are untouched — the engine is merely disabled,
          * never reconfigured.
          */

@@ -339,7 +339,10 @@ function makeXmlPurchase(vhEngine: any) {
     obj.activeContractOverride = null;
     obj.activeSymbolOverride = null;
     obj.activePredictionOverride = null;
-    obj._executeRealPurchase = jest.fn().mockResolvedValue(undefined);
+    obj._executeRealPurchase = jest.fn(function (this: any) {
+        this._purchaseInProgress = false;
+        return Promise.resolve();
+    });
     return obj;
 }
 
@@ -454,7 +457,7 @@ describe('(a) REAL-BUY GUARD — AI engine: zero buys on any gate decision', () 
         engine.stop();
     });
 
-    test('AUTHORIZED ⇒ zero buy sends + VH runtime deactivated', async () => {
+    test('AUTHORIZED ⇒ the same signal buys once + VH runtime deactivated', async () => {
         const engine = new TradingEngine(baseConfig);
         await engine.start();
 
@@ -465,10 +468,11 @@ describe('(a) REAL-BUY GUARD — AI engine: zero buys on any gate decision', () 
         jest.spyOn(vh, 'start').mockResolvedValue(AUTHORIZED_RESULT);
 
         await expect((engine as any)._executeTrade('DIGITOVER', '5', 1))
-            .rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+            .resolves.toEqual({ won: true, profit: 0.9, exitDigit: 5 });
 
-        // Even the "approved" decision never buys for a LATCHED signal.
-        expect(realSpy).not.toHaveBeenCalled();
+        // The authorized signal is promoted exactly once.
+        expect(realSpy).toHaveBeenCalledTimes(1);
+        expect(realSpy).toHaveBeenCalledWith('DIGITOVER', '5', 1);
         expect(getBuySends()).toHaveLength(0);
         expect((engine as any)._vhActive).toBe(false);
         expect(vh.isEnabled()).toBe(false);
@@ -549,7 +553,7 @@ describe('(a) REAL-BUY GUARD — XML engine: _executeRealPurchase never reached'
         expect(gate._purchaseInProgress).toBe(false);
     });
 
-    test('AUTHORIZED ⇒ latched purchase discarded, zero real purchases', async () => {
+    test('AUTHORIZED ⇒ latched purchase promoted exactly once', async () => {
         const gate = makeXmlPurchase({
             start: jest.fn().mockResolvedValue(AUTHORIZED_RESULT),
             isEnabled: jest.fn(() => true),
@@ -559,7 +563,8 @@ describe('(a) REAL-BUY GUARD — XML engine: _executeRealPurchase never reached'
 
         await gate.purchase('DIGITOVER');
 
-        expect(gate._executeRealPurchase).not.toHaveBeenCalled();
+        expect(gate._executeRealPurchase).toHaveBeenCalledTimes(1);
+        expect(gate._executeRealPurchase).toHaveBeenCalledWith('DIGITOVER', 'DIGITOVER');
         expect(gate.deactivateVirtualHookRuntime).toHaveBeenCalledTimes(1);
         expect(gate._vhRuntimeActive).toBe(false);
         expect(gate._purchaseInProgress).toBe(false);
@@ -644,8 +649,8 @@ describe('(b) TRANSITION BOUNDARY — latched AUTHORIZED discards N, unlatched N
         const vh = getVHEngine(engine)!;
 
         // ── Signal N: enters while VH active ⇒ latched ──
-        await expect((engine as any)._executeTrade('DIGITOVER', '5', 1))
-            .rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+        const firstResult = await (engine as any)._executeTrade('DIGITOVER', '5', 1);
+        expect(firstResult).toEqual({ won: true, profit: 0.9, exitDigit: 7 });
 
         // N ran REAL virtual rounds (policy saw 2 wins in 2 rounds).
         const statusAfterN = vh.getStatus();
@@ -654,9 +659,9 @@ describe('(b) TRANSITION BOUNDARY — latched AUTHORIZED discards N, unlatched N
         // Each settled virtual round flowed through the recording pipeline.
         expect(((getVHTransactionPipeline() as any).process) as jest.Mock).toHaveBeenCalledTimes(2);
 
-        // ZERO real buys for N; signal discarded; VH runtime deactivated.
-        expect(buySendsByProposal).toHaveLength(0);
-        expect(getBuySends()).toHaveLength(0);
+        // N is promoted into the real pipeline once; VH runtime deactivates.
+        expect(buySendsByProposal).toHaveLength(1);
+        expect(getBuySends()).toHaveLength(1);
         expect((engine as any)._vhActive).toBe(false);
         expect(vh.isEnabled()).toBe(false);
 
@@ -664,20 +669,20 @@ describe('(b) TRANSITION BOUNDARY — latched AUTHORIZED discards N, unlatched N
         const result = await (engine as any)._executeTrade('DIGITOVER', '5', 1);
         expect(result).toEqual({ won: true, profit: 0.9, exitDigit: 7 });
 
-        // Exactly ONE real buy, and the VH gate was never consulted again.
-        expect(buySendsByProposal).toHaveLength(1);
-        expect(getBuySends()).toHaveLength(1);
+        // N+1 uses the now-unlatched real path, so there are two total buys.
+        expect(buySendsByProposal).toHaveLength(2);
+        expect(getBuySends()).toHaveLength(2);
         expect(statusAfterN.steps).toBe(vh.getStatus().steps); // no new VH rounds
 
-        // ── No late replay: signal N can never produce a buy later ──
+        // ── No late replay: signal N still produces only one buy ──
         await sleep(150);
-        expect(buySendsByProposal).toHaveLength(1);
-        expect(getBuySends()).toHaveLength(1);
+        expect(buySendsByProposal).toHaveLength(2);
+        expect(getBuySends()).toHaveLength(2);
 
         engine.stop();
     });
 
-    test('XML engine: AUTHORIZED discards latched purchase N; unlatched N+1 buys once', async () => {
+    test('XML engine: AUTHORIZED promotes latched purchase N; unlatched N+1 buys once', async () => {
         const bot = makeXmlBot();
 
         // Enable VH via the REAL ActiveContract path.
@@ -696,22 +701,23 @@ describe('(b) TRANSITION BOUNDARY — latched AUTHORIZED discards N, unlatched N
 
         await bot.purchase('DIGITOVER');
 
-        // Latched purchase N: zero real buys + runtime deactivated.
+        // Latched purchase N: one real buy + runtime deactivated.
         expect(gateCalls).toBe(1);
-        expect(bot._executeRealPurchase).not.toHaveBeenCalled();
+        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(1);
+        expect(bot._executeRealPurchase).toHaveBeenCalledWith('DIGITOVER', 'DIGITOVER');
         expect(bot._vhRuntimeActive).toBe(false);
         expect(vh.cfg.enabled).toBe(false);
 
         // Signal N+1: unlatched ⇒ straight to the real pipeline.
         await bot.purchase('DIGITOVER');
-        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(1);
+        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(2);
         expect(bot._executeRealPurchase).toHaveBeenCalledWith('DIGITOVER', 'DIGITOVER');
         // Gate never consulted for the unlatched purchase.
         expect(gateCalls).toBe(1);
 
-        // Signal N never replayed — still exactly one real purchase.
+        // Signal N is not replayed — the second call is the explicit N+1 signal.
         await bot.purchase('DIGITOVER');
-        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(2);
+        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(3);
         expect(gateCalls).toBe(1);
     });
 });
@@ -766,15 +772,15 @@ describe('(c) MID-ROUND DISABLE — latch semantics survive a disable during rou
         // AFTER the mid-round disable: the latch, not the mutable flag,
         // governs ⇒ discarded with zero buys.
         await expect((engine as any)._executeTrade('DIGITOVER', '5', 1))
-            .rejects.toThrow(/VH AUTHORIZED: signal discarded/);
+            .resolves.toEqual({ won: true, profit: 0.9, exitDigit: 5 });
 
         expect(flipped).toBe(true);
         expect((engine as any)._vhActive).toBe(false);
         // The public manual path could not interfere mid-round.
         expect(publicToggleDuringRound).toBe(false);
         // Latch proof: mode was OFF at settlement time yet N still
-        // produced ZERO real buys and never reached the real path.
-        expect(realSpy).not.toHaveBeenCalled();
+        // reached the real path exactly once.
+        expect(realSpy).toHaveBeenCalledTimes(1);
         expect(getBuySends()).toHaveLength(0);
 
         // Post-round the manual disable path applies cleanly again.
@@ -801,14 +807,14 @@ describe('(c) MID-ROUND DISABLE — latch semantics survive a disable during rou
         await bot.purchase('DIGITOVER');
 
         // Latch proof: _vhRuntimeActive was false at decision time,
-        // yet N never reached the real purchase path.
+        // yet N still reached the real purchase path once.
         expect(bot._vhRuntimeActive).toBe(false);
-        expect(bot._executeRealPurchase).not.toHaveBeenCalled();
+        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(1);
         expect(bot._purchaseInProgress).toBe(false);
 
         // Next purchase enters unlatched and uses the real pipeline.
         await bot.purchase('DIGITOVER');
-        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(1);
+        expect(bot._executeRealPurchase).toHaveBeenCalledTimes(2);
     });
 });
 
