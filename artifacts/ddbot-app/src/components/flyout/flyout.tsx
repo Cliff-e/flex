@@ -6,6 +6,7 @@ import GTM from '@/utils/gtm';
 import { help_content_config } from '@/utils/help-content/help-content.config';
 import { LabelPairedCircleExclamationCaptionFillIcon } from '@deriv/quill-icons';
 import { localize } from '@deriv-com/translations';
+import { useDevice } from '@deriv-com/ui';
 import { getPlatformSettings } from '../shared';
 import Input from '../shared_ui/input';
 import Text from '../shared_ui/text';
@@ -182,6 +183,7 @@ const FlyoutContent = (props: TFlyoutContent) => {
 };
 
 const Flyout = observer(() => {
+    const { isDesktop } = useDevice();
     const { flyout, flyout_help } = useStore();
     const { active_helper, initFlyoutHelp, setHelpContent } = flyout_help;
     const {
@@ -194,6 +196,7 @@ const Flyout = observer(() => {
         onUnmount,
         search_term,
         selected_category,
+        setVisibility,
         first_get_variable_block_index,
     } = flyout;
 
@@ -220,6 +223,32 @@ const Flyout = observer(() => {
                 })}
                 style={{ width: `${flyout_width}px` }}
             >
+                {!isDesktop && !is_help_content && (
+                    <div className='flyout__mobile-header'>
+                        <Text size='xs' weight='bold' className='flyout__mobile-title'>
+                            {is_search_flyout
+                                ? localize('Search results')
+                                : localize((selected_category?.getAttribute('name') as string) ?? '')}
+                        </Text>
+                        <button
+                            type='button'
+                            className='flyout__mobile-close'
+                            data-testid='dt_flyout_close'
+                            aria-label={localize('Close')}
+                            onClick={() => setVisibility(false)}
+                        >
+                            {/* cross */}
+                            <svg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+                                <path
+                                    d='M6 6l12 12M18 6L6 18'
+                                    stroke='currentColor'
+                                    strokeWidth='1.8'
+                                    strokeLinecap='round'
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                )}
                 {is_search_flyout && !is_help_content && (
                     <SearchResult search_term={search_term} total_result={total_result} />
                 )}

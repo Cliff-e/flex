@@ -1,0 +1,506 @@
+/* =====================================================================
+   Deriv Bot - CKK Green theme layer   (UI / UX only)
+   ---------------------------------------------------------------------
+   Imported from src/styles/index.scss AFTER futuristic-theme so it wins
+   every same-specificity tie (equal specificity, later source order).
+
+   Scoped to .theme--ckk-green. The body carries `theme--dark theme--ckk-green`
+   for this theme, so every existing dark rule (component overrides, the
+   --du-* namespace, Blockly, smartcharts) keeps applying and this file only
+   re-tints the palette tokens plus the handful of hardcoded navy accents
+   that would otherwise leak navy into a green shell.
+
+   Dark and Light are NOT touched by this file. Styling only: no trading,
+   auth, Deriv-API, store, Blockly-block or Virtual Hook logic here.
+   ===================================================================== */
+
+/* ------------------------------------------------------------------
+   Palette (dark green futuristic — same structure as the navy layer)
+   ------------------------------------------------------------------ */
+$cg-void: #030d07;
+$cg-bg: #05150c;
+$cg-bg-2: #071c10;
+$cg-surface-1: #082114;
+$cg-surface-2: #0b2b1a;
+$cg-surface-3: #0f3822;
+$cg-line: #17502f;
+$cg-line-soft: #113c23;
+$cg-lime: #7ed957;
+$cg-lime-deep: #5fbf3f;
+$cg-orange: #ff8a3d;
+$cg-orange-deep: #ff6f1a;
+$cg-info: #22d3ee;
+$cg-text: #eaf9e6;
+$cg-text-dim: #a3c6ab;
+$cg-text-mute: #74977d;
+$cg-success: #22e6a5;
+$cg-danger: #ff5c7a;
+$cg-warn: #ffb454;
+$cg-lilac: #a78bfa;
+
+/* ------------------------------------------------------------------
+   Design tokens — mirrors the navy token list in futuristic-theme.scss
+   ------------------------------------------------------------------ */
+html:root .theme--ckk-green {
+    /* ---- surfaces ---- */
+    --general-main-1: #{$cg-bg};
+    --general-main-2: #{$cg-surface-1};
+    --general-main-3: #{$cg-surface-1};
+    --general-main-4: rgb(3 13 7 / 72%);
+    --general-section-1: #{$cg-surface-1};
+    --general-section-2: #{$cg-bg};
+    --general-section-3: #{$cg-surface-2};
+    --general-section-4: #{$cg-surface-2};
+    --general-section-5: #{$cg-surface-2};
+    --general-section-6: #{$cg-surface-3};
+    --general-disabled: #{$cg-surface-1};
+    --general-hover: #{$cg-surface-2};
+    --general-active: #{$cg-surface-3};
+
+    /* ---- text / icons ---- */
+    --text-prominent: #{$cg-text};
+    --text-general: #{$cg-text-dim};
+    --text-less-prominent: #{$cg-text-mute};
+    --text-primary: #{$cg-text-dim};
+    --text-disabled: #{$cg-text-mute};
+    --text-disabled-1: #{$cg-text-mute};
+    --text-profit-success: #{$cg-success};
+    --text-loss-danger: #{$cg-danger};
+    --text-red: #{$cg-danger};
+    --text-green: #{$cg-success};
+    --text-blue: #{$cg-lime};
+    --text-warning: #{$cg-warn};
+    --text-colored-background: #{$cg-void};
+    --text-info-blue: #{$cg-info};
+    --text-info-blue-background: rgb(34 211 238 / 14%);
+    --text-status-info-blue: #{$cg-info};
+    --text-hint: #{$cg-text-dim};
+    --icon-light-background: #{$cg-text-dim};
+    --icon-dark-background: #{$cg-text};
+    --icon-grey-background: #{$cg-surface-2};
+    --icon-black-plus: #{$cg-text};
+
+    /* ---- borders ---- */
+    --border-normal: #{$cg-line};
+    --border-normal-1: #{$cg-line};
+    --border-normal-2: #{$cg-line-soft};
+    --border-normal-3: #{$cg-line};
+    --border-hover: #{$cg-lime-deep};
+    --border-hover-1: #{$cg-lime-deep};
+    --border-active: #{$cg-lime};
+    --border-disabled: #{$cg-line-soft};
+    --border-divider: #{$cg-line-soft};
+
+    /* ---- fills ---- */
+    --fill-normal: #{$cg-text};
+    --fill-normal-1: #{$cg-text-dim};
+    --fill-hover: #{$cg-text-dim};
+    --fill-active: #{$cg-lime};
+    --fill-disabled: #{$cg-text-mute};
+
+    /* ---- interaction states ---- */
+    --state-normal: #{$cg-surface-1};
+    --state-hover: #{$cg-surface-2};
+    --state-active: #{$cg-surface-3};
+    --state-disabled: #{$cg-surface-1};
+    --checkbox-disabled-grey: #{$cg-text-mute};
+    --sidebar-tab: #{$cg-surface-3};
+
+    /* ---- status ---- */
+    --status-default: #{$cg-surface-3};
+    --status-adjustment: #{$cg-text-dim};
+    --status-danger: #{$cg-danger};
+    --status-warning: #{$cg-warn};
+    --status-warning-transparent: rgb(255 180 84 / 16%);
+    --status-success: #{$cg-success};
+    --status-transfer: #{$cg-orange};
+    --status-info: #{$cg-info};
+    --status-colored-background: #{$cg-void};
+    --status-alert-background: rgb(255 180 84 / 16%);
+
+    /* ---- translucent helpers ---- */
+    --transparent-success: rgb(34 230 165 / 16%);
+    --transparent-info: rgb(34 211 238 / 16%);
+    --transparent-hint: rgb(126 217 87 / 12%);
+    --transparent-danger: rgb(255 92 122 / 16%);
+    --transparent-correct-message: rgb(34 230 165 / 16%);
+    --transparent-fake-message: rgb(255 92 122 / 16%);
+}
+
+/* ---- gradients ---------------------------------------------- */
+html:root .theme--ckk-green {
+    --gradient-success: linear-gradient(to top, #{$cg-bg}, rgb(34 230 165 / 16%));
+    --gradient-danger: linear-gradient(to top, #{$cg-bg}, rgb(255 92 122 / 16%));
+    --contract-gradient-danger: linear-gradient(to top, #{$cg-bg} 85%, rgb(255 92 122 / 16%));
+    --gradient-right-edge: linear-gradient(to right, rgb(5 21 12 / 0%) -5%, #{$cg-bg} 71%);
+    --gradient-blue: linear-gradient(90deg, #7ed957 0%, #ff8a3d 104.41%);
+    --gradient-green: linear-gradient(90deg, #22e6a5 0%, #7ed957 104.41%);
+    --dashboard-swap-free: linear-gradient(58.51deg, #071c10 28.06%, #17502f 93.51%);
+    --dashboard-app: linear-gradient(160deg, rgb(11 43 26 / 92%) 0%, rgb(5 21 12 / 96%) 100%);
+    --app-card-virtual: linear-gradient(274.25deg, #0f3822 9.01%, #17502f 103.31%);
+    --app-card-virtual-swap-free: linear-gradient(58.51deg, #071c10 28.06%, #17502f 93.51%);
+
+    /* ---- badges ---- */
+    --badge-white: #{$cg-text};
+    --badge-blue: #{$cg-orange};
+    --badge-violet: #{$cg-lilac};
+    --badge-green: #{$cg-lime};
+
+    /* ---- purchase (run / stop actions) ---- */
+    --purchase-main-1: #43b02a;
+    --purchase-section-1: #368c22;
+    --purchase-main-2: #{$cg-danger};
+    --purchase-section-2: #b3324a;
+    --purchase-disabled-main: #{$cg-surface-3};
+    --purchase-disabled-section: #{$cg-surface-1};
+
+    /* ---- buttons ---- */
+    --button-primary-default: #{$cg-lime};
+    --button-primary-hover: #a7e88a;
+    --button-secondary-default: #{$cg-text-dim};
+    --button-secondary-hover: rgb(234 249 230 / 8%);
+    --button-tertiary-default: transparent;
+    --button-tertiary-hover: rgb(126 217 87 / 10%);
+    --button-primary-light-default: rgb(126 217 87 / 14%);
+    --button-primary-light-hover: rgb(126 217 87 / 24%);
+    --button-toggle-primary: #{$cg-orange};
+    --button-toggle-secondary: #{$cg-line};
+    --button-toggle-alternate: #{$cg-surface-3};
+    --button-get-started-bg: #{$cg-text};
+
+    /* ---- overlay / shadow ---- */
+    --overlay-outside-dialog: rgb(2 8 4 / 78%);
+    --overlay-inside-dialog: rgb(5 21 12 / 96%);
+    --shadow-menu: rgb(0 0 0 / 84%);
+    --shadow-menu-2: rgb(0 0 0 / 72%);
+    --shadow-drop: rgb(0 0 0 / 64%);
+    --shadow-box: #{$cg-line};
+
+    /* ---- misc ---- */
+    --traders-hub-banner-border-color: #{$cg-line};
+    --demo-text-color-1: #{$cg-text-dim};
+    --demo-text-color-2: #{$cg-text};
+    --header-background-mt5: #{$cg-surface-2};
+    --header-background-others: #{$cg-surface-2};
+
+    /* ---- CKK Edge accent duo (identical in all dark themes) ---- */
+    --ckk-lime: #7ed957;
+    --ckk-lime-deep: #5fbf3f;
+    --ckk-orange: #ff8a3d;
+    --ckk-orange-deep: #ff6f1a;
+}
+/* ------------------------------------------------------------------
+   Base canvas + scrollbars + selection (green equivalents)
+   ------------------------------------------------------------------ */
+html:root .theme--ckk-green body {
+    background: #{$cg-bg};
+    color: var(--text-general);
+}
+
+html:root .theme--ckk-green .layout,
+html:root .theme--ckk-green .main-body,
+html:root .theme--ckk-green .main {
+    background-color: #{$cg-bg};
+}
+
+html:root .theme--ckk-green * {
+    scrollbar-color: #{$cg-line} #{$cg-surface-1};
+}
+
+html:root .theme--ckk-green ::-webkit-scrollbar-track {
+    background: #{$cg-surface-1};
+}
+
+html:root .theme--ckk-green ::-webkit-scrollbar-thumb {
+    background: #{$cg-line};
+    border-radius: 99px;
+}
+
+html:root .theme--ckk-green ::selection {
+    background: rgb(126 217 87 / 30%);
+    color: #{$cg-text};
+}
+
+/* ------------------------------------------------------------------
+   @deriv-com/ui token namespace (--du-*) — same shape as the navy layer
+   ------------------------------------------------------------------ */
+html:root .theme--ckk-green {
+    --du-general-main-1: #05150c;
+    --du-general-main-2: #082114;
+    --du-general-section-1: #082114;
+    --du-general-section-2: #0b2b1a;
+    --du-text-general: #a3c6ab;
+    --du-text-prominent: #eaf9e6;
+    --du-text-less-prominent: #74977d;
+    --du-text-primary: #a3c6ab;
+    --du-text-disabled: #74977d;
+    --du-text-disabled-1: #74977d;
+    --du-brand-secondary: #7ed957;
+    --du-border-normal: #17502f;
+    --du-border-normal-1: #17502f;
+    --du-border-normal-2: #113c23;
+    --du-border-normal-3: #17502f;
+    --du-border-hover: #5fbf3f;
+    --du-border-active: #7ed957;
+    --du-border-disabled: #113c23;
+    --du-border-divider: #113c23;
+    --du-fill-normal: #eaf9e6;
+    --du-fill-hover: #a3c6ab;
+    --du-fill-active: #7ed957;
+    --du-fill-disabled: #74977d;
+    --du-state-normal: #082114;
+    --du-state-hover: #0b2b1a;
+    --du-state-active: #0f3822;
+    --du-state-disabled: #082114;
+    --du-button-primary-default: #7ed957;
+    --du-button-primary-hover: #a7e88a;
+    --du-button-secondary-default: #a3c6ab;
+    --du-button-secondary-hover: rgb(234 249 230 / 8%);
+    --du-button-tertiary-hover: rgb(126 217 87 / 10%);
+    --du-button-toggle-primary: #ff8a3d;
+    --du-button-toggle-secondary: #17502f;
+    --du-overlay-outside-dialog: rgb(3 13 7 / 80%);
+    --du-overlay-inside-dialog: rgb(5 21 12 / 96%);
+    --du-shadow-menu: rgb(0 0 0 / 84%);
+    --du-shadow-drop: rgb(0 0 0 / 64%);
+    --du-shadow-box: #17502f;
+    --du-status-danger: #ff5c7a;
+    --du-status-success: #22e6a5;
+    --du-status-warning: #ffb454;
+    --du-status-info: #22d3ee;
+    --du-transparent-success: rgb(34 230 165 / 16%);
+    --du-transparent-info: rgb(34 211 238 / 16%);
+    --du-transparent-danger: rgb(255 92 122 / 16%);
+}
+/* ==================================================================
+   Hardcoded navy accents → green
+   (the navy layer hardcodes these; tokens alone cannot reach them)
+   ================================================================== */
+
+/* ---- application header / footer ---- */
+html:root .theme--ckk-green .deriv-header {
+    background: rgb(6 26 15 / 92%);
+    border-bottom-color: rgb(23 80 47 / 85%);
+}
+
+html:root .theme--ckk-green .app-footer {
+    background: rgb(6 26 15 / 94%);
+    border-top-color: rgb(23 80 47 / 85%);
+}
+
+html:root .theme--ckk-green .app-footer__vertical-line {
+    background-color: rgb(23 80 47 / 90%);
+}
+
+/* ---- tabs (drawer + in-page) ---- */
+html:root .theme--ckk-green .dc-tabs__list {
+    border-bottom-color: rgb(23 80 47 / 70%);
+}
+
+html:root .theme--ckk-green .dc-tabs__item:not(.dc-tabs__active) {
+    color: #a3c6ab;
+}
+
+html:root .theme--ckk-green .dc-tabs__item:not(.dc-tabs__active):hover {
+    color: #7ed957;
+}
+
+html:root .theme--ckk-green .dc-tabs__active-line {
+    background: linear-gradient(90deg, #7ed957 0%, #5fbf3f 100%);
+}
+
+/* ---- run-panel drawer / modals / account switcher ---- */
+html:root .theme--ckk-green .dc-drawer__container {
+    background: #082114;
+    border-left-color: rgb(23 80 47 / 85%);
+}
+
+html:root .theme--ckk-green .dc-modal__container {
+    background: #082114;
+    border-color: rgb(23 80 47 / 85%);
+}
+
+html:root .theme--ckk-green .deriv-account-switcher__container {
+    border-color: rgb(23 80 47 / 85%);
+}
+
+/* ---- .fx-* primitives (declared unscoped with navy literals) ---- */
+html:root .theme--ckk-green .fx-card {
+    border-color: rgb(23 80 47 / 90%);
+    background-image: linear-gradient(160deg, rgb(11 43 26 / 92%) 0%, rgb(5 21 12 / 96%) 100%);
+    box-shadow: 0 20px 44px -26px rgb(2 8 4 / 95%);
+}
+
+html:root .theme--ckk-green .fx-pill,
+html:root .theme--ckk-green .fx-stat {
+    border-color: rgb(23 80 47 / 90%);
+    background: rgb(8 33 20 / 85%);
+}
+
+html:root .theme--ckk-green .fx-btn {
+    border-color: rgb(23 80 47 / 95%);
+    background: rgb(8 33 20 / 85%);
+}
+/* ==================================================================
+   Tab bar + page surfaces that hardcode navy (main.scss, dashboard,
+   free-bots, landing, run-panel, splash, blockly-loading)
+   ================================================================== */
+
+/* ---- navigation tabs (main.scss uses !important, so re-assert) ---- */
+html:root .theme--ckk-green .main .dc-tabs__list {
+    background: #05150c !important;
+    border-bottom-color: #17502f !important;
+}
+
+html:root .theme--ckk-green .main .dc-tabs__item {
+    color: #a3c6ab !important;
+}
+
+html:root .theme--ckk-green .main .dc-tabs__item:not(.dc-tabs__active):hover {
+    color: #7ed957 !important;
+}
+
+html:root .theme--ckk-green .main .dc-tabs__active,
+html:root .theme--ckk-green .main .dc-tabs__item.dc-tabs__active {
+    color: #030d07 !important;
+    background-image: linear-gradient(135deg, #7ed957 0%, #5fbf3f 100%) !important;
+    box-shadow: 0 0 22px -6px rgb(126 217 87 / 70%) !important;
+}
+
+html:root .theme--ckk-green .main .dc-tabs__active-line {
+    background: transparent !important;
+}
+
+html:root .theme--ckk-green .tabs-shadow--left {
+    background: linear-gradient(-88.07deg, transparent 1.63%, #05150c 50.02%);
+}
+
+html:root .theme--ckk-green .tabs-shadow--right {
+    background: linear-gradient(88.07deg, transparent 1.63%, #05150c 50.02%);
+}
+
+/* ---- blockly loading overlay ---- */
+html:root .theme--ckk-green .bot__loading {
+    background-color: rgb(5 21 12 / 72%);
+}
+
+html:root .theme--ckk-green .bot__loading-chip {
+    border-color: #17502f;
+    background-color: rgb(8 33 20 / 94%);
+}
+
+html:root .theme--ckk-green .bot__loading-msg {
+    color: #a3c6ab;
+}
+
+/* ---- app splash ---- */
+html:root .theme--ckk-green .ckk-splash {
+    background: #05150c;
+}
+
+html:root .theme--ckk-green .ckk-splash__progress {
+    background: #082114;
+    box-shadow: 0 0 0 1px rgb(23 80 47 / 90%) inset;
+}
+
+html:root .theme--ckk-green .ckk-splash__msg {
+    color: #74977d;
+}
+
+/* ---- run panel / dashboard / free bots / landing ---- */
+html:root .theme--ckk-green .run-panel__stat {
+    background-color: #082114;
+}
+
+html:root .theme--ckk-green .run-panel__stat--tiles .run-panel__tile {
+    border-color: #17502f;
+    background: rgb(5 21 12 / 60%);
+}
+
+html:root .theme--ckk-green .dash-stats__empty {
+    border-color: #17502f;
+}
+
+html:root .theme--ckk-green .tab__dashboard__table__block {
+    border-color: #17502f;
+    background-image: linear-gradient(160deg, rgb(11 43 26 / 92%) 0%, rgb(5 21 12 / 96%) 100%);
+}
+
+html:root .theme--ckk-green .dash-hero__account {
+    border-color: #17502f;
+    background: rgb(5 21 12 / 72%);
+}
+
+html:root .theme--ckk-green .free-bots__category-btn {
+    border-color: #17502f;
+    background: #082114;
+}
+
+html:root .theme--ckk-green .free-bots__card {
+    border-color: #17502f;
+    background-image: linear-gradient(160deg, rgb(11 43 26 / 92%) 0%, rgb(5 21 12 / 96%) 100%);
+}
+
+html:root .theme--ckk-green .ckk-landing__cards {
+    background: rgb(6 26 15 / 96%);
+    border-top-color: #17502f;
+}
+
+html:root .theme--ckk-green .ckk-landing__card:not(:last-child) {
+    border-right-color: #17502f;
+}
+
+html:root .theme--ckk-green .ckk-landing__footer {
+    background: #030d07;
+    border-top-color: #113c23;
+    color: #74977d;
+}
+/* ==================================================================
+   Blockly UI (Bot Builder canvas, flyout, field rects, toolbox)
+   navy layer paints these #0e0e0e; tint them green for this theme.
+   ================================================================== */
+html:root .theme--ckk-green .zelos-renderer.zelos_renderer-theme .blocklyMainBackground,
+html:root .theme--ckk-green .load-strategy__container .blocklyMainBackground,
+html:root .theme--ckk-green .flyout .zelos-renderer.classic-theme .blocklyMainBackground {
+    fill: #04120b !important;
+}
+
+html:root .theme--ckk-green .flyout rect.blocklyFieldRect.blocklyDropdownRect {
+    fill: #082114 !important;
+}
+
+html:root .theme--ckk-green .zelos-renderer.zelos_renderer-theme rect.blocklyFieldRect.blocklyDropdownRect,
+html:root .theme--ckk-green .zelos-renderer.zelos_renderer-theme .blocklyNonEditableText > rect:not(.blocklyDropdownRect),
+html:root .theme--ckk-green .zelos-renderer.zelos_renderer-theme .blocklyEditableText > rect:not(.blocklyDropdownRect),
+html:root .theme--ckk-green .blocklyPath[fill='#fff'],
+html:root .theme--ckk-green .blocklyVariableGet .blocklyPath,
+html:root .theme--ckk-green .blocklyOutlinePath {
+    fill: #05150c !important;
+}
+
+html:root .theme--ckk-green .blocklyFlyoutBackground {
+    fill: #04120b !important;
+    fill-opacity: 0.85;
+}
+
+html:root .theme--ckk-green .blocklyScrollbarHandle {
+    fill: #17502f;
+}
+
+html:root .theme--ckk-green .blocklyToolboxDiv {
+    background-color: #04120b;
+    color: #a3c6ab;
+}
+
+html:root .theme--ckk-green .blocklyTreeRow:not(.blocklyTreeSelected):hover {
+    background-color: #0b2b1a;
+}
+
+html:root .theme--ckk-green .blocklyTreeSeparator {
+    border-bottom-color: #113c23;
+}
+
+
+
+
+

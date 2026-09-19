@@ -454,3 +454,35 @@
         }
     }
 }
+
+/* ----------------------------------------
+   Futuristic run-panel surfaces (presentation only)
+   ---------------------------------------- */
+.run-panel__stat {
+    background-color: #0b1424;
+}
+
+.run-panel__stat--info-item {
+    border-bottom-color: rgb(126 217 87 / 45%);
+}
+
+.run-panel__tile-title {
+    color: var(--text-less-prominent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.run-panel__stat--tiles {
+    gap: 6px;
+    padding: 0 10px 8px;
+}
+
+.run-panel__stat--tiles .run-panel__tile {
+    border-radius: 12px;
+    border: 1px solid #1d3050;
+    background: rgb(6 12 22 / 60%);
+}
+
+.run-panel__footer-button {
+    border-radius: 10px;
+}

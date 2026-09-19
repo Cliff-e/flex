@@ -79,7 +79,7 @@ const LiveDCirclesPanel: React.FC<Props> = ({ symbol, isDark = false }) => {
 
     const circleColor = (d: number) => {
         if (d === most) return isDark ? '#00ff66' : '#00aa44';
-        if (d === secondMost) return '#3399ff';
+        if (d === secondMost) return '#ff8a3d';
         if (d === secondLeast) return isDark ? '#ff9900' : '#e07700';
         if (d === least) return '#ff3333';
         return isDark ? '#444' : '#aaa';
@@ -207,7 +207,7 @@ const LiveDCirclesPanel: React.FC<Props> = ({ symbol, isDark = false }) => {
                 <div style={S.signals}>
                     {signals.map((sig, i) => {
                         const bColor = sig.type === 'HOT' ? (isDark ? '#00ff66' : '#00aa44')
-                            : sig.type === 'COLD' ? '#3399ff'
+                            : sig.type === 'COLD' ? '#ff8a3d'
                             : sig.type === 'OVER' ? (isDark ? '#00cc55' : '#009940')
                             : '#ff3333';
                         return (

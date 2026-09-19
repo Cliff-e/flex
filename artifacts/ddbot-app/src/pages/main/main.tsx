@@ -39,6 +39,65 @@ const AiBots = lazy(() => import('../ai-bots/AiBots'));
 
 const DCircles = lazy(() => import('../d-circles/DCircles'));
 const DeepTrader = lazy(() => import('../deep-trader/DeepTrader'));
+
+/* ------------------------------------------------------------------
+   Tab chunk prefetching
+   ------------------------------------------------------------------
+   Every tab below is a lazy chunk, so the first visit to a tab used to wait
+   on the network (and show ChunkLoader). Warming the chunks after the first
+   paint - and on tab hover/focus - makes those switches render immediately.
+   Repeat visits were already instant because the browser caches the module.
+   ------------------------------------------------------------------ */
+const TAB_CHUNK_LOADERS = {
+    chart: () => import('../chart/chart-wrapper'),
+    tutorial: () => import('../tutorials'),
+    free_bots: () => import('../free-bots'),
+    analysis_tool: () => import('../analysis-tool'),
+    ai_bots: () => import('../ai-bots/AiBots'),
+    d_circles: () => import('../d-circles/DCircles'),
+    deep_trader: () => import('../deep-trader/DeepTrader'),
+} as const;
+
+type TTabChunkKey = keyof typeof TAB_CHUNK_LOADERS;
+
+/* Tab order as rendered by <Tabs/> below (indexes 6-8 are AI Bots, D Circles
+   and Deep Trader, which have no TAB_IDS entry). */
+const TAB_INDEX_TO_CHUNK: Partial<Record<number, TTabChunkKey>> = {
+    [DBOT_TABS.CHART]: 'chart',
+    [DBOT_TABS.TUTORIAL]: 'tutorial',
+    [DBOT_TABS.FREE_BOTS]: 'free_bots',
+    [DBOT_TABS.ANALYSIS_TOOL]: 'analysis_tool',
+    6: 'ai_bots',
+    7: 'd_circles',
+    8: 'deep_trader',
+};
+
+const prefetched_tab_chunks = new Set<TTabChunkKey>();
+
+const prefetchTabChunk = (key: TTabChunkKey) => {
+    if (prefetched_tab_chunks.has(key)) return;
+
+    prefetched_tab_chunks.add(key);
+    // A failed prefetch is harmless: opening the tab imports it again.
+    TAB_CHUNK_LOADERS[key]().catch(() => prefetched_tab_chunks.delete(key));
+};
+
+const isMeteredConnection = () => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+        .connection;
+
+    return Boolean(connection?.saveData) || ['slow-2g', '2g'].includes(connection?.effectiveType ?? '');
+};
+
+const prefetchAllTabChunks = () => {
+    if (isMeteredConnection()) return;
+
+    // Staggered, so the tab the user is on keeps priority over the warm-up.
+    (Object.keys(TAB_CHUNK_LOADERS) as TTabChunkKey[]).forEach((key, index) => {
+        setTimeout(() => prefetchTabChunk(key), index * 500);
+    });
+};
+
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
     const { dashboard, load_modal, run_panel, quick_strategy, summary_card } = useStore();
@@ -86,6 +145,38 @@ const AppWrapper = observer(() => {
     const navigate = useNavigate();
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
+    const tabs_wrapper_ref = React.useRef<HTMLDivElement>(null);
+
+    /* Warm the remaining tab chunks once the first tab has painted. */
+    React.useEffect(() => {
+        const warmup = setTimeout(prefetchAllTabChunks, 1200);
+
+        return () => clearTimeout(warmup);
+    }, []);
+
+    /* Start a tab's fetch as soon as the user hovers or focuses it. */
+    React.useEffect(() => {
+        const el_tabs = tabs_wrapper_ref.current;
+        if (!el_tabs) return;
+
+        const handleTabIntent = (event: Event) => {
+            const el_item = (event.target as HTMLElement)?.closest('.dc-tabs__item');
+            if (!el_item?.parentElement) return;
+
+            const tab_items = Array.from(el_item.parentElement.querySelectorAll('.dc-tabs__item'));
+            const chunk_key = TAB_INDEX_TO_CHUNK[tab_items.indexOf(el_item)];
+
+            if (chunk_key) prefetchTabChunk(chunk_key);
+        };
+
+        el_tabs.addEventListener('mouseover', handleTabIntent);
+        el_tabs.addEventListener('focusin', handleTabIntent);
+
+        return () => {
+            el_tabs.removeEventListener('mouseover', handleTabIntent);
+            el_tabs.removeEventListener('focusin', handleTabIntent);
+        };
+    }, []);
 
     let tab_value: number | string = active_tab;
     const GetHashedValue = (tab: number) => {
@@ -226,7 +317,13 @@ const AppWrapper = observer(() => {
 
     const handleTabChange = React.useCallback(
         (tab_index: number) => {
-            setActiveTab(tab_index);
+            const chunk_key = TAB_INDEX_TO_CHUNK[tab_index];
+            if (chunk_key) prefetchTabChunk(chunk_key);
+
+            // Concurrent update: the tab pill reacts immediately while the
+            // incoming pane (a lazy chunk) mounts.
+            React.startTransition(() => setActiveTab(tab_index));
+
             const el_id = TAB_IDS[tab_index];
             if (el_id) {
                 const el_tab = document.getElementById(el_id);
@@ -261,7 +358,7 @@ const AppWrapper = observer(() => {
                         'main__container--active': active_tour && active_tab === DASHBOARD && !isDesktop,
                     })}
                 >
-                    <div>
+                    <div ref={tabs_wrapper_ref}>
                         {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}{' '}
                        <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
 

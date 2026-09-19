@@ -8,7 +8,7 @@ import { safeJsonParse } from '../../utils/safe-json';
 
 const DCircles = () => {
     const [symbol, setSymbol] = useState(() => localStorage.getItem('dc_symbol') || 'R_75');
-    const [isDark, setIsDark] = useState(() => localStorage.getItem('dc_theme') === 'dark');
+    const [isDark, setIsDark] = useState(() => localStorage.getItem('dc_theme') !== 'light');
     const toggleTheme = () => {
         const next = !isDark;
         setIsDark(next);
@@ -156,7 +156,7 @@ const digits =
 
     const color = (d: number) => {
         if (d === most) return isDark ? '#00ff66' : '#00aa44';
-        if (d === secondMost) return '#3399ff';
+        if (d === secondMost) return '#ff8a3d';
         if (d === secondLeast) return isDark ? '#ff9900' : '#e07700';
         if (d === least) return '#ff3333';
         return isDark ? '#555' : '#999';

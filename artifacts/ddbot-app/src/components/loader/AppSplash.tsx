@@ -22,7 +22,7 @@ export default function AppSplash({ message }: { message?: string }) {
                     <polyline
                         points='40,95 60,80 80,85 100,60 120,70 140,45 160,55 180,35'
                         fill='none'
-                        stroke='#009a44'
+                        stroke='#5fbf3f'
                         strokeWidth='2.5'
                         strokeLinejoin='round'
                         strokeLinecap='round'
@@ -35,21 +35,21 @@ export default function AppSplash({ message }: { message?: string }) {
                     />
 
                     {/* Bar chart (right side mini) */}
-                    <rect x='145' y='78' width='7' height='22' rx='2' fill='#3399ff' opacity='0.8'>
+                    <rect x='145' y='78' width='7' height='22' rx='2' fill='#ff8a3d' opacity='0.8'>
                         <animate attributeName='height' values='22;28;22' dur='1.6s' repeatCount='indefinite' />
                         <animate attributeName='y' values='78;72;78' dur='1.6s' repeatCount='indefinite' />
                     </rect>
-                    <rect x='155' y='68' width='7' height='32' rx='2' fill='#009a44' opacity='0.8'>
+                    <rect x='155' y='68' width='7' height='32' rx='2' fill='#5fbf3f' opacity='0.8'>
                         <animate attributeName='height' values='32;24;32' dur='1.2s' repeatCount='indefinite' />
                         <animate attributeName='y' values='68;76;68' dur='1.2s' repeatCount='indefinite' />
                     </rect>
-                    <rect x='165' y='74' width='7' height='26' rx='2' fill='#3399ff' opacity='0.8'>
+                    <rect x='165' y='74' width='7' height='26' rx='2' fill='#ff8a3d' opacity='0.8'>
                         <animate attributeName='height' values='26;34;26' dur='1.9s' repeatCount='indefinite' />
                         <animate attributeName='y' values='74;66;74' dur='1.9s' repeatCount='indefinite' />
                     </rect>
 
                     {/* Pulsing dot on chart line */}
-                    <circle cx='180' cy='35' r='4' fill='#009a44'>
+                    <circle cx='180' cy='35' r='4' fill='#5fbf3f'>
                         <animate attributeName='opacity' values='1;0.2;1' dur='1s' repeatCount='indefinite' />
                         <animate attributeName='r' values='4;6;4' dur='1s' repeatCount='indefinite' />
                     </circle>
@@ -57,8 +57,8 @@ export default function AppSplash({ message }: { message?: string }) {
                     {/* Gradient defs */}
                     <defs>
                         <linearGradient id='chartGrad' x1='0' y1='0' x2='0' y2='1'>
-                            <stop offset='0%' stopColor='#009a44' />
-                            <stop offset='100%' stopColor='#009a44' stopOpacity='0' />
+                            <stop offset='0%' stopColor='#5fbf3f' />
+                            <stop offset='100%' stopColor='#5fbf3f' stopOpacity='0' />
                         </linearGradient>
                     </defs>
 

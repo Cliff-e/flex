@@ -223,3 +223,82 @@
         }
     }
 }
+
+/* ----------------------------------------
+   Futuristic navy / cyan card treatment (UI only)
+   ---------------------------------------- */
+$fb-cyan: #7ed957;
+$fb-blue: #ff8a3d;
+$fb-navy: #0b1424;
+$fb-line: #1d3050;
+
+.free-bots {
+    &__title {
+        background: linear-gradient(135deg, $fb-cyan 0%, $fb-blue 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+    }
+
+    &__subtitle {
+        color: var(--text-less-prominent);
+    }
+
+    &__category-btn {
+        min-height: 36px;
+        border-radius: 999px;
+        border-color: $fb-line;
+        background: $fb-navy;
+        color: var(--text-general);
+
+        &:hover {
+            border-color: $fb-cyan;
+            color: $fb-cyan;
+        }
+
+        &--active {
+            background-image: linear-gradient(135deg, $fb-cyan 0%, $fb-blue 100%);
+            border-color: transparent;
+            color: #04070f;
+            font-weight: 700;
+            box-shadow: 0 10px 24px -14px rgb(126 217 87 / 85%);
+
+            &:hover { color: #04070f; }
+        }
+    }
+
+    &__card {
+        border-radius: 18px;
+        border-color: $fb-line;
+        background-image: linear-gradient(160deg, rgb(16 28 48 / 92%) 0%, rgb(6 12 22 / 96%) 100%);
+        box-shadow: 0 20px 44px -26px rgb(2 8 20 / 95%);
+
+        &:hover {
+            border-color: rgb(126 217 87 / 55%);
+            box-shadow: 0 0 0 1px rgb(126 217 87 / 18%), 0 24px 50px -26px rgb(126 217 87 / 45%);
+        }
+    }
+
+    &__card-category {
+        background: rgb(126 217 87 / 12%);
+        border: 1px solid rgb(126 217 87 / 28%);
+        color: $fb-cyan;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    &__card-btn {
+        min-height: 42px;
+        border-radius: 10px;
+        background-image: linear-gradient(135deg, $fb-cyan 0%, $fb-blue 100%);
+        color: #04070f;
+        font-weight: 700;
+
+        &:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 26px -12px rgb(126 217 87 / 85%);
+        }
+    }
+}

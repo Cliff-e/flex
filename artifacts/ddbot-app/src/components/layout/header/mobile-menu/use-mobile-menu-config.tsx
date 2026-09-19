@@ -42,7 +42,7 @@ type TMenuConfig = {
 
 const useMobileMenuConfig = (client?: RootStore['client']) => {
     const { localize } = useTranslations();
-    const { is_dark_mode_on, toggleTheme } = useThemeSwitcher();
+    const { is_dark_mode_on, toggleDarkMode } = useThemeSwitcher();
 
     const { data } = useRemoteConfig(true);
     const { cs_chat_whatsapp } = data;
@@ -140,7 +140,7 @@ const useMobileMenuConfig = (client?: RootStore['client']) => {
                     as: 'button',
                     label: localize('Dark theme'),
                     LeftComponent: LegacyTheme1pxIcon,
-                    RightComponent: <ToggleSwitch value={is_dark_mode_on} onChange={toggleTheme} />,
+                    RightComponent: <ToggleSwitch value={is_dark_mode_on} onChange={toggleDarkMode} />,
                 },
             ].filter(Boolean) as TMenuConfig,
             [

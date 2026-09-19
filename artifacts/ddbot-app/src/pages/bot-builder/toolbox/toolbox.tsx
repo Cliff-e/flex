@@ -8,6 +8,7 @@ import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 import { rudderStackSendOpenEvent } from '../../../analytics/rudderstack-common-events';
 import ToolbarButton from '../toolbar/toolbar-button';
+import MobileToolbox from './mobile-toolbox';
 import SearchBox from './search-box';
 import { ToolboxItems } from './toolbox-items';
 
@@ -171,7 +172,7 @@ const Toolbox = observer(() => {
             </div>
         );
     }
-    return null;
+    return <MobileToolbox />;
 });
 
 export default Toolbox;

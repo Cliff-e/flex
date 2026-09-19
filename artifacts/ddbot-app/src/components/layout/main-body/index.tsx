@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from '@/hooks/useStore';
 import { useDevice } from '@deriv-com/ui';
+import { applyTheme, readStoredTheme } from '@/utils/theme';
 import './main-body.scss';
 
 type TMainBodyProps = {
@@ -8,7 +9,7 @@ type TMainBodyProps = {
 };
 
 const MainBody: React.FC<TMainBodyProps> = ({ children }) => {
-    const current_theme = localStorage.getItem('theme') ?? 'light';
+    const current_theme = localStorage.getItem('theme') ?? 'dark';
     const { ui } = useStore() ?? {
         ui: {
             setDevice: () => {},
@@ -18,16 +19,11 @@ const MainBody: React.FC<TMainBodyProps> = ({ children }) => {
     const { isDesktop, isMobile, isTablet } = useDevice();
 
     useEffect(() => {
-        const body = document.querySelector('body');
-        if (!body) return;
-        if (current_theme === 'light') {
-            body.classList.remove('theme--dark');
-            body.classList.add('theme--light');
-        } else {
-            body.classList.remove('theme--light');
-            body.classList.add('theme--dark');
-        }
+        // Keep the body in sync with the persisted theme
+        // (dark | light | ckk-green) so the choice survives a reload.
+        applyTheme(readStoredTheme());
     }, [current_theme]);
+
 
     useEffect(() => {
         if (isMobile) {

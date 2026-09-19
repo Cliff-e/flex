@@ -211,7 +211,7 @@ const AiBots: React.FC = () => {
     const { token, loginId } = useAuth();
 
     // ── Theme (defaults to light mode) ──
-    const [isDark, setIsDark] = React.useState(() => localStorage.getItem('ai_bots_theme') === 'dark');
+    const [isDark, setIsDark] = React.useState(() => localStorage.getItem('ai_bots_theme') !== 'light');
     const toggleTheme = () => {
         const next = !isDark;
         setIsDark(next);

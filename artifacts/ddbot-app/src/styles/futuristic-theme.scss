@@ -1,0 +1,580 @@
+/* =====================================================================
+   Deriv Bot - futuristic dark theme layer   (UI / UX only)
+   ---------------------------------------------------------------------
+   Imported from src/styles/index.scss AFTER components/shared/styles/themes
+   so it can re-map the existing CSS-variable design system.
+
+   Scoped to .theme--dark on purpose:
+     - light theme (footer toggle) stays exactly as shipped
+     - dark theme becomes the navy / electric-cyan terminal look
+
+   Styling only. No trading, auth, Deriv-API, store, Blockly or Virtual
+   Hook logic is referenced or changed here.
+   ===================================================================== */
+
+/* ------------------------------------------------------------------
+   Palette
+   ------------------------------------------------------------------ */
+$fx-void: #04070f;
+$fx-bg: #060c16;
+$fx-bg-2: #0a1220;
+$fx-surface-1: #0b1424;
+$fx-surface-2: #101c30;
+$fx-surface-3: #16243c;
+$fx-line: #1d3050;
+$fx-line-soft: #152439;
+$fx-lime: #7ed957;
+$fx-lime-deep: #5fbf3f;
+$fx-orange: #ff8a3d;
+$fx-orange-deep: #ff6f1a;
+$fx-info: #22d3ee;
+$fx-text: #e8f2ff;
+$fx-text-dim: #8ba3c7;
+$fx-text-mute: #5c728f;
+$fx-success: #22e6a5;
+$fx-danger: #ff5c7a;
+$fx-warn: #ffb454;
+$fx-purple: #a78bfa;
+
+$fx-r-s: 8px;
+$fx-r-m: 12px;
+$fx-r-l: 18px;
+$fx-r-xl: 24px;
+
+$fx-shadow-card: 0 20px 44px -26px rgb(2 8 20 / 95%);
+$fx-shadow-glow: 0 0 0 1px rgb(126 217 87 / 22%), 0 0 30px -8px rgb(126 217 87 / 45%);
+$fx-gradient-accent: linear-gradient(135deg, #7ed957 0%, #ff8a3d 58%, #ff6f1a 100%);
+$fx-gradient-surface: linear-gradient(160deg, rgb(16 28 48 / 92%) 0%, rgb(6 12 22 / 96%) 100%);
+
+/* Specificity note:
+   components/shared/styles/_themes.scss compiles to :root .theme--dark{...}
+   (specificity 0,2,0) and @deriv-com/ui ships the same shape for its --du-*
+   tokens. html:root .theme--dark is (0,2,1), so these overrides always win
+   regardless of the order the bundler emits CSS in. */
+html:root .theme--dark {
+    /* ---- surfaces ---- */
+    --general-main-1: #{$fx-bg};
+    --general-main-2: #{$fx-surface-1};
+    --general-main-3: #{$fx-surface-1};
+    --general-main-4: rgb(4 7 15 / 72%);
+    --general-section-1: #{$fx-surface-1};
+    --general-section-2: #{$fx-bg};
+    --general-section-3: #{$fx-surface-2};
+    --general-section-4: #{$fx-surface-2};
+    --general-section-5: #{$fx-surface-2};
+    --general-section-6: #{$fx-surface-3};
+    --general-disabled: #{$fx-surface-1};
+    --general-hover: #{$fx-surface-2};
+    --general-active: #{$fx-surface-3};
+    /* ---- text / icons ------------------------------------------ */
+    --text-prominent: #{$fx-text};
+    --text-general: #{$fx-text-dim};
+    --text-less-prominent: #{$fx-text-mute};
+    --text-primary: #{$fx-text-dim};
+    --text-disabled: #{$fx-text-mute};
+    --text-disabled-1: #{$fx-text-mute};
+    --text-profit-success: #{$fx-success};
+    --text-loss-danger: #{$fx-danger};
+    --text-red: #{$fx-danger};
+    --text-green: #{$fx-success};
+    --text-blue: #{$fx-lime};
+    --text-warning: #{$fx-warn};
+    --text-colored-background: #{$fx-void};
+    --text-info-blue: #{$fx-info};
+    --text-info-blue-background: rgb(34 211 238 / 14%);
+    --text-status-info-blue: #{$fx-info};
+    --text-hint: #{$fx-text-dim};
+    --icon-light-background: #{$fx-text-dim};
+    --icon-dark-background: #{$fx-text};
+    --icon-grey-background: #{$fx-surface-2};
+    --icon-black-plus: #{$fx-text};
+
+    /* ---- borders ----------------------------------------------- */
+    --border-normal: #{$fx-line};
+    --border-normal-1: #{$fx-line};
+    --border-normal-2: #{$fx-line-soft};
+    --border-normal-3: #{$fx-line};
+    --border-hover: #{$fx-lime-deep};
+    --border-hover-1: #{$fx-lime-deep};
+    --border-active: #{$fx-lime};
+    --border-disabled: #{$fx-line-soft};
+    --border-divider: #{$fx-line-soft};
+    /* ---- fills -------------------------------------------------- */
+    --fill-normal: #{$fx-text};
+    --fill-normal-1: #{$fx-text-dim};
+    --fill-hover: #{$fx-text-dim};
+    --fill-active: #{$fx-lime};
+    --fill-disabled: #{$fx-text-mute};
+
+    /* ---- interaction states ------------------------------------- */
+    --state-normal: #{$fx-surface-1};
+    --state-hover: #{$fx-surface-2};
+    --state-active: #{$fx-surface-3};
+    --state-disabled: #{$fx-surface-1};
+    --checkbox-disabled-grey: #{$fx-text-mute};
+    --sidebar-tab: #{$fx-surface-3};
+
+    /* ---- status ------------------------------------------------- */
+    --status-default: #{$fx-surface-3};
+    --status-adjustment: #{$fx-text-dim};
+    --status-danger: #{$fx-danger};
+    --status-warning: #{$fx-warn};
+    --status-warning-transparent: rgb(255 180 84 / 16%);
+    --status-success: #{$fx-success};
+    --status-transfer: #{$fx-orange};
+    --status-info: #{$fx-info};
+    --status-colored-background: #{$fx-void};
+    --status-alert-background: rgb(255 180 84 / 16%);
+
+    /* ---- translucent helpers ------------------------------------ */
+    --transparent-success: rgb(34 230 165 / 16%);
+    --transparent-info: rgb(34 211 238 / 16%);
+    --transparent-hint: rgb(126 217 87 / 12%);
+    --transparent-danger: rgb(255 92 122 / 16%);
+    --transparent-correct-message: rgb(34 230 165 / 16%);
+    --transparent-fake-message: rgb(255 92 122 / 16%);
+    /* ---- gradients ---------------------------------------------- */
+    --gradient-success: linear-gradient(to top, #{$fx-bg}, rgb(34 230 165 / 16%));
+    --gradient-danger: linear-gradient(to top, #{$fx-bg}, rgb(255 92 122 / 16%));
+    --contract-gradient-danger: linear-gradient(to top, #{$fx-bg} 85%, rgb(255 92 122 / 16%));
+    --gradient-right-edge: linear-gradient(to right, rgb(6 12 22 / 0%) -5%, #{$fx-bg} 71%);
+    --gradient-blue: linear-gradient(90deg, #7ed957 0%, #ff8a3d 104.41%);
+    --gradient-green: linear-gradient(90deg, #22e6a5 0%, #7ed957 104.41%);
+    --dashboard-swap-free: linear-gradient(58.51deg, #061828 28.06%, #1a3c60 93.51%);
+    --dashboard-app: linear-gradient(160deg, rgb(16 28 48 / 92%) 0%, rgb(6 12 22 / 96%) 100%);
+    --app-card-virtual: linear-gradient(274.25deg, #16243c 9.01%, #1d3050 103.31%);
+    --app-card-virtual-swap-free: linear-gradient(58.51deg, #061828 28.06%, #1a3c60 93.51%);
+
+    /* ---- badges -------------------------------------------------- */
+    --badge-white: #e8f2ff;
+    --badge-blue: #ff8a3d;
+    --badge-violet: #a78bfa;
+    --badge-green: #7ed957;
+
+    /* ---- purchase (run / stop actions) -------------------------- */
+    --purchase-main-1: #43b02a;
+    --purchase-section-1: #368c22;
+    --purchase-main-2: #ff5c7a;
+    --purchase-section-2: #b3324a;
+    --purchase-disabled-main: #16243c;
+    --purchase-disabled-section: #0b1424;
+    /* ---- buttons ------------------------------------------------ */
+    --button-primary-default: #7ed957;
+    --button-primary-hover: #a7e88a;
+    --button-secondary-default: #8ba3c7;
+    --button-secondary-hover: rgb(232 242 255 / 8%);
+    --button-tertiary-default: transparent;
+    --button-tertiary-hover: rgb(126 217 87 / 10%);
+    --button-primary-light-default: rgb(126 217 87 / 14%);
+    --button-primary-light-hover: rgb(126 217 87 / 24%);
+    --button-toggle-primary: #ff8a3d;
+    --button-toggle-secondary: #1d3050;
+    --button-toggle-alternate: #16243c;
+    --button-get-started-bg: #e8f2ff;
+
+    /* ---- overlay / shadow --------------------------------------- */
+    --overlay-outside-dialog: rgb(2 6 14 / 78%);
+    --overlay-inside-dialog: rgb(6 12 22 / 96%);
+    --shadow-menu: rgb(0 0 0 / 84%);
+    --shadow-menu-2: rgb(0 0 0 / 72%);
+    --shadow-drop: rgb(0 0 0 / 64%);
+    --shadow-box: #1d3050;
+
+    /* ---- misc --------------------------------------------------- */
+    --traders-hub-banner-border-color: #1d3050;
+    --demo-text-color-1: #8ba3c7;
+    --demo-text-color-2: #e8f2ff;
+    --header-background-mt5: #0d1a2e;
+    --header-background-others: #0b1a1a;
+
+    /* ---- CKK Edge accent duo (caterpillar lime + orange) -------- */
+    --ckk-lime: #7ed957;
+    --ckk-lime-deep: #5fbf3f;
+    --ckk-orange: #ff8a3d;
+    --ckk-orange-deep: #ff6f1a;
+}
+/* ------------------------------------------------------------------
+   Base canvas + typography hierarchy + scrollbars + focus ring
+   ------------------------------------------------------------------ */
+html:root .theme--dark body {
+    background: #060c16;
+    color: var(--text-general);
+}
+
+html:root .theme--dark .layout,
+html:root .theme--dark .main-body,
+html:root .theme--dark .main {
+    background-color: #060c16;
+}
+
+html:root .theme--dark h1,
+html:root .theme--dark h2,
+html:root .theme--dark h3 {
+    color: var(--text-prominent);
+    letter-spacing: -0.01em;
+}
+
+html:root .theme--dark * {
+    scrollbar-color: #1d3050 #0b1424;
+}
+
+html:root .theme--dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html:root .theme--dark ::-webkit-scrollbar-track {
+    background: #0b1424;
+}
+
+html:root .theme--dark ::-webkit-scrollbar-thumb {
+    background: #1d3050;
+    border-radius: 99px;
+}
+
+html:root .theme--dark ::-webkit-scrollbar-thumb:hover {
+    background: #7ed957;
+}
+
+html:root .theme--dark :focus-visible {
+    outline: 2px solid rgb(126 217 87 / 65%);
+    outline-offset: 2px;
+}
+
+html:root .theme--dark ::selection {
+    background: rgb(126 217 87 / 30%);
+    color: #e8f2ff;
+}
+/* ------------------------------------------------------------------
+   @deriv-com/ui token namespace (--du-*) so third-party components
+   (header, footer, drawer, modals, account switcher) inherit the same
+   navy / electric-cyan palette as the app-owned styles.
+   ------------------------------------------------------------------ */
+html:root .theme--dark {
+    --du-general-main-1: #060c16;
+    --du-general-main-2: #0b1424;
+    --du-general-section-1: #0b1424;
+    --du-general-section-2: #101c30;
+    --du-text-general: #8ba3c7;
+    --du-text-prominent: #e8f2ff;
+    --du-text-less-prominent: #5c728f;
+    --du-text-primary: #8ba3c7;
+    --du-text-disabled: #5c728f;
+    --du-text-disabled-1: #5c728f;
+    --du-brand-secondary: #7ed957;
+    --du-border-normal: #1d3050;
+    --du-border-normal-1: #1d3050;
+    --du-border-normal-2: #152439;
+    --du-border-normal-3: #1d3050;
+    --du-border-hover: #5fbf3f;
+    --du-border-active: #7ed957;
+    --du-border-disabled: #152439;
+    --du-border-divider: #152439;
+    --du-fill-normal: #e8f2ff;
+    --du-fill-hover: #8ba3c7;
+    --du-fill-active: #7ed957;
+    --du-fill-disabled: #5c728f;
+    --du-state-normal: #0b1424;
+    --du-state-hover: #101c30;
+    --du-state-active: #16243c;
+    --du-state-disabled: #0b1424;
+    --du-button-primary-default: #7ed957;
+    --du-button-primary-hover: #a7e88a;
+    --du-button-secondary-default: #8ba3c7;
+    --du-button-secondary-hover: rgb(232 242 255 / 8%);
+    --du-button-tertiary-hover: rgb(126 217 87 / 10%);
+    --du-button-toggle-primary: #ff8a3d;
+    --du-button-toggle-secondary: #1d3050;
+    --du-overlay-outside-dialog: rgb(2 6 14 / 78%);
+    --du-overlay-inside-dialog: rgb(6 12 22 / 96%);
+    --du-shadow-menu: rgb(0 0 0 / 84%);
+    --du-shadow-drop: rgb(0 0 0 / 64%);
+    --du-shadow-box: #1d3050;
+    --du-status-danger: #ff5c7a;
+    --du-status-success: #22e6a5;
+    --du-status-warning: #ffb454;
+    --du-status-info: #22d3ee;
+    --du-transparent-success: rgb(34 230 165 / 16%);
+    --du-transparent-info: rgb(34 211 238 / 16%);
+    --du-transparent-danger: rgb(255 92 122 / 16%);
+}
+/* ==================================================================
+   Reusable primitives (shared by dashboard, free bots, bot list, ...)
+   ================================================================== */
+.fx-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #7ed957;
+}
+
+.fx-section-title {
+    margin: 0;
+    font-size: clamp(20px, 3.4vw, 30px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--text-prominent);
+}
+
+.fx-card {
+    position: relative;
+    border-radius: 18px;
+    border: 1px solid rgb(29 48 80 / 90%);
+    background-image: linear-gradient(160deg, rgb(16 28 48 / 92%) 0%, rgb(6 12 22 / 96%) 100%);
+    box-shadow: 0 20px 44px -26px rgb(2 8 20 / 95%);
+    color: var(--text-prominent);
+    overflow: hidden;
+}
+
+.fx-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgb(126 217 87 / 14%);
+}
+
+.fx-card--accent {
+    border-color: rgb(126 217 87 / 38%);
+    box-shadow: 0 0 0 1px rgb(126 217 87 / 16%), 0 0 34px -14px rgb(126 217 87 / 55%);
+}
+
+.fx-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgb(29 48 80 / 90%);
+    background: rgb(11 20 36 / 85%);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-less-prominent);
+    white-space: nowrap;
+}
+
+.fx-pill--live { border-color: rgb(34 230 165 / 40%); color: #22e6a5; }
+.fx-pill--cyan { border-color: rgb(126 217 87 / 40%); color: #7ed957; }
+.fx-pill--warn { border-color: rgb(255 180 84 / 40%); color: #ffb454; }
+.fx-pill--off  { border-color: rgb(92 114 143 / 40%);  color: #5c728f; }
+
+.fx-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgb(29 48 80 / 80%);
+    background: rgb(11 20 36 / 70%);
+    min-width: 0;
+}
+
+.fx-stat__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-less-prominent);
+}
+
+.fx-stat__value {
+    font-size: clamp(15px, 2.4vw, 20px);
+    font-weight: 700;
+    color: var(--text-prominent);
+    overflow-wrap: anywhere;
+}
+
+.fx-stat__value--up { color: #22e6a5; }
+.fx-stat__value--down { color: #ff5c7a; }
+
+.fx-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+/* ==================================================================
+   Shared component polish
+   ================================================================== */
+
+/* ---- application header (deriv-header is the @deriv-com/ui root) ---- */
+html:root .theme--dark .deriv-header {
+    background: rgb(7 13 24 / 92%);
+    border-bottom: 1px solid rgb(29 48 80 / 85%);
+    box-shadow: 0 1px 0 0 rgb(126 217 87 / 12%) inset, 0 10px 30px -24px rgb(126 217 87 / 55%);
+    backdrop-filter: blur(10px);
+}
+
+/* ---- application footer ---- */
+html:root .theme--dark .app-footer {
+    background: rgb(7 13 24 / 94%);
+    border-top: 1px solid rgb(29 48 80 / 85%);
+    box-shadow: 0 1px 0 0 rgb(126 217 87 / 10%) inset;
+    backdrop-filter: blur(10px);
+}
+
+html:root .theme--dark .app-footer__vertical-line {
+    background-color: rgb(29 48 80 / 90%);
+}
+
+/* ---- primary action buttons ---- */
+html:root .theme--dark .dc-btn--primary {
+    background-image: linear-gradient(135deg, #7ed957 0%, #ff8a3d 100%);
+    border-radius: 10px;
+    font-weight: 700;
+    box-shadow: 0 12px 28px -16px rgb(126 217 87 / 85%);
+}
+
+html:root .theme--dark .dc-btn--primary:hover:not([disabled]) {
+    background-image: linear-gradient(135deg, #a7e88a 0%, #ffa96b 100%);
+}
+
+html:root .theme--dark .dc-btn--primary .dc-btn__text,
+html:root .theme--dark .dc-btn--primary .dc-btn__icon {
+    color: #04070f;
+}
+
+html:root .theme--dark .dc-btn--secondary,
+html:root .theme--dark .dc-btn--tertiary,
+html:root .theme--dark .dc-btn__rounded {
+    border-radius: 10px;
+}
+
+/* ---- tabs (drawer + in-page) ---- */
+html:root .theme--dark .dc-tabs__list {
+    border-bottom-color: rgb(29 48 80 / 70%);
+}
+
+html:root .theme--dark .dc-tabs__item:not(.dc-tabs__active) {
+    color: #8ba3c7;
+}
+
+html:root .theme--dark .dc-tabs__item:not(.dc-tabs__active):hover {
+    color: #22d3ee;
+}
+
+html:root .theme--dark .dc-tabs__active-line {
+    background: linear-gradient(90deg, #22d3ee 0%, #3b82f6 100%);
+}
+
+/* ---- run-panel drawer ---- */
+html:root .theme--dark .dc-drawer__container {
+    background: #0b1424;
+    border-left: 1px solid rgb(29 48 80 / 85%);
+}
+
+/* ---- modals / dialogs ---- */
+html:root .theme--dark .dc-modal__container {
+    background: #0b1424;
+    border: 1px solid rgb(29 48 80 / 85%);
+    border-radius: 16px;
+}
+
+/* ---- account switcher popover ---- */
+html:root .theme--dark .deriv-account-switcher__container {
+    border: 1px solid rgb(29 48 80 / 85%);
+    border-radius: 14px;
+    box-shadow: 0 26px 60px -30px rgb(0 0 0 / 90%);
+}
+
+/* ---- mobile: keep touch targets and avoid horizontal overflow ---- */
+@media (max-width: 1279px) {
+    html:root .theme--dark .deriv-header {
+        min-height: 44px;
+    }
+
+    html:root .theme--dark .deriv-wrapper__left,
+    html:root .theme--dark .deriv-wrapper__right {
+        min-height: 40px;
+    }
+
+    html:root .theme--dark .dc-tabs__item {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+    }
+}
+/* ---- action button primitive ---- */
+.fx-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    border: 1px solid rgb(29 48 80 / 95%);
+    background: rgb(11 20 36 / 85%);
+    color: var(--text-prominent);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.fx-btn:hover {
+    border-color: rgb(126 217 87 / 55%);
+    background: rgb(126 217 87 / 10%);
+}
+
+.fx-btn:active {
+    transform: translateY(1px);
+}
+
+.fx-btn--primary {
+    border-color: transparent;
+    background-image: linear-gradient(135deg, #7ed957 0%, #ff8a3d 100%);
+    color: #04070f;
+    box-shadow: 0 14px 30px -16px rgb(126 217 87 / 90%);
+}
+
+.fx-btn--primary:hover {
+    background-image: linear-gradient(135deg, #a7e88a 0%, #ffa96b 100%);
+    color: #04070f;
+}
+
+@media (max-width: 600px) {
+    .fx-btn {
+        width: 100%;
+        min-height: 46px;
+    }
+}
+
+/* ---- "Run the bot" controls: pure Safaricom green -------------------
+   The toolbar play button, the run-panel Run button and the quick-strategy
+   Run button all share one flat green (#43b02a) so the action reads the
+   same everywhere. Generic primary buttons and Stop/loss stay as they are.
+   -------------------------------------------------------------------- */
+html:root .theme--dark #db-animation__run-button,
+html:root .theme--dark .animation__run-button,
+html:root .theme--dark .run-panel__run-button,
+html:root .theme--dark .dc-btn[data-testid='qs-run-button'] {
+    background-image: none !important;
+    background-color: #43b02a !important;
+    border-color: #43b02a !important;
+    color: #ffffff !important;
+    box-shadow: 0 12px 26px -16px rgb(67 176 42 / 90%) !important;
+}
+
+html:root .theme--dark #db-animation__run-button:hover:not([disabled]),
+html:root .theme--dark .animation__run-button:hover:not([disabled]),
+html:root .theme--dark .run-panel__run-button:hover:not([disabled]),
+html:root .theme--dark .dc-btn[data-testid='qs-run-button']:hover:not([disabled]) {
+    background-image: none !important;
+    background-color: #4cc231 !important;
+}
+
+html:root .theme--dark #db-animation__run-button .dc-btn__text,
+html:root .theme--dark #db-animation__run-button .dc-btn__icon,
+html:root .theme--dark .animation__run-button .dc-btn__text,
+html:root .theme--dark .run-panel__run-button .dc-btn__text,
+html:root .theme--dark .dc-btn[data-testid='qs-run-button'] .dc-btn__text {
+    color: #ffffff !important;
+}

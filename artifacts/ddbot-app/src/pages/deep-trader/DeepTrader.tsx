@@ -133,7 +133,7 @@ const DeepTrader = () => {
 
     const signalColor = (type: string) => ({
         match: '#00ff88', differ: '#ff3355', over: '#00cc55',
-        under: '#ff4444', even: '#3399ff', odd: '#ff9900',
+        under: '#ff4444', even: '#ff8a3d', odd: '#ff9900',
     }[type] || '#aaa');
 
     const Card = ({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) => (
@@ -188,7 +188,7 @@ const DeepTrader = () => {
 
             {/* STAT CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                <Card label="Analyzed" value={analysis.total} color="#3399ff" />
+                <Card label="Analyzed" value={analysis.total} color="#ff8a3d" />
                 <Card label="Hot Digit" value={analysis.hot?.digit ?? '-'} sub={`${analysis.hot?.pct.toFixed(1)}%`} color="#00ff88" />
                 <Card label="Cold Digit" value={analysis.cold?.digit ?? '-'} sub={`${analysis.cold?.pct.toFixed(1)}%`} color="#ff3355" />
             </div>
@@ -250,11 +250,11 @@ const DeepTrader = () => {
                 <div style={{ background: '#0e111a', border: '1px solid #161a28', borderRadius: 8, padding: '10px 12px' }}>
                     <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Even / Odd</div>
                     <div style={{ height: 6, borderRadius: 3, overflow: 'hidden', display: 'flex', marginBottom: 6 }}>
-                        <div style={{ width: `${analysis.evenPct}%`, background: 'linear-gradient(90deg,#3399ff,#2277cc)', transition: 'width 0.4s' }} />
+                        <div style={{ width: `${analysis.evenPct}%`, background: 'linear-gradient(90deg,#ff8a3d,#2277cc)', transition: 'width 0.4s' }} />
                         <div style={{ flex: 1, background: 'linear-gradient(90deg,#ff9900,#cc7700)' }} />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 11, color: '#3399ff', fontWeight: 700 }}>E {analysis.evenPct.toFixed(1)}%</span>
+                        <span style={{ fontSize: 11, color: '#ff8a3d', fontWeight: 700 }}>E {analysis.evenPct.toFixed(1)}%</span>
                         <span style={{ fontSize: 11, color: '#ff9900', fontWeight: 700 }}>O {analysis.oddPct.toFixed(1)}%</span>
                     </div>
                 </div>

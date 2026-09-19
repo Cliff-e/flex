@@ -262,3 +262,114 @@
         margin: 0;
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Mobile & tablet: the Blocks menu hands the selection over to the flyout,
+   so the flyout becomes the full-width surface where blocks are picked.
+   Blocks are inserted with the always-visible add button because dragging
+   out of the flyout is bound to mousedown only (see flyout-store).
+───────────────────────────────────────────────────────────────────── */
+@include mobile-or-tablet-screen {
+    .flyout {
+        display: flex;
+        flex-direction: column;
+        top: 0;
+        inset-inline-start: 0;
+        width: 100% !important;
+        min-width: 0;
+        max-width: 100%;
+        height: calc(100% - 5.6rem);
+        max-height: calc(100% - 5.6rem);
+        margin-inline-start: 0;
+        margin-top: 0;
+        border-radius: 0;
+        box-shadow: 0 0.4rem 1.6rem rgb(0 0 0 / 45%);
+
+        &__mobile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.6rem;
+            flex-shrink: 0;
+            height: 5.2rem;
+            padding: 0 0.8rem 0 1.6rem;
+            border-bottom: 1px solid var(--general-section-6);
+            background-color: var(--general-section-5);
+            color: var(--text-prominent);
+        }
+
+        &__mobile-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        &__mobile-close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 3.2rem;
+            height: 3.2rem;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            background-color: transparent;
+            color: var(--text-general);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+
+            &:active {
+                background-color: var(--general-hover);
+            }
+
+            svg {
+                width: 1.8rem;
+                height: 1.8rem;
+            }
+        }
+
+        /* The header row above is part of a flex column, so the scrollable
+           content has to take the remaining height instead of a fixed calc. */
+        &__content,
+        &__normal-content,
+        &__help-content {
+            flex: 1;
+            min-height: 0;
+            height: auto;
+        }
+
+        &__content .dc-themed-scrollbars {
+            padding: 0.5rem 1.6rem;
+        }
+
+        &__search-header {
+            flex-shrink: 0;
+        }
+
+        &__help {
+            height: auto;
+        }
+
+        &__button-add--hide {
+            /* no hover state on touch devices - always offer the add button */
+            display: flex !important;
+        }
+    }
+}
+
+/* ----------------------------------------
+   CKK Edge accent duo (caterpillar lime + orange):
+   lime marks the block under the cursor, orange the add-button hover ring.
+   ---------------------------------------- */
+.flyout__item {
+    border-inline-start: 2px solid transparent;
+}
+
+.flyout__item--active {
+    border-inline-start-color: var(--ckk-lime, #7ed957);
+}
+
+.flyout__button-add:hover {
+    box-shadow: 0 0 0 3px rgb(255 138 61 / 35%);
+}

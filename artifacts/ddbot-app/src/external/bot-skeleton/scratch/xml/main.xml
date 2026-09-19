@@ -386,11 +386,11 @@
   </block>
   <block type="before_purchase" id="licmPn={lrajX{,il-1Y" deletable="false" x="0" y="1240">
     <statement name="BEFOREPURCHASE_STACK">
-      <block type="purchase_all_contracts" id="default_purchase_all">
-        <next>
-          <block type="hedge" id="default_hedge"></block>
-        </next>
-      </block>
+      <!-- purchase_all_contracts is a terminal leaf: it defines previousStatement only
+           and calls setNextStatement(false), so it has no next connection. Chaining a
+           block after it makes Blockly throw "Next statement does not exist." while
+           loading this template. -->
+      <block type="purchase_all_contracts" id="default_purchase_all"></block>
     </statement>
   </block>
 </xml>

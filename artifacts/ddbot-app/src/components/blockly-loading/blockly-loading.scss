@@ -6,7 +6,45 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background-color: var(--overlay-outside-dialog);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgb(6 12 22 / 72%);
         pointer-events: none;
+        /* Delay + backwards fill: a fast workspace init never flashes. */
+        animation: ckk-loading-fade 0.2s ease-out 0.15s both;
+
+        &-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+            padding: 2rem 2.4rem;
+            border-radius: 16px;
+            border: 1px solid #1d3050;
+            background-color: rgb(11 20 36 / 94%);
+            box-shadow:
+                0 20px 44px -26px rgb(2 8 20 / 95%),
+                0 0 0 1px rgb(126 217 87 / 14%);
+        }
+
+        &-msg {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #8ba3c7;
+        }
     }
 }
+
+@keyframes ckk-loading-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+

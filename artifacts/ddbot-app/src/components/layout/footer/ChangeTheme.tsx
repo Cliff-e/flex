@@ -5,19 +5,27 @@ import { useTranslations } from '@deriv-com/translations';
 import { Tooltip } from '@deriv-com/ui';
 
 const ChangeTheme = observer(() => {
-    const { is_dark_mode_on, toggleTheme } = useThemeSwitcher();
+    const { theme, theme_label, toggleTheme, is_dark_mode_on } = useThemeSwitcher();
     const { localize } = useTranslations();
 
     return (
         <Tooltip
             as='button'
-            className='app-footer__icon'
-            tooltipContent={localize('Change theme')}
+            type='button'
+            className={`app-footer__theme-button app-footer__theme-button--${theme}`}
+            tooltipContent={`${localize('Change theme')} — ${theme_label}`}
             onClick={toggleTheme}
         >
-            {!is_dark_mode_on ? <LegacyThemeLightIcon iconSize='xs' /> : <LegacyThemeDarkIcon iconSize='xs' />}
+            <span className='app-footer__theme-button-swatch' aria-hidden='true' />
+            {is_dark_mode_on ? (
+                <LegacyThemeDarkIcon iconSize='xs' className='app-footer__theme-button-icon' />
+            ) : (
+                <LegacyThemeLightIcon iconSize='xs' className='app-footer__theme-button-icon' />
+            )}
+            <span className='app-footer__theme-button-label'>{theme_label}</span>
         </Tooltip>
     );
 });
 
 export default ChangeTheme;
+

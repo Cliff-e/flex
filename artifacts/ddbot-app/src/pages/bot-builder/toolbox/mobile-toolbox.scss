@@ -1,0 +1,257 @@
+@use 'components/shared/styles/mixins' as *;
+
+/* Blocks menu for phones and tablets (see mobile-toolbox.tsx).
+   Both the trigger and the sheet are only rendered on non-desktop devices, so
+   no media query is needed here - the component itself is the gate. */
+.mobile-toolbox {
+    /* ── Dimmed backdrop + left sheet ── */
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+
+    &__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 55%);
+        animation: mobile-toolbox-fade-in 0.15s ease-out;
+    }
+
+    &__panel {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        inset-inline-start: 0;
+        display: flex;
+        flex-direction: column;
+        width: min(88vw, 40rem);
+        max-width: 100%;
+        background-color: var(--general-main-1);
+        color: var(--text-general);
+        border-inline-end: 1px solid var(--border-normal);
+        box-shadow: 0.4rem 0 1.6rem rgb(0 0 0 / 45%);
+        animation: mobile-toolbox-slide-in 0.2s ease-out;
+
+        @include is-RTL {
+            animation-name: mobile-toolbox-slide-in-rtl;
+        }
+
+        /* The search box at the top of the sheet must not scroll away. */
+        .db-toolbox__search {
+            flex-shrink: 0;
+        }
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.6rem;
+        flex-shrink: 0;
+        padding: 1.2rem 0.8rem 1.2rem 1.6rem;
+        border-bottom: 1px solid var(--general-section-6);
+        background-color: var(--general-section-5);
+        color: var(--text-prominent);
+    }
+
+    &__close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 3.2rem;
+        height: 3.2rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background-color: transparent;
+        color: var(--text-general);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+
+        &:active {
+            background-color: var(--general-hover);
+        }
+
+        svg {
+            width: 1.8rem;
+            height: 1.8rem;
+        }
+    }
+
+    &__menu {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2.4rem;
+    }
+
+    &__row {
+        border-top: 1px solid var(--general-section-6);
+
+        &:first-child {
+            border-top: none;
+        }
+    }
+
+    &__item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.2rem;
+        padding: 1.4rem 1.6rem;
+        color: var(--text-general);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+
+        &:active {
+            background-color: var(--general-hover);
+        }
+
+        &--active {
+            background-color: var(--general-active);
+            color: var(--text-prominent);
+        }
+    }
+
+    &__arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 1.6rem;
+        height: 1.6rem;
+        transition: transform 0.3s ease;
+
+        &--active {
+            transform: rotate(180deg);
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    &__sub-row {
+        padding: 1.2rem 1.6rem 1.2rem 3.2rem;
+        color: var(--text-general);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+
+        &:active {
+            background-color: var(--general-hover);
+        }
+
+        &--active {
+            background-color: var(--general-active);
+            color: var(--text-prominent);
+        }
+    }
+
+    /* ── Floating trigger, kept clear of the 4rem wide toolbar icon column
+        (inset-inline-start: 4.8rem) and of the 64px tall mobile toolbar row. ── */
+    &__trigger {
+        position: absolute;
+        top: 6.8rem;
+        inset-inline-start: 4.8rem;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        height: 3.6rem;
+        max-width: calc(100% - 6.4rem);
+        padding: 0 1.4rem;
+        border: 1px solid var(--border-normal);
+        border-radius: 1.8rem;
+        background-color: var(--general-main-1);
+        color: var(--text-prominent);
+        box-shadow: 0 0.4rem 1.2rem rgb(0 0 0 / 35%);
+        font-family: inherit;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+
+        &:active {
+            background-color: var(--general-hover);
+        }
+
+        &--hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        &-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 1.8rem;
+            height: 1.8rem;
+
+            svg {
+                width: 100%;
+                height: 100%;
+            }
+        }
+
+        &-text {
+            white-space: nowrap;
+        }
+    }
+}
+
+@keyframes mobile-toolbox-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes mobile-toolbox-slide-in {
+    from {
+        transform: translate3d(-100%, 0, 0);
+    }
+
+    to {
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes mobile-toolbox-slide-in-rtl {
+    from {
+        transform: translate3d(100%, 0, 0);
+    }
+
+    to {
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+/* ----------------------------------------
+   CKK Edge accent duo (caterpillar lime + orange):
+   lime marks the selected category, orange is the press/hover hue.
+   ---------------------------------------- */
+.mobile-toolbox__item,
+.mobile-toolbox__sub-row {
+    border-inline-start: 3px solid transparent;
+}
+
+.mobile-toolbox__item--active,
+.mobile-toolbox__sub-row--active {
+    border-inline-start-color: var(--ckk-lime, #7ed957);
+}
+
+.mobile-toolbox__item:active .dc-text,
+.mobile-toolbox__sub-row:active .dc-text {
+    color: var(--ckk-orange, #ff8a3d);
+}
+
+.mobile-toolbox__trigger-icon {
+    color: var(--ckk-lime, #7ed957);
+}
+

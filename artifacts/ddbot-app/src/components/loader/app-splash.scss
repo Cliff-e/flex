@@ -28,8 +28,8 @@
         user-select: none;
     }
 
-    &__logo-ckk  { color: #009a44; }
-    &__logo-edge { color: #3399ff; margin-left: 0.4rem; }
+    &__logo-ckk  { color: #5fbf3f; }
+    &__logo-edge { color: #ff8a3d; margin-left: 0.4rem; }
 
     &__progress {
         width: 180px;
@@ -41,7 +41,7 @@
 
     &__progress-bar {
         height: 100%;
-        background: linear-gradient(90deg, #009a44, #3399ff);
+        background: linear-gradient(90deg, #5fbf3f, #ff8a3d);
         border-radius: 99px;
         animation: ckk-progress 2s ease-in-out infinite;
     }
@@ -65,4 +65,36 @@
 @keyframes ckk-fade-s {
     from { opacity: 0.3; }
     to   { opacity: 0.9; }
+}
+
+/* ----------------------------------------
+   Futuristic navy / cyan retune (UI only)
+   ---------------------------------------- */
+$ckk-cyan: #7ed957;
+$ckk-blue: #ff8a3d;
+$ckk-navy: #060c16;
+
+.ckk-splash {
+    background: $ckk-navy;
+
+    &__computer {
+        filter: drop-shadow(0 0 22px rgb(126 217 87 / 40%));
+    }
+
+    &__logo-ckk  { color: $ckk-cyan; }
+    &__logo-edge { color: $ckk-blue; }
+
+    &__progress {
+        background: #0b1424;
+        box-shadow: 0 0 0 1px rgb(29 48 80 / 90%) inset;
+    }
+
+    &__progress-bar {
+        background: linear-gradient(90deg, $ckk-cyan, $ckk-blue);
+        box-shadow: 0 0 14px -2px rgb(126 217 87 / 80%);
+    }
+
+    &__msg {
+        color: #5c728f;
+    }
 }

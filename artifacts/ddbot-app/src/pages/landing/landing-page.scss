@@ -3,6 +3,14 @@
    Matches the design reference: dark hero image + 3-card bottom strip.
 ───────────────────────────────────────────────────────────────────── */
 
+/* landing-hero.png (1086 x 1448) is one self-contained poster: the robot scene,
+   the header panel, a row of action cards AND the footer are all baked into the
+   bitmap. The hero therefore paints the artwork through a layer that is taller
+   than the hero itself; `cover` then crops the poster's own baked-in card row
+   (bottom ~27% of the artwork) away, so the interactive cards rendered by
+   LandingPage.tsx remain the only row on screen at every aspect ratio. */
+$ckk-poster-crop-height: 138%;
+
 /* Fixed overlay covers the entire viewport including the app header,
    giving the landing page a true full-screen presence. */
 .ckk-landing {
@@ -11,18 +19,39 @@
     z-index: 9999;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 100dvh;
     background: #050b14;
     overflow: hidden;
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 
-    /* ── Hero ── */
-    /* background-image is set via inline style in LandingPage.tsx (asset import) */
+    /* ── Hero: fills every pixel left by the card strip and the footer ── */
+    /* background-image is set via inline style in LandingPage.tsx (asset import);
+       the cropping layer below inherits it, so the asset path stays in one place. */
     &__hero {
+        position: relative;
         flex: 1;
         background-size: cover;
         background-position: center top;
         background-repeat: no-repeat;
         min-height: 0;
+        overflow: hidden;
+
+        /* Fully covers the hero box, so the element's own cover-painted background
+           above is only ever a fallback for browsers without pseudo-elements. */
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: $ckk-poster-crop-height;
+            background-image: inherit;
+            background-position: center top;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
     }
 
     /* ── Card strip ── */
@@ -120,14 +149,12 @@
     }
 }
 
-/* ── Desktop: wider cards, larger hero ── */
-@media (min-width: 901px) {
+/* ── Tablet & desktop: the hero fills the viewport edge to edge, so the card
+      strip and the footer only need larger type to stay in proportion. ── */
+@media (min-width: 601px) {
     .ckk-landing {
-        max-width: 560px;     /* cap the width on wide screens */
-        margin: 0 auto;
-
         &__card {
-            padding: 24px 16px 20px;
+            padding: 22px 16px 18px;
             gap: 8px;
         }
 
@@ -138,8 +165,82 @@
             svg { width: 32px; height: 32px; }
         }
 
-        &__label { font-size: 13px; }
+        &__label { font-size: 13px; letter-spacing: 0.8px; }
         &__desc  { font-size: 12px; }
         &__footer { font-size: 12px; padding: 10px 24px; }
     }
+}
+
+/* ── Wide desktop / large monitors: scale the action dock up so the three
+      actions never look lost underneath a full-bleed hero. ── */
+@media (min-width: 1280px) {
+    .ckk-landing {
+        &__card { padding: 28px 24px 22px; gap: 10px; }
+        &__icon {
+            width: 76px;
+            height: 76px;
+
+            svg { width: 38px; height: 38px; }
+        }
+
+        &__label { font-size: 16px; letter-spacing: 1.2px; }
+        &__desc  { font-size: 13px; }
+        &__footer { font-size: 13px; padding: 12px 32px; }
+    }
+}
+
+/* ── Short viewports (landscape phones, small laptops): keep the action dock
+      compact so the hero keeps as much of the poster as possible. ── */
+@media (max-height: 520px) {
+    .ckk-landing {
+        &__card { padding: 10px 8px; gap: 2px; }
+        &__icon {
+            width: 36px;
+            height: 36px;
+            margin-bottom: 0;
+
+            svg { width: 18px; height: 18px; }
+        }
+
+        &__label { font-size: 10px; }
+        &__desc { display: none; }
+        &__footer { font-size: 9px; padding: 4px 12px; }
+    }
+}
+
+/* ----------------------------------------
+   Align the landing page with the futuristic navy / cyan language.
+   Presentation only - markup, copy and the login flow are untouched.
+   ---------------------------------------- */
+.ckk-landing__cards {
+    background: rgb(7 13 24 / 96%);
+    border-top: 1px solid #1d3050;
+}
+
+.ckk-landing__card {
+    background: transparent;
+}
+
+.ckk-landing__card:not(:last-child) {
+    border-right-color: #1d3050;
+}
+
+.ckk-landing__card:hover,
+.ckk-landing__card:active {
+    background: rgb(126 217 87 / 8%);
+}
+
+.ckk-landing__icon--blue {
+    border-color: #7ed957;
+    box-shadow: 0 0 14px rgb(126 217 87 / 35%);
+}
+
+.ckk-landing__label--blue {
+    color: #7ed957;
+}
+
+.ckk-landing__footer {
+    background: #04070f;
+    border-top-color: #152439;
+    color: #5c728f;
 }

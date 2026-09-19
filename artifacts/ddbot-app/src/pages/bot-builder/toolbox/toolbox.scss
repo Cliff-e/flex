@@ -200,3 +200,28 @@
     height: 16px;
     animation: spin 1s linear infinite;
 }
+
+/* ----------------------------------------
+   CKK Edge accent duo (caterpillar lime + orange) for the Blocks menu.
+   Lime marks the selected category, orange is the hover/attention hue.
+   ---------------------------------------- */
+.db-toolbox__row {
+    border-inline-start: 2px solid transparent;
+}
+
+.db-toolbox__row--active {
+    border-inline-start-color: var(--ckk-lime, #7ed957);
+}
+
+.db-toolbox__item:hover .db-toolbox__label {
+    color: var(--ckk-orange, #ff8a3d);
+}
+
+.db-toolbox__sub-category-row {
+    border-inline-start: 2px solid transparent;
+}
+
+.db-toolbox__sub-category-row--active {
+    border-inline-start-color: var(--ckk-lime, #7ed957);
+}
+

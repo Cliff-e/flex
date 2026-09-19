@@ -1,0 +1,84 @@
+$ckk-lime: #7ed957;
+$ckk-lime-deep: #5fbf3f;
+$ckk-orange: #ff8a3d;
+
+/* ------------------------------------------------------------------
+   Shared CKK Edge loading indicator (wordmark + animated bars).
+   One visual language for every loading surface in the app.
+   ------------------------------------------------------------------ */
+.ckk-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.4rem;
+
+    &__wordmark {
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+        user-select: none;
+        line-height: 1;
+
+        &-ckk {
+            color: $ckk-lime;
+        }
+
+        &-edge {
+            color: $ckk-orange;
+            margin-left: 0.3rem;
+        }
+    }
+
+    &__bar {
+        display: flex;
+        align-items: flex-end;
+        gap: 5px;
+        height: 28px;
+
+        span {
+            width: 5px;
+            border-radius: 3px 3px 0 0;
+            animation: ckk-bar 1s ease-in-out infinite alternate;
+
+            &:nth-child(1) {
+                background: $ckk-lime-deep;
+                height: 40%;
+                animation-delay: 0s;
+            }
+
+            &:nth-child(2) {
+                background: $ckk-lime;
+                height: 65%;
+                animation-delay: 0.15s;
+            }
+
+            &:nth-child(3) {
+                background: $ckk-orange;
+                height: 100%;
+                animation-delay: 0.3s;
+            }
+
+            &:nth-child(4) {
+                background: $ckk-lime;
+                height: 55%;
+                animation-delay: 0.45s;
+            }
+
+            &:nth-child(5) {
+                background: $ckk-lime-deep;
+                height: 30%;
+                animation-delay: 0.6s;
+            }
+        }
+    }
+}
+
+@keyframes ckk-bar {
+    from {
+        transform: scaleY(0.4);
+    }
+
+    to {
+        transform: scaleY(1);
+    }
+}

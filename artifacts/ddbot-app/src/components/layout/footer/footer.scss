@@ -29,6 +29,81 @@
         }
     }
 
+    /* Visible orange theme button — shows the active theme and cycles
+       dark → light → CKK Green. Sits next to the other footer controls. */
+    &__theme-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        height: 2.4rem;
+        margin-inline: 0.4rem 0.6rem;
+        padding: 0 1rem;
+        border: 1px solid var(--ckk-orange-deep, #ff6f1a);
+        border-radius: 99px;
+        background: linear-gradient(135deg, var(--ckk-orange, #ff8a3d) 0%, var(--ckk-orange-deep, #ff6f1a) 100%);
+        color: #1a0d04;
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        cursor: pointer;
+        box-shadow: 0 8px 18px -12px rgb(255 111 26 / 95%);
+
+        &:hover {
+            background: linear-gradient(135deg, #ffa361 0%, var(--ckk-orange, #ff8a3d) 100%);
+            color: #1a0d04;
+        }
+
+        &:active {
+            transform: translateY(1px);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--ckk-lime, #7ed957);
+            outline-offset: 2px;
+        }
+
+        /* swatch shows the active theme's accent colour */
+        &-swatch {
+            width: 0.9rem;
+            height: 0.9rem;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgb(3 13 7 / 40%);
+        }
+
+        &--dark &-swatch {
+            background: #22d3ee;
+        }
+
+        &--light &-swatch {
+            background: #ffffff;
+        }
+
+        &--ckk-green &-swatch {
+            background: #7ed957;
+        }
+
+        &-icon {
+            display: inline-flex;
+
+            svg > g > path,
+            svg > path {
+                fill: #1a0d04;
+            }
+        }
+
+        @include mobile-or-tablet-screen {
+            gap: 0.4rem;
+            margin-inline: 0.2rem 0.4rem;
+            padding: 0 0.6rem;
+
+            &-label {
+                display: none;
+            }
+        }
+    }
+
     &__vertical-line {
         width: 0.1rem;
         height: 1.6rem;

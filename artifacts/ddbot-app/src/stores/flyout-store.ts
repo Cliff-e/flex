@@ -278,10 +278,21 @@ export default class FlyoutStore implements IFlyoutStore {
         const is_flyout_click = path.some(
             el => (el as Element).classList && (el as Element).classList.contains('flyout')
         );
+        /* The mobile blocks menu renders outside the flyout but belongs to it, so
+           interacting with it must not dismiss the blocks that are on screen. */
+        const is_mobile_toolbox_click = path.some(el => {
+            const element = el as Element;
+
+            return (
+                !!element.classList &&
+                (element.classList.contains('mobile-toolbox') ||
+                    element.classList.contains('mobile-toolbox__trigger'))
+            );
+        });
         const is_search_focus = this.root_store.toolbox.is_search_focus;
         const isToolboxClick = () => toolbox?.contains(event.target as Node);
 
-        if (!is_flyout_click && !isToolboxClick() && !is_search_focus) {
+        if (!is_flyout_click && !is_mobile_toolbox_click && !isToolboxClick() && !is_search_focus) {
             this.setVisibility(false);
             this.setSelectedCategory(null);
         }

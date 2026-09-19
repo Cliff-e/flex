@@ -18,12 +18,12 @@
 
     &--left {
         left: 0;
-        background: linear-gradient(-88.07deg, transparent 1.63%, #080c13 50.02%);
+        background: linear-gradient(-88.07deg, transparent 1.63%, #060c16 50.02%);
     }
 
     &--right {
         right: 0;
-        background: linear-gradient(88.07deg, transparent 1.63%, #080c13 50.02%);
+        background: linear-gradient(88.07deg, transparent 1.63%, #060c16 50.02%);
     }
 }
 
@@ -839,26 +839,26 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────
-   GREEN + BLUE NAVIGATION TABS
+   NAVY + ELECTRIC-CYAN NAVIGATION TABS
 ───────────────────────────────────────────────────────────────────── */
 .main .dc-tabs__list {
-    background: #080c13 !important;
-    border-bottom: 1px solid #101520 !important;
+    background: #060c16 !important;
+    border-bottom: 1px solid #1d3050 !important;
 }
 
 /* Force every tab item to have dark base so white never flashes */
 .main .dc-tabs__item {
-    color: #5fa8cc !important;
+    color: #8ba3c7 !important;
     font-size: 13px;
     background: transparent !important;
     transition: background 0.15s ease, color 0.15s ease !important;
 }
 
-/* Active tab: Safaricom green fill + black text, full tab height highlight */
+/* Active tab: cyan/blue gradient pill with near-black text */
 .main .dc-tabs__active,
 .main .dc-tabs__item.dc-tabs__active {
-    color: #000 !important;
-    background: #009a44 !important;
+    color: #04070f !important;
+    background-image: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%) !important;
     font-weight: 700 !important;
     border-radius: 6px 6px 0 0 !important;
 }
@@ -875,4 +875,23 @@
 #id-deep-trader {
     height: 100%;
     overflow-y: auto;
+}
+
+/* ----------------------------------------
+   Futuristic tab polish: cyan hover + glowing active pill
+   ---------------------------------------- */
+.main .dc-tabs__item:not(.dc-tabs__active):hover {
+    color: #22d3ee !important;
+}
+
+.main .dc-tabs__active,
+.main .dc-tabs__item.dc-tabs__active {
+    box-shadow: 0 0 22px -6px rgb(34 211 238 / 65%) !important;
+}
+
+@media (max-width: 1279px) {
+    .main .dc-tabs__item {
+        padding: 0 1.4rem !important;
+        min-height: 40px;
+    }
 }

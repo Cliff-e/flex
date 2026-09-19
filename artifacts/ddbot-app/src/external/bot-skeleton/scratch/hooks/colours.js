@@ -1,8 +1,16 @@
 const lightMode = () => {
     const workspace = Blockly;
+    /* ------------------------------------------------------------------
+       Root blocks (the bot's outer structure): "1. Trade parameters",
+       "2. Purchase conditions", "3. Sell conditions", "4. Restart trading
+       conditions", tick analysis, block holders, etc. Dark green (#1b5e20)
+       so the XML skeleton carries the CKK Edge green instead of the old
+       dark blue (#064e72). Blockly derives the border/highlight shades from
+       this value, so the whole outer frame follows automatically.
+       ------------------------------------------------------------------ */
     workspace.Colours.RootBlock = {
-        colour: '#064e72',
-        colourSecondary: '#064e72',
+        colour: '#1b5e20',
+        colourSecondary: '#1b5e20',
         colourTertiary: '#6d7278',
     };
 
