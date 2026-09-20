@@ -58,3 +58,34 @@ export const derivProxyRateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "rate_limited", error_description: "Too many requests. Please try again later." },
 });
+
+/**
+ * POST /api/vps-bots/upload — receipt of a strategy document.
+ *
+ * Uploads are cheap for us but each one allocates a bot slot on a host that
+ * supports three, so the limit is deliberately low. It is a ceiling on accidents
+ * and scripted abuse, not a quota a real user can hit: a person uploads a
+ * strategy when they have written one.
+ */
+export const vpsBotUploadRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES_MS,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", error_description: "Too many uploads. Please try again later." },
+});
+
+/**
+ * VPS bot process control (deploy/start/stop/restart/delete) and reads.
+ *
+ * Each control call shells out to PM2 and each read touches the filesystem, so
+ * these are the most expensive routes in the service after the Deriv proxies.
+ * The limit is per IP, not per user, because this backend has no session store.
+ */
+export const vpsBotControlRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES_MS,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", error_description: "Too many bot operations. Please try again later." },
+});

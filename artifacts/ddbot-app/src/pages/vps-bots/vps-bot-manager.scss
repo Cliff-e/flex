@@ -1,0 +1,279 @@
+/**
+ * VPS Bot Manager styles.
+ *
+ * Scoped entirely to `.vps-bots` / `.vps-bot-card`: nothing here changes the Bot
+ * Builder, the XML editor, or any existing page. Plain values are used rather
+ * than new theme tokens so the page renders correctly in both existing themes
+ * without touching shared styles.
+ */
+@use 'components/shared/styles/devices' as *;
+
+.vps-bots {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.4rem 1.6rem 4rem;
+    box-sizing: border-box;
+
+    &__header {
+        margin-bottom: 1.6rem;
+    }
+
+    &__title {
+        margin: 0 0 0.4rem;
+        font-size: 2.2rem;
+        font-weight: 700;
+    }
+
+    &__subtitle,
+    &__capacity {
+        margin: 0.2rem 0;
+        font-size: 1.3rem;
+        opacity: 0.75;
+    }
+
+    &__banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.2rem;
+        padding: 1rem 1.2rem;
+        margin-bottom: 1.2rem;
+        border-radius: 0.6rem;
+        font-size: 1.3rem;
+
+        &--warn {
+            background: rgba(255, 176, 32, 0.14);
+            border: 1px solid rgba(255, 176, 32, 0.5);
+        }
+
+        &--bad {
+            background: rgba(224, 62, 62, 0.14);
+            border: 1px solid rgba(224, 62, 62, 0.5);
+        }
+    }
+
+    &__panel {
+        margin-bottom: 2rem;
+        padding: 1.6rem;
+        border: 1px solid rgba(128, 128, 128, 0.28);
+        border-radius: 0.8rem;
+    }
+
+    &__panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.2rem;
+    }
+
+    &__panel-title {
+        margin: 0 0 1.2rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    &__form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 1.2rem;
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        font-size: 1.2rem;
+
+        input {
+            min-width: 22rem;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid rgba(128, 128, 128, 0.4);
+            border-radius: 0.4rem;
+            font-size: 1.3rem;
+            box-sizing: border-box;
+        }
+    }
+
+    &__btn {
+        padding: 0.7rem 1.2rem;
+        border: 1px solid rgba(128, 128, 128, 0.45);
+        border-radius: 0.4rem;
+        background: transparent;
+        color: inherit;
+        font-size: 1.3rem;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        &--primary {
+            border-color: transparent;
+            background: #2f8f60;
+            color: #fff;
+        }
+
+        &--danger {
+            border-color: rgba(224, 62, 62, 0.6);
+            color: #e03e3e;
+        }
+    }
+
+    &__hint {
+        font-size: 1.2rem;
+        opacity: 0.7;
+
+        &--warn {
+            color: #b07600;
+        }
+    }
+
+    &__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr));
+        gap: 1.4rem;
+    }
+
+    &__logs {
+        max-height: 28rem;
+        margin: 0.8rem 0 0;
+        padding: 1rem;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.28);
+        border-radius: 0.4rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 1.15rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+
+        &--err {
+            color: #ff9c9c;
+        }
+    }
+}
+
+.vps-bot-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1.4rem;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 0.8rem;
+
+    &__head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.8rem;
+    }
+
+    &__name {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    &__id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 1.15rem;
+        opacity: 0.65;
+    }
+
+    &__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.3rem;
+        font-weight: 600;
+
+        &--ok {
+            color: #2f8f60;
+        }
+
+        &--warn {
+            color: #b07600;
+        }
+
+        &--bad {
+            color: #e03e3e;
+        }
+
+        &--pending {
+            color: #3b7dd8;
+        }
+
+        &--idle {
+            opacity: 0.7;
+        }
+    }
+
+    &__dot {
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 50%;
+        background: currentcolor;
+    }
+
+    &__stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.6rem 1rem;
+        margin: 0;
+
+        div {
+            min-width: 0;
+        }
+
+        dt {
+            font-size: 1.1rem;
+            opacity: 0.65;
+        }
+
+        dd {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 600;
+        }
+    }
+
+    &__error {
+        margin: 0;
+        font-size: 1.15rem;
+        color: #e03e3e;
+        word-break: break-word;
+    }
+
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: auto;
+        padding-top: 0.6rem;
+    }
+}
+
+@include tablet-down {
+    .vps-bots {
+        padding: 1.6rem 1rem 3rem;
+
+        &__field input {
+            min-width: 100%;
+            width: 100%;
+        }
+
+        &__panel-head,
+        &__banner {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+
+    .vps-bot-card__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

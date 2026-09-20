@@ -17,6 +17,14 @@
         "test:fix": "prettier --log-level silent --write . && eslint --fix \"./src/**/*.?(js|jsx|ts|tsx)\"",
         "test": "jest",
         "coverage": "jest --coverage",
+        "typecheck:headless": "tsc -p tsconfig.headless.json --noEmit",
+        "build:headless": "node build-headless.mjs",
+        "spike:headless": "node dist-headless/spike.mjs",
+        "build:bot-runtime": "node build-headless.mjs src/headless/botEntry.ts dist-headless/bot-runtime.mjs",
+        "build:verify-phase1": "node build-headless.mjs src/headless/verifyPhase1.ts dist-headless/verify-phase1.mjs",
+        "verify:phase0": "npm run build:headless && node dist-headless/spike.mjs",
+        "verify:phase1": "npm run build:bot-runtime && npm run build:verify-phase1 && node dist-headless/verify-phase1.mjs",
+
         "build:analyze": "BUNDLE_ANALYZE=true rsbuild build"
     },
     "dependencies": {
@@ -127,6 +135,7 @@
         "copy-webpack-plugin": "^12.0.2",
         "css-hot-loader": "^1.4.4",
         "css-loader": "^7.1.2",
+        "esbuild": "0.27.3",
         "eslint": "^8.56.0",
         "eslint-plugin-prettier": "^5.0.0",
         "eslint-plugin-react": "^7.34.3",
@@ -141,6 +150,7 @@
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^29.7.0",
         "jest-transform-stub": "^2.0.0",
+        "jsdom": "22.1.0",
         "lint-staged": "^10.5.4",
         "mini-css-extract-plugin": "^2.9.0",
         "playwright": "^1.62.1",

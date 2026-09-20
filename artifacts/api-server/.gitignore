@@ -5,6 +5,7 @@
 
 # Build output
 dist/
+dist-verify/
 *.tsbuildinfo
 
 # Logs

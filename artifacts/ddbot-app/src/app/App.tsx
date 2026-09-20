@@ -23,6 +23,9 @@ const AppRoot = lazy(() => import('./app-root'));
 const FreeBots = lazy(() => import('../pages/free-bots'));
 const AnalysisTool = lazy(() => import('../pages/analysis-tool'));
 const AiBots = lazy(() => import('../pages/ai-bots/AiBots'));
+// Additive: the VPS Bot Manager is its own page and shares nothing with the
+// Bot Builder beyond this route entry.
+const VpsBotManager = lazy(() => import('../pages/vps-bots'));
 // Sync our configured app ID into localStorage for downstream consumers
 // that read 'config.app_id' rather than VITE_DERIV_APP_ID directly.
 if (import.meta.env.VITE_DERIV_APP_ID) {
@@ -72,6 +75,7 @@ const router = createBrowserRouter(
             <Route path='free-bots' element={<FreeBots />} />
             <Route path='analysis-tool' element={<AnalysisTool />} />
             <Route path="/ai-bots" element={<AiBots />} />
+            <Route path="/vps-bots" element={<VpsBotManager />} />
         </Route>
     )
 );

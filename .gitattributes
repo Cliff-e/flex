@@ -1,0 +1,5 @@
+# Shell scripts are executed on Linux (EC2). A CRLF line ending makes bash fail
+# with "$'\r': command not found", so they are forced to LF in the repository and
+# in every working tree, regardless of core.autocrlf.
+*.sh text eol=lf
+.gitattributes text eol=lf
