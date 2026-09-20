@@ -1,6 +1,7 @@
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
+import BotMonitorDropdown from '@/components/bot-monitor-dropdown';
 import Journal from '@/components/journal';
 import SelfExclusion from '@/components/self-exclusion';
 import Button from '@/components/shared_ui/button';
@@ -191,6 +192,8 @@ const MobileDrawerFooter = () => {
         <div className={classNames('controls__section', { 'controls__section--ios-pwa': isIOS && isPWALaunch })}>
             <div className='controls__buttons'>
                 <TradeAnimation className='controls__animation' should_show_overlay />
+                {/* Tiny collapsed bot monitor: [Run/Stop] [contract status] [chevron]. */}
+                <BotMonitorDropdown variant='mobile-controls' />
             </div>
         </div>
     );

@@ -1,0 +1,175 @@
+/**
+ * Bot monitor dropdown - tiny collapsed arrow that expands into a compact
+ * Summary / Transactions / Journal panel next to the existing contract status.
+ * Presentation only; all colors reuse the existing dark/futuristic tokens.
+ */
+
+.bot-monitor {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    flex: 0 0 auto;
+    margin-inline-start: 0.6rem;
+
+    &__toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.8rem;
+        height: 1.8rem;
+        padding: 0;
+        border: none;
+        border-radius: 3px;
+        background: transparent;
+        color: var(--text-less-prominent);
+        cursor: pointer;
+        opacity: 0.6;
+        transition:
+            opacity 0.15s ease,
+            color 0.15s ease;
+
+        &:hover,
+        &:focus-visible {
+            opacity: 1;
+            color: var(--text-general);
+            outline: none;
+        }
+
+        &--running {
+            opacity: 0.9;
+            color: var(--status-success);
+        }
+
+        &--open {
+            opacity: 1;
+            color: var(--text-general);
+        }
+
+        &--open .bot-monitor__toggle-icon {
+            transform: rotate(180deg);
+        }
+    }
+
+    &__toggle-icon {
+        width: 1.2rem;
+        height: 1.2rem;
+        transition: transform 0.2s ease;
+    }
+
+    &__panel {
+        position: absolute;
+        inset-inline-end: 0;
+        top: calc(100% + 0.6rem);
+        z-index: 9;
+        display: flex;
+        flex-direction: column;
+        width: min(36rem, calc(100vw - 2.4rem));
+        background-color: #0b1424;
+        border: 1px solid #1d3050;
+        border-radius: 8px;
+        box-shadow: 0 14px 34px -14px rgb(0 0 0 / 70%);
+        overflow: hidden;
+    }
+
+    &__tabs {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.6rem;
+        background-color: #060c16;
+        border-bottom: 1px solid #1d3050;
+    }
+
+    &__tab {
+        flex: 1 1 auto;
+        padding: 0.4rem 0.6rem;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #8ba3c7;
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
+
+        &:hover {
+            color: #22d3ee;
+        }
+
+        &:focus-visible {
+            outline: 1px solid #22d3ee;
+            outline-offset: 1px;
+        }
+
+        &--active {
+            color: #04070f;
+            background-image: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+            box-shadow: 0 0 18px -8px rgb(34 211 238 / 65%);
+        }
+    }
+
+    /*
+     * Compact panel body. The reused Summary / Transactions / Journal roots are
+     * built for the run-panel drawer and size themselves from drawer CSS
+     * variables, so they are pinned to this body's box (which keeps a definite
+     * height for the virtualized lists behind react-virtualized's AutoSizer).
+     */
+    &__body {
+        position: relative;
+        height: clamp(18rem, 38vh, 32rem);
+        overflow: hidden;
+
+        > * {
+            position: absolute;
+            inset: 0;
+            width: auto;
+            height: auto;
+            min-height: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    }
+
+    /*
+     * Mobile bottom status bar: the animation takes 100% of the row, so give the
+     * toggle its own space instead of letting it be squeezed out, and open the
+     * panel upwards above the bar.
+     */
+    &--mobile-controls {
+        margin-inline-start: 0.8rem;
+
+        .bot-monitor__panel {
+            top: auto;
+            bottom: calc(100% + 0.8rem);
+            width: min(36rem, calc(100vw - 1.6rem));
+        }
+
+        .bot-monitor__body {
+            height: clamp(16rem, 34vh, 26rem);
+        }
+
+        .bot-monitor__tab {
+            line-height: 2.4rem;
+        }
+    }
+}
+
+/* Keep the status row on one line (tablet sets flex-direction: row-reverse). */
+.main__run-strategy-wrapper .toolbar__section {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* Reserve room for the toggle in the mobile controls row. */
+.controls__buttons > .animation__wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.controls__buttons .bot-monitor {
+    align-self: center;
+}
