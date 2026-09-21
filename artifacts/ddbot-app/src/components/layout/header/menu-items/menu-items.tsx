@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
+import { useLocation } from 'react-router-dom';
 import { standalone_routes } from '@/components/shared';
 import { useFirebaseCountriesConfig } from '@/hooks/firebase/useFirebaseCountriesConfig';
 import { useStore } from '@/hooks/useStore';
@@ -13,6 +14,7 @@ import './menu-items.scss';
 export const MenuItems = observer(() => {
     const { localize } = useTranslations();
     const { isDesktop } = useDevice();
+    const { pathname } = useLocation();
     const store = useStore();
     const { has_wallet = false } = useStoreWalletAccountsList() || {};
 
@@ -58,8 +60,9 @@ export const MenuItems = observer(() => {
         <>
             {is_logged_in &&
                 (isDesktop
-                    ? filtered_items.map(({ as, href, icon, label }) => (
+                    ? filtered_items.map(({ as, href, icon, label, path }) => (
                           <MenuItem
+                              active={path === pathname}
                               as={as}
                               className='app-header__menu'
                               href={getModifiedHref(href)}

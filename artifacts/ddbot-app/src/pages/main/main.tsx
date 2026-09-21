@@ -39,6 +39,7 @@ const AiBots = lazy(() => import('../ai-bots/AiBots'));
 
 const DCircles = lazy(() => import('../d-circles/DCircles'));
 const DeepTrader = lazy(() => import('../deep-trader/DeepTrader'));
+const VpsBots = lazy(() => import('../vps-bots'));
 
 /* ------------------------------------------------------------------
    Tab chunk prefetching
@@ -56,12 +57,13 @@ const TAB_CHUNK_LOADERS = {
     ai_bots: () => import('../ai-bots/AiBots'),
     d_circles: () => import('../d-circles/DCircles'),
     deep_trader: () => import('../deep-trader/DeepTrader'),
+    vps_bots: () => import('../vps-bots'),
 } as const;
 
 type TTabChunkKey = keyof typeof TAB_CHUNK_LOADERS;
 
-/* Tab order as rendered by <Tabs/> below (indexes 6-8 are AI Bots, D Circles
-   and Deep Trader, which have no TAB_IDS entry). */
+/* Tab order as rendered by <Tabs/> below (indexes 6-9 are AI Bots, D Circles,
+   Deep Trader and VPS Bots, which have no TAB_IDS entry). */
 const TAB_INDEX_TO_CHUNK: Partial<Record<number, TTabChunkKey>> = {
     [DBOT_TABS.CHART]: 'chart',
     [DBOT_TABS.TUTORIAL]: 'tutorial',
@@ -70,6 +72,7 @@ const TAB_INDEX_TO_CHUNK: Partial<Record<number, TTabChunkKey>> = {
     6: 'ai_bots',
     7: 'd_circles',
     8: 'deep_trader',
+    9: 'vps_bots',
 };
 
 const prefetched_tab_chunks = new Set<TTabChunkKey>();
@@ -138,6 +141,7 @@ const AppWrapper = observer(() => {
   'ai_bots',
   'd_circles',
   'deep_trader',
+  'vps_bots',
 ];
 
     const { isDesktop } = useDevice();
@@ -410,6 +414,12 @@ const AppWrapper = observer(() => {
 <div label={<>Deep Trader</>} id='id-deep-trader'>
     <Suspense fallback={<ChunkLoader message="Loading Deep Trader..." />}>
         <DeepTrader />
+    </Suspense>
+</div>
+
+<div label={<>VPS Bots</>} id='id-vps-bots'>
+    <Suspense fallback={<ChunkLoader message="Loading VPS Bots..." />}>
+        <VpsBots />
     </Suspense>
 </div>
 

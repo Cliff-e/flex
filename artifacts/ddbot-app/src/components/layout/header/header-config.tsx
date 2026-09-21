@@ -28,6 +28,8 @@ export type MenuItemsConfig = {
     href: string;
     icon: ReactNode;
     label: string;
+    /** App-relative path of `href`, used to apply the navigation's active state. */
+    path?: string;
 };
 
 export type TAccount = {
@@ -118,5 +120,12 @@ export const MenuItems: MenuItemsConfig[] = [
         href: standalone_routes.deep_trader,
         icon: <RobotLogo iconSize='xs' />,
         label: localize('Deep Trader'),
+    },
+    {
+        as: 'a',
+        href: standalone_routes.vps_bots,
+        icon: <RobotLogo iconSize='xs' />,
+        label: localize('VPS Bots'),
+        path: '/vps-bots',
     },
 ];

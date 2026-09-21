@@ -1,4 +1,5 @@
 import { ComponentProps, ReactNode, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import Livechat from '@/components/chat/Livechat';
 import useIsLiveChatWidgetAvailable from '@/components/chat/useIsLiveChatWidgetAvailable';
 import { standalone_routes } from '@/components/shared';
@@ -11,6 +12,7 @@ import {
     LegacyAccountLimitsIcon,
     LegacyCashierIcon,
     LegacyChartsIcon,
+    LegacyDerivIcon,
     LegacyHelpCentreIcon,
     LegacyHomeOldIcon,
     LegacyProfileSmIcon,
@@ -49,6 +51,9 @@ const useMobileMenuConfig = (client?: RootStore['client']) => {
 
     const { is_livechat_available } = useIsLiveChatWidgetAvailable();
     const icAvailable = useIsIntercomAvailable();
+
+    // Current app route, used for the active state of route-backed menu items.
+    const { pathname } = useLocation();
 
     // Get current account information for dependency tracking
     const is_virtual = client?.is_virtual;
@@ -115,6 +120,13 @@ const useMobileMenuConfig = (client?: RootStore['client']) => {
                     label: localize('Trade'),
                     LeftComponent: LegacyChartsIcon,
                     isActive: true, // Always highlight Trade as active
+                },
+                client?.is_logged_in && {
+                    as: 'a',
+                    href: getAccountUrl(standalone_routes.vps_bots),
+                    label: localize('VPS Bots'),
+                    LeftComponent: LegacyDerivIcon,
+                    isActive: pathname === '/vps-bots',
                 },
                 {
                     as: 'a',
@@ -185,7 +197,7 @@ const useMobileMenuConfig = (client?: RootStore['client']) => {
             // Logout button removed from mobile interface as per acceptance criteria
             [],
         ],
-        [is_virtual, currency, is_logged_in, client_residence, hubEnabledCountryList]
+        [is_virtual, currency, is_logged_in, client_residence, hubEnabledCountryList, pathname]
     );
 
     return {

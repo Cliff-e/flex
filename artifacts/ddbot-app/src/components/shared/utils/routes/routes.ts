@@ -98,4 +98,5 @@ export const standalone_routes = {
     ai_bots: `${window.location.origin}/ai-bots`,
     d_circles: `${window.location.origin}/d-circles`,
     deep_trader: `${window.location.origin}/deep-trader`,
+    vps_bots: `${window.location.origin}/vps-bots`,
 };
