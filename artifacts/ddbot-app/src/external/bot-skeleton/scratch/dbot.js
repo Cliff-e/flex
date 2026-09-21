@@ -3,6 +3,7 @@ import { config } from '../constants/config';
 import { api_base } from '../services/api/api-base';
 import ApiHelpers from '../services/api/api-helpers';
 import Interpreter from '../services/tradeEngine/utils/interpreter';
+import { executionMode } from '../services/tradeEngine/utils/execution-mode';
 import { compareXml, observer as globalObserver } from '../utils';
 import { getSavedWorkspaces, saveWorkspaceToRecent } from '../utils/local-storage';
 import { isDbotRTL } from '../utils/workspace';
@@ -285,6 +286,45 @@ class DBot {
      * @param {Object} limitations Optional limitations (legacy argument)
      */
     generateCode(limitations = {}) {
+        // FAST mode (see utils/execution-mode.js) makes the tick epoch the unit of work
+        // for the before-purchase body: the body runs at most once per epoch and only
+        // when the tick analysis actually analysed a NEW epoch whose OWN tick data was
+        // available. NORMAL generates exactly the original loop, byte for byte.
+        //
+        // `BinaryBotPrivateTickAnalysisIfDataAvailable()` is the FAST-only wrapper that
+        // covers the one case FAST cannot evaluate: the epoch's own data has already
+        // left the available Deriv history window. The engine reports and accounts such
+        // an epoch as "unavailable" (never as processed), skips the analysis - including
+        // its tick-analysis blocks - and enters a terminal integrity-failure/safe-stop,
+        // so FAST never evaluates (or trades on) a different epoch's data and never
+        // continues into later queued epochs. The guard runs BEFORE the analysis because
+        // it is the engine that resolves the epoch's availability from the tick data it
+        // holds.
+        const is_fast_mode = executionMode.isFast();
+
+        const tick_analysis_helper = is_fast_mode
+            ? `
+            function BinaryBotPrivateTickAnalysisIfDataAvailable() {
+                if (Bot.isTickDataUnavailable()) return false;
+                return BinaryBotPrivateTickAnalysis();
+            }`
+            : '';
+
+        // The FAST wrapper is used at every tick-analysis site (outer loop, during loop,
+        // after-during and the before-purchase body); in NORMAL the original
+        // BinaryBotPrivateTickAnalysis() calls are emitted unchanged.
+        const standalone_tick_analysis = is_fast_mode
+            ? 'BinaryBotPrivateTickAnalysisIfDataAvailable();'
+            : 'BinaryBotPrivateTickAnalysis();';
+
+        const before_purchase_loop_body = is_fast_mode
+            ? "if (BinaryBotPrivateTickAnalysisIfDataAvailable()) {\n                        BinaryBotPrivateRun(BinaryBotPrivateBeforePurchase);\n                    }"
+            : "BinaryBotPrivateTickAnalysis();\n                    BinaryBotPrivateRun(BinaryBotPrivateBeforePurchase);";
+
+        const during_purchase_loop_body = is_fast_mode
+            ? "BinaryBotPrivateTickAnalysisIfDataAvailable();\n                    BinaryBotPrivateRun(BinaryBotPrivateDuringPurchase);"
+            : "BinaryBotPrivateTickAnalysis();\n                    BinaryBotPrivateRun(BinaryBotPrivateDuringPurchase);";
+
         return `
             var BinaryBotPrivateInit;
             var BinaryBotPrivateStart;
@@ -312,7 +352,7 @@ class DBot {
             function BinaryBotPrivateRun(f, arg) {
                 if (f) return f(arg);
                 return false;
-            }
+            }${tick_analysis_helper}
             function BinaryBotPrivateTickAnalysis() {
                 var currentTickTime = Bot.getLastTick(true);
                 while (currentTickTime === 'MarketIsClosed') {
@@ -321,32 +361,33 @@ class DBot {
                 }
                 currentTickTime = currentTickTime.epoch;
                 if (currentTickTime === BinaryBotPrivateLastTickTime) {
-                    return;
+                    // false tells the FAST before-purchase loop that this epoch was already
+                    // analysed and must not be evaluated a second time.
+                    return false;
                 }
                 BinaryBotPrivateLastTickTime = currentTickTime;
                 for (var BinaryBotPrivateI = 0; BinaryBotPrivateI < BinaryBotPrivateTickAnalysisList.length; BinaryBotPrivateI++) {
                     BinaryBotPrivateRun(BinaryBotPrivateTickAnalysisList[BinaryBotPrivateI]);
                 }
+                return true;
             }
             var BinaryBotPrivateLimitations = ${JSON.stringify(limitations)};
             ${window.Blockly.JavaScript.javascriptGenerator.workspaceToCode(this.workspace)}
             BinaryBotPrivateRun(BinaryBotPrivateInit);
             while (true) {
-                BinaryBotPrivateTickAnalysis();
+                ${standalone_tick_analysis}
                 BinaryBotPrivateRun(BinaryBotPrivateStart);
                 if (!BinaryBotPrivateHasCalledTradeOptions) {
                     sleep(1);
                     continue;
                 }
                 while (watch('before')) {
-                    BinaryBotPrivateTickAnalysis();
-                    BinaryBotPrivateRun(BinaryBotPrivateBeforePurchase);
+                    ${before_purchase_loop_body}
                 }
                 while (watch('during')) {
-                    BinaryBotPrivateTickAnalysis();
-                    BinaryBotPrivateRun(BinaryBotPrivateDuringPurchase);
+                    ${during_purchase_loop_body}
                 }
-                BinaryBotPrivateTickAnalysis();
+                ${standalone_tick_analysis}
                 if (!BinaryBotPrivateRun(BinaryBotPrivateAfterPurchase)) {
                     break;
                 }

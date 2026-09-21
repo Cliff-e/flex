@@ -248,6 +248,15 @@ const Interpreter = () => {
             void (vhEngine.dispose?.() ?? Promise.resolve()).catch(() => {});
         }
 
+        // FAST mode: drop pending tick epochs so a stopped session can never replay
+        // queued ticks after teardown (the queue is owned by the engine instance).
+        // The discarded epochs are recorded as `dropped` by the engine, so the FAST
+        // accounting (received = processed + pending + dropped + unavailable) keeps
+        // holding across a Stop instead of silently losing them.
+        if (typeof bot.tradeEngine?.resetTickStream === 'function') {
+            bot.tradeEngine.resetTickStream();
+        }
+
         return new Promise((resolve, reject) => {
             try {
                 const { ticksService } = $scope;

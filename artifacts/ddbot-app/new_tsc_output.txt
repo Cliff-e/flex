@@ -5,9 +5,9 @@ src/analytics/rudderstack-quick-strategy.ts(1,21): error TS2305: Module '"@deriv
 src/analytics/rudderstack-tutorials.ts(1,21): error TS2305: Module '"@deriv-com/analytics"' has no exported member 'TEvents'.
 src/App.tsx(1,55): error TS2307: Cannot find module 'wouter' or its corresponding type declarations.
 src/App.tsx(33,41): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
-src/app/App.tsx(28,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
-src/app/App.tsx(29,55): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
-src/app/App.tsx(32,72): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+src/app/App.tsx(31,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/App.tsx(32,55): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/App.tsx(35,72): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/app/AuthWrapper.tsx(9,1): error TS6133: 'React' is declared but its value is never read.
 src/app/CoreStoreProvider.tsx(32,40): error TS2694: Namespace 'global.NodeJS' has no exported member 'Timeout'.
 src/app/CoreStoreProvider.tsx(110,13): error TS18047: 'api_base.api' is possibly 'null'.
@@ -24,8 +24,10 @@ src/app/CoreStoreProvider.tsx(231,21): error TS18047: 'api_base.api' is possibly
 src/app/CoreStoreProvider.tsx(232,26): error TS2339: Property 'landingCompany' does not exist on type 'TApiBaseApi'.
 src/app/CoreStoreProvider.tsx(246,13): error TS18047: 'api_base.api' is possibly 'null'.
 src/app/CoreStoreProvider.tsx(247,18): error TS2339: Property 'getAccountStatus' does not exist on type 'TApiBaseApi'.
+src/bot/__tests__/RollingExitDigitHistoryRuntime.test.ts(5,5): error TS6133: 'clearExitDigitHistory' is declared but its value is never read.
 src/bot/__tests__/SharedExitDigitHistory.test.ts(64,9): error TS2783: 'contractType' is specified more than once, so this usage will be overwritten.
 src/bot/__tests__/SharedExitDigitHistory.test.ts(69,9): error TS2783: 'exitDigit' is specified more than once, so this usage will be overwritten.
+src/bot/__tests__/SharedExitDigitHistory.test.ts(628,35): error TS2550: Property 'at' does not exist on type 'number[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2022' or later.
 src/bot/__tests__/TradingEngineVHLifecycle.test.ts(160,10): error TS6133: 'getVHEngineDisposeCalls' is declared but its value is never read.
 src/bot/__tests__/TradingEngineVHLifecycle.test.ts(193,15): error TS6133: 'firstInstance' is declared but its value is never read.
 src/bot/globalTickEngine.ts(123,41): error TS2550: Property 'at' does not exist on type 'number[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2022' or later.
@@ -45,21 +47,8 @@ src/components/data-list/data-list-row.tsx(6,25): error TS2307: Cannot find modu
 src/components/data-list/data-list-row.tsx(8,36): error TS2307: Cannot find module '../types/common.types' or its corresponding type declarations.
 src/components/data-list/data-list-row.tsx(79,25): error TS2353: Object literal may only specify known properties, and 'state' does not exist in type 'Partial<Path>'.
 src/components/data-list/data-list.tsx(18,51): error TS2307: Cannot find module '../types/common.types' or its corresponding type declarations.
-src/components/download/download.tsx(36,34): error TS2345: Argument of type '({ data }: { data: TTransaction; }) => void' is not assignable to parameter of type '(value: TTransaction, index: number, array: TTransaction[]) => void'.
-  Types of parameters '__0' and 'value' are incompatible.
-    Type 'TTransaction' is not assignable to type '{ data: TTransaction; }'.
-      Types of property 'data' are incompatible.
-        Type 'string | TContractInfo | undefined' is not assignable to type 'TTransaction'.
-          Type 'undefined' is not assignable to type 'TTransaction'.
-src/components/download/download.tsx(65,83): error TS2345: Argument of type 'TExtra' is not assignable to parameter of type 'import("C:/Users/cliff/Desktop/WARNER/flex/artifacts/ddbot-app/src/utils/download").TExtra'.
-  Types of property 'profit' are incompatible.
-    Type 'number | undefined' is not assignable to type 'string | undefined'.
-      Type 'number' is not assignable to type 'string'.
-src/components/download/download.tsx(68,24): error TS2345: Argument of type '(string | undefined)[]' is not assignable to parameter of type 'string[]'.
-  Type 'string | undefined' is not assignable to type 'string'.
-    Type 'undefined' is not assignable to type 'string'.
 src/components/error-boundary/OfflineErrorBoundary.tsx(16,32): error TS2694: Namespace 'global.NodeJS' has no exported member 'Timeout'.
-src/components/error-component/error-component.tsx(1,23): error TS7016: Could not find a declaration file for module 'prop-types'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/prop-types@15.8.1/node_modules/prop-types/index.js' implicitly has an 'any' type.
+src/components/error-component/error-component.tsx(1,23): error TS7016: Could not find a declaration file for module 'prop-types'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/prop-types@15.8.1/node_modules/prop-types/index.js' implicitly has an 'any' type.
   If the 'prop-types' package actually exposes this module, consider sending a pull request to amend 'https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/prop-types'
 src/components/error-modal/__tests__/error-modal-content.spec.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/components/error-modal/__tests__/error-modal.spec.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
@@ -73,24 +62,24 @@ src/components/flyout/flyout-block.tsx(18,28): error TS2345: Argument of type 'M
   Type 'MutableRefObject<undefined>' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 314 more.
 src/components/flyout/flyout-block.tsx(24,25): error TS2322: Type 'HTMLDivElement | null' is not assignable to type 'MutableRefObject<undefined>'.
   Type 'null' is not assignable to type 'MutableRefObject<undefined>'.
-src/components/flyout/flyout.tsx(61,13): error TS2322: Type 'MutableRefObject<undefined>' is not assignable to type 'LegacyRef<HTMLDivElement> | undefined'.
+src/components/flyout/flyout.tsx(62,13): error TS2322: Type 'MutableRefObject<undefined>' is not assignable to type 'LegacyRef<HTMLDivElement> | undefined'.
   Type 'MutableRefObject<undefined>' is not assignable to type 'RefObject<HTMLDivElement>'.
     Types of property 'current' are incompatible.
       Type 'undefined' is not assignable to type 'HTMLDivElement | null'.
-src/components/flyout/flyout.tsx(93,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
-src/components/flyout/flyout.tsx(100,62): error TS2339: Property 'utils' does not exist on type 'typeof Blockly'.
-src/components/flyout/flyout.tsx(101,41): error TS2322: Type '{ key: string; id: string; block_node: Element; should_hide_display_name: boolean; onInfoClick: any; is_active: boolean; }' is not assignable to type 'IntrinsicAttributes & TFlyoutBlockGroup'.
+src/components/flyout/flyout.tsx(94,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
+src/components/flyout/flyout.tsx(101,62): error TS2339: Property 'utils' does not exist on type 'typeof Blockly'.
+src/components/flyout/flyout.tsx(102,41): error TS2322: Type '{ key: string; id: string; block_node: Element; should_hide_display_name: boolean; onInfoClick: any; is_active: boolean; }' is not assignable to type 'IntrinsicAttributes & TFlyoutBlockGroup'.
   Property 'id' does not exist on type 'IntrinsicAttributes & TFlyoutBlockGroup'.
-src/components/flyout/flyout.tsx(109,45): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ procedures_ifreturn: ({ type: string; example_id?: undefined; } | { type: string; example_id: string; })[]; math_arithmetic: { type: string; }[]; math_single: { type: string; }[]; math_constrain: ({ type: string; example_id?: undefined; } | { ...; })[]; ... 37 more ...; controls_flow_statements: ({ ...; } | { ...;...'.
+src/components/flyout/flyout.tsx(110,45): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ procedures_ifreturn: ({ type: string; example_id?: undefined; } | { type: string; example_id: string; })[]; math_arithmetic: { type: string; }[]; math_single: { type: string; }[]; math_constrain: ({ type: string; example_id?: undefined; } | { ...; })[]; ... 37 more ...; controls_flow_statements: ({ ...; } | { ...;...'.
   No index signature with a parameter of type 'string' was found on type '{ procedures_ifreturn: ({ type: string; example_id?: undefined; } | { type: string; example_id: string; })[]; math_arithmetic: { type: string; }[]; math_single: { type: string; }[]; math_constrain: ({ type: string; example_id?: undefined; } | { ...; })[]; ... 37 more ...; controls_flow_statements: ({ ...; } | { ...;...'.
-src/components/flyout/flyout.tsx(118,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
-src/components/flyout/flyout.tsx(128,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
-src/components/flyout/flyout.tsx(140,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
-src/components/flyout/flyout.tsx(155,78): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
-src/components/flyout/flyout.tsx(161,52): error TS2339: Property 'targetWorkspace_' does not exist on type 'MouseEvent<HTMLButtonElement, MouseEvent>'.
-src/components/flyout/flyout.tsx(162,52): error TS2339: Property 'getTargetWorkspace' does not exist on type 'MouseEvent<HTMLButtonElement, MouseEvent>'.
-src/components/flyout/flyout.tsx(164,63): error TS2339: Property 'targetWorkspace_' does not exist on type 'MouseEvent<HTMLButtonElement, MouseEvent>'.
-src/components/flyout/flyout.tsx(236,25): error TS2322: Type 'Element | null' is not assignable to type 'Element'.
+src/components/flyout/flyout.tsx(119,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
+src/components/flyout/flyout.tsx(129,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
+src/components/flyout/flyout.tsx(141,49): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
+src/components/flyout/flyout.tsx(156,78): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
+src/components/flyout/flyout.tsx(162,52): error TS2339: Property 'targetWorkspace_' does not exist on type 'MouseEvent<HTMLButtonElement, MouseEvent>'.
+src/components/flyout/flyout.tsx(163,52): error TS2339: Property 'getTargetWorkspace' does not exist on type 'MouseEvent<HTMLButtonElement, MouseEvent>'.
+src/components/flyout/flyout.tsx(165,63): error TS2339: Property 'targetWorkspace_' does not exist on type 'MouseEvent<HTMLButtonElement, MouseEvent>'.
+src/components/flyout/flyout.tsx(265,25): error TS2322: Type 'Element | null' is not assignable to type 'Element'.
   Type 'null' is not assignable to type 'Element'.
 src/components/flyout/help-contents/flyout-help-base.tsx(29,49): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ procedures_ifreturn: ({ type: string; example_id?: undefined; } | { type: string; example_id: string; })[]; math_arithmetic: { type: string; }[]; math_single: { type: string; }[]; math_constrain: ({ type: string; example_id?: undefined; } | { ...; })[]; ... 37 more ...; controls_flow_statements: ({ ...; } | { ...;...'.
   No index signature with a parameter of type 'string' was found on type '{ procedures_ifreturn: ({ type: string; example_id?: undefined; } | { type: string; example_id: string; })[]; math_arithmetic: { type: string; }[]; math_single: { type: string; }[]; math_constrain: ({ type: string; example_id?: undefined; } | { ...; })[]; ... 37 more ...; controls_flow_statements: ({ ...; } | { ...;...'.
@@ -121,7 +110,7 @@ src/components/layout/footer/Endpoint.tsx(4,10): error TS2305: Module '"@deriv-c
 src/components/layout/footer/Endpoint.tsx(4,33): error TS2305: Module '"@deriv-com/utils"' has no exported member 'LocalStorageUtils'.
 src/components/layout/footer/WhatsApp.tsx(4,10): error TS2305: Module '"@deriv-com/utils"' has no exported member 'URLConstants'.
 src/components/layout/header/account-switcher.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
-src/components/layout/header/account-switcher.tsx(189,17): error TS2322: Type 'Record<string, { balance: number; currency: string; status: number; type: string; }>' is not assignable to type '{ [k: string]: { balance: number; converted_amount: number; currency: string; demo_account: 0 | 1; status: 0 | 1; type: "mt5" | "deriv"; }; }'.
+src/components/layout/header/account-switcher.tsx(190,17): error TS2322: Type 'Record<string, { balance: number; currency: string; status: number; type: string; }>' is not assignable to type '{ [k: string]: { balance: number; converted_amount: number; currency: string; demo_account: 0 | 1; status: 0 | 1; type: "mt5" | "deriv"; }; }'.
   'string' index signatures are incompatible.
     Type '{ balance: number; currency: string; status: number; type: string; }' is missing the following properties from type '{ balance: number; converted_amount: number; currency: string; demo_account: 0 | 1; status: 0 | 1; type: "mt5" | "deriv"; }': converted_amount, demo_account
 src/components/layout/header/AccountSwitcherWallet/account-switcher-wallet-item.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
@@ -134,13 +123,13 @@ src/components/layout/header/common/eu-accounts.tsx(1,1): error TS6133: 'React' 
 src/components/layout/header/common/non-eu-accounts.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/components/layout/header/common/real-accounts.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/components/layout/header/menu-items/menu-items.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
-src/components/layout/header/menu-items/menu-items.tsx(3,1): error TS6133: 'standalone_routes' is declared but its value is never read.
-src/components/layout/header/menu-items/menu-items.tsx(48,42): error TS6133: 'item' is declared but its value is never read.
+src/components/layout/header/menu-items/menu-items.tsx(4,1): error TS6133: 'standalone_routes' is declared but its value is never read.
+src/components/layout/header/menu-items/menu-items.tsx(50,42): error TS6133: 'item' is declared but its value is never read.
 src/components/layout/header/mobile-menu/menu-content.tsx(60,49): error TS2322: Type 'ReactNode' is not assignable to type 'Key | null | undefined'.
   Type 'false' is not assignable to type 'Key | null | undefined'.
 src/components/layout/header/mobile-menu/menu-content.tsx(82,45): error TS2322: Type 'ReactNode' is not assignable to type 'Key | null | undefined'.
   Type 'false' is not assignable to type 'Key | null | undefined'.
-src/components/layout/header/mobile-menu/use-mobile-menu-config.tsx(25,10): error TS2305: Module '"@deriv-com/utils"' has no exported member 'URLConstants'.
+src/components/layout/header/mobile-menu/use-mobile-menu-config.tsx(27,10): error TS2305: Module '"@deriv-com/utils"' has no exported member 'URLConstants'.
 src/components/layout/header/wallets/account-info-wallets.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/components/layout/header/wallets/account-info-wallets.tsx(16,25): error TS2307: Cannot find module '@deriv/stores/types' or its corresponding type declarations.
 src/components/layout/header/wallets/account-info-wallets.tsx(87,17): error TS2322: Type 'false | "demo"' is not assignable to type '"fiat" | "crypto" | "demo" | "app" | undefined'.
@@ -194,11 +183,11 @@ src/components/run-panel/run-panel.tsx(107,82): error TS2322: Type 'number' is n
 src/components/run-panel/run-panel.tsx(110,17): error TS2322: Type 'Element' is not assignable to type 'string | ComponentClass<any, any> | FunctionComponent<any>'.
 src/components/run-panel/run-panel.tsx(152,14): error TS2741: Property 'history' is missing in type '{ children: Element[]; active_index: number; onTabItemClick: () => void; top: true; }' but required in type 'TTabsProps'.
 src/components/run-panel/run-panel.tsx(166,74): error TS2740: Type '{}' is missing the following properties from type 'TStatisticsSummary': currency, is_mobile, lost_contracts, number_of_runs, and 5 more.
-src/components/run-panel/run-panel.tsx(299,13): error TS2322: Type '(index: number) => void' is not assignable to type '() => void'.
+src/components/run-panel/run-panel.tsx(300,13): error TS2322: Type '(index: number) => void' is not assignable to type '() => void'.
   Target signature provides too few arguments. Expected 1 or more, but got 0.
-src/components/run-panel/run-panel.tsx(334,21): error TS2322: Type 'false | Element' is not assignable to type 'ReactElement<any, string | JSXElementConstructor<any>> | undefined'.
+src/components/run-panel/run-panel.tsx(340,21): error TS2322: Type 'false | Element' is not assignable to type 'ReactElement<any, string | JSXElementConstructor<any>> | undefined'.
   Type 'boolean' is not assignable to type 'ReactElement<any, string | JSXElementConstructor<any>>'.
-src/components/run-panel/run-panel.tsx(344,28): error TS2322: Type '{ onRunButtonClick: () => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & object'.
+src/components/run-panel/run-panel.tsx(350,28): error TS2322: Type '{ onRunButtonClick: () => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & object'.
   Property 'onRunButtonClick' does not exist on type 'IntrinsicAttributes & object'.
 src/components/shared/services/performance-metrics-methods.ts(25,65): error TS2304: Cannot find name 'global'.
 src/components/shared/services/performance-metrics-methods.ts(44,5): error TS7053: Element implicitly has an 'any' type because expression of type 'string | number | symbol' can't be used to index type '{ create_ctrader_account_time: number; create_dxtrade_account_time: number; create_mt5_account_time: number; load_cashier_time: number; load_crypto_deposit_cashier_time: number; ... 7 more ...; options_multipliers_section_loading_time: number; }'.
@@ -211,7 +200,8 @@ src/components/shared/services/performance-metrics-methods.ts(49,37): error TS70
 src/components/shared/services/performance-metrics-methods.ts(50,9): error TS7053: Element implicitly has an 'any' type because expression of type 'string | number | symbol' can't be used to index type '{ create_ctrader_account_time: number; create_dxtrade_account_time: number; create_mt5_account_time: number; load_cashier_time: number; load_crypto_deposit_cashier_time: number; ... 7 more ...; options_multipliers_section_loading_time: number; }'.
   No index signature with a parameter of type 'string' was found on type '{ create_ctrader_account_time: number; create_dxtrade_account_time: number; create_mt5_account_time: number; load_cashier_time: number; load_crypto_deposit_cashier_time: number; ... 7 more ...; options_multipliers_section_loading_time: number; }'.
 src/components/shared/services/performance-metrics-methods.ts(53,9): error TS2578: Unused '@ts-expect-error' directive.
-src/components/shared/test_utils/test_common.ts(1,23): error TS2307: Cannot find module 'jsdom' or its corresponding type declarations.
+src/components/shared/test_utils/test_common.ts(1,23): error TS7016: Could not find a declaration file for module 'jsdom'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/jsdom@22.1.0/node_modules/jsdom/lib/api.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/jsdom` if it exists or add a new declaration (.d.ts) file containing `declare module 'jsdom';`
 src/components/shared/test_utils/test_common.ts(13,1): error TS2591: Cannot find name 'module'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/components/shared/utils/config/config.ts(7,17): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/components/shared/utils/config/config.ts(90,9): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
@@ -225,13 +215,13 @@ src/components/shared/utils/helpers/portfolio-notifications.tsx(25,76): error TS
 src/components/shared/utils/helpers/validation-rules.ts(28,43): error TS6133: 'options' is declared but its value is never read.
 src/components/shared/utils/helpers/validation-rules.ts(38,43): error TS6133: 'options' is declared but its value is never read.
 src/components/shared/utils/helpers/validation-rules.ts(62,52): error TS6133: 'options' is declared but its value is never read.
-src/components/shared/utils/loader/lazy-load.tsx(1,22): error TS7016: Could not find a declaration file for module 'react-loadable'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/react-loadable@5.5.0_react@18.3.1/node_modules/react-loadable/lib/index.js' implicitly has an 'any' type.
+src/components/shared/utils/loader/lazy-load.tsx(1,22): error TS7016: Could not find a declaration file for module 'react-loadable'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/react-loadable@5.5.0_react@18.3.1/node_modules/react-loadable/lib/index.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/react-loadable` if it exists or add a new declaration (.d.ts) file containing `declare module 'react-loadable';`
 src/components/shared/utils/object/object.ts(35,13): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
   No index signature with a parameter of type 'string' was found on type '{}'.
-src/components/shared/utils/os/os_detect.ts(1,22): error TS7016: Could not find a declaration file for module 'ua-parser-js'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/ua-parser-js@1.0.41/node_modules/ua-parser-js/src/ua-parser.js' implicitly has an 'any' type.
+src/components/shared/utils/os/os_detect.ts(1,22): error TS7016: Could not find a declaration file for module 'ua-parser-js'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/ua-parser-js@1.0.41/node_modules/ua-parser-js/src/ua-parser.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/ua-parser-js` if it exists or add a new declaration (.d.ts) file containing `declare module 'ua-parser-js';`
-src/components/shared/utils/validation/form-validations.ts(1,25): error TS7016: Could not find a declaration file for module 'object.fromentries'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/object.fromentries@2.0.8/node_modules/object.fromentries/index.js' implicitly has an 'any' type.
+src/components/shared/utils/validation/form-validations.ts(1,25): error TS7016: Could not find a declaration file for module 'object.fromentries'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/object.fromentries@2.0.8/node_modules/object.fromentries/index.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/object.fromentries` if it exists or add a new declaration (.d.ts) file containing `declare module 'object.fromentries';`
 src/components/shared/utils/validation/form-validations.ts(22,30): error TS18046: 'opts' is of type 'unknown'.
 src/components/shared/utils/validation/form-validations.ts(40,22): error TS18046: 'opts' is of type 'unknown'.
@@ -249,8 +239,8 @@ src/components/shared_ui/contract-card/contract-card-items/lookbacks-card-body.t
   Property 'lineHeightt' does not exist on type 'IntrinsicAttributes & Omit<HTMLProps<HTMLElement>, "size"> & { align?: string | undefined; weight?: string | undefined; lineHeight?: string | undefined; styles?: CSSProperties | undefined; size?: string | undefined; }'. Did you mean 'lineHeight'?
 src/components/shared_ui/data-list/data-list-row.tsx(6,25): error TS2307: Cannot find module '../data-table/table-row' or its corresponding type declarations.
 src/components/shared_ui/data-list/data-list-row.tsx(78,25): error TS2353: Object literal may only specify known properties, and 'state' does not exist in type 'Partial<Path>'.
-src/components/shared_ui/div100vh-container/div100vh-container.tsx(2,22): error TS6053: File 'C:/Users/cliff/Desktop/WARNER/flex/artifacts/ddbot-app/src/@types/react-div-100vh/react-div-100vh-config.d.ts' not found.
-src/components/shared_ui/div100vh-container/div100vh-container.tsx(4,22): error TS7016: Could not find a declaration file for module 'react-div-100vh'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/react-div-100vh@0.3.8_react_13eb1a0be61d9a11112d85a3b75cb383/node_modules/react-div-100vh/lib/index.js' implicitly has an 'any' type.
+src/components/shared_ui/div100vh-container/div100vh-container.tsx(2,22): error TS6053: File 'C:/Users/cliff/Desktop/edge/flex/artifacts/ddbot-app/src/@types/react-div-100vh/react-div-100vh-config.d.ts' not found.
+src/components/shared_ui/div100vh-container/div100vh-container.tsx(4,22): error TS7016: Could not find a declaration file for module 'react-div-100vh'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/react-div-100vh@0.3.8_react_13eb1a0be61d9a11112d85a3b75cb383/node_modules/react-div-100vh/lib/index.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/react-div-100vh` if it exists or add a new declaration (.d.ts) file containing `declare module 'react-div-100vh';`
 src/components/shared_ui/expansion-panel/array-renderer.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/components/shared_ui/input-field/input-field.tsx(194,9): error TS6133: 'ev' is declared but its value is never read.
@@ -281,24 +271,16 @@ src/components/summary/summary-card.tsx(95,21): error TS2322: Type 'number | und
 src/components/summary/summary-card.tsx(100,56): error TS18048: 'contract_info.profit' is possibly 'undefined'.
 src/components/summary/summary-card.tsx(101,54): error TS18048: 'contract_info.profit' is possibly 'undefined'.
 src/components/tnc-status-update-modal/tnc-status-update-modal.tsx(31,19): error TS18047: 'api_base.api' is possibly 'null'.
-src/components/trade-animation/trade-animation.tsx(288,57): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+src/components/trade-animation/trade-animation.tsx(319,57): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
   Type 'undefined' is not assignable to type 'number'.
-src/components/transaction-details/transaction-details-desktop.tsx(37,11): error TS2322: Type 'TransactionsStore' is not assignable to type 'Partial<TTransactionStore>'.
-  Types of property 'transactions' are incompatible.
-    Type 'TTransaction[]' is not assignable to type 'TTransactions[]'.
-      Property 'loginid' is missing in type 'TTransaction' but required in type 'TTransactions'.
 src/components/transaction-details/transaction-details-mobile.tsx(36,56): error TS2322: Type 'string | TContractInfo | undefined' is not assignable to type 'TTransaction'.
   Type 'undefined' is not assignable to type 'TTransaction'.
 src/components/transaction-details/transaction-details-mobile.tsx(36,86): error TS2339: Property 'transaction_ids' does not exist on type 'string | TContractInfo'.
   Property 'transaction_ids' does not exist on type 'string'.
-src/components/transactions/transaction.tsx(92,26): error TS2322: Type 'Element' is not assignable to type 'string'.
-src/components/transactions/transaction.tsx(208,51): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+src/components/transactions/transaction.tsx(95,26): error TS2322: Type 'Element' is not assignable to type 'string'.
+src/components/transactions/transaction.tsx(211,51): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
   Type 'undefined' is not assignable to type 'string'.
-src/components/transactions/transactions.tsx(31,28): error TS2322: Type 'boolean' is not assignable to type '{ type: string; data: TContractInfo; }'.
-src/components/transactions/transactions.tsx(142,34): error TS2322: Type '{ row?: TRow | undefined; is_footer?: boolean | undefined; columns_map?: Record<TColIndex, { key?: string | undefined; title?: string | undefined; col_index?: TColIndex | undefined; renderCellContent?: ((props: TRenderCellContent) => ReactNode) | undefined; renderHeader?: ((prop: renderHeaderType) => ReactNode) | un...' is not assignable to type 'TTransactionItem'.
-  Types of property 'row' are incompatible.
-    Type 'TRow | undefined' is not assignable to type '{ type: string; data: TContractInfo; }'.
-      Type 'undefined' is not assignable to type '{ type: string; data: TContractInfo; }'.
+src/components/transactions/transactions.tsx(8,1): error TS6133: 'TContractInfo' is declared but its value is never read.
 src/components/ui/accordion.tsx(2,37): error TS2307: Cannot find module '@radix-ui/react-accordion' or its corresponding type declarations.
 src/components/ui/accordion.tsx(3,29): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
 src/components/ui/alert-dialog.tsx(2,39): error TS2307: Cannot find module '@radix-ui/react-alert-dialog' or its corresponding type declarations.
@@ -450,8 +432,8 @@ src/hooks/useTrackjs.ts(3,27): error TS2591: Cannot find name 'process'. Do you 
 src/hooks/useTrackjs.ts(10,26): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/hooks/useTrackjs.ts(11,29): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/lib/utils.ts(2,25): error TS2307: Cannot find module 'tailwind-merge' or its corresponding type declarations.
-src/pages/ai-bots/AiBots.tsx(114,11): error TS6133: 'header' is declared but its value is never read.
-src/pages/ai-bots/AiBots.tsx(119,11): error TS6133: 'textSub' is declared but its value is never read.
+src/pages/ai-bots/AiBots.tsx(118,11): error TS6133: 'header' is declared but its value is never read.
+src/pages/ai-bots/AiBots.tsx(123,11): error TS6133: 'textSub' is declared but its value is never read.
 src/pages/ai-bots/index.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/pages/AiBots.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
 src/pages/analysis-tool/index.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
@@ -505,26 +487,32 @@ src/pages/bot-builder/quick-strategy/selects/trade-type.tsx(47,21): error TS2554
 src/pages/bot-builder/quick-strategy/selects/trade-type.tsx(83,29): error TS2322: Type '{ readOnly: true; inputMode: string; "data-testid": string; autoComplete: string; className: string; value: string; list_items: { component: string | number | boolean | Iterable<ReactNode> | Element | null; text: string; value: string; group: string; icon: string[]; }[]; ... 6 more ...; onBlur: { ...; }; }' is not assignable to type 'IntrinsicAttributes & TAutocompleteProps'.
   Property 'inputMode' does not exist on type 'IntrinsicAttributes & TAutocompleteProps'.
 src/pages/bot-builder/toolbar/toolbar.tsx(47,14): error TS2741: Property 'login' is missing in type '{ children: Element; portal_element_id: string; title: string; is_visible: boolean; confirm_button_text: string; onConfirm: () => void; cancel_button_text: string; onCancel: () => void; is_mobile_full_width: false; className: string; has_close_icon: true; }' but required in type 'TDialog'.
-src/pages/bot-builder/toolbox/toolbox.tsx(39,17): error TS2345: Argument of type 'MutableRefObject<string>' is not assignable to parameter of type 'RefObject<HTMLDivElement>'.
+src/pages/bot-builder/toolbox/mobile-toolbox.tsx(46,28): error TS2345: Argument of type 'HTMLCollection' is not assignable to parameter of type 'HTMLElement[]'.
+  Type 'HTMLCollection' is missing the following properties from type 'HTMLElement[]': pop, push, concat, join, and 26 more.
+src/pages/bot-builder/toolbox/mobile-toolbox.tsx(147,44): error TS2352: Conversion of type 'NodeListOf<ChildNode>' to type 'HTMLElement[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'NodeListOf<ChildNode>' is missing the following properties from type 'HTMLElement[]': pop, push, concat, join, and 22 more.
+src/pages/bot-builder/toolbox/mobile-toolbox.tsx(152,77): error TS2345: Argument of type 'HTMLCollection' is not assignable to parameter of type 'HTMLElement[]'.
+  Type 'HTMLCollection' is missing the following properties from type 'HTMLElement[]': pop, push, concat, join, and 26 more.
+src/pages/bot-builder/toolbox/toolbox.tsx(40,17): error TS2345: Argument of type 'MutableRefObject<string>' is not assignable to parameter of type 'RefObject<HTMLDivElement>'.
   Types of property 'current' are incompatible.
     Type 'string' is not assignable to type 'HTMLDivElement'.
-src/pages/bot-builder/toolbox/toolbox.tsx(90,29): error TS2322: Type '({ search }: { search?: string | undefined; }) => void' is not assignable to type '() => void'.
+src/pages/bot-builder/toolbox/toolbox.tsx(91,29): error TS2322: Type '({ search }: { search?: string | undefined; }) => void' is not assignable to type '() => void'.
   Target signature provides too few arguments. Expected 1 or more, but got 0.
-src/pages/bot-builder/toolbox/toolbox.tsx(97,44): error TS2352: Conversion of type 'NodeListOf<ChildNode>' to type 'HTMLElement[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/pages/bot-builder/toolbox/toolbox.tsx(98,44): error TS2352: Conversion of type 'NodeListOf<ChildNode>' to type 'HTMLElement[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
   Type 'NodeListOf<ChildNode>' is missing the following properties from type 'HTMLElement[]': pop, push, concat, join, and 22 more.
-src/pages/bot-builder/toolbox/toolbox.tsx(99,81): error TS2345: Argument of type 'HTMLCollection' is not assignable to parameter of type 'HTMLElement[]'.
+src/pages/bot-builder/toolbox/toolbox.tsx(100,81): error TS2345: Argument of type 'HTMLCollection' is not assignable to parameter of type 'HTMLElement[]'.
   Type 'HTMLCollection' is missing the following properties from type 'HTMLElement[]': pop, push, concat, join, and 26 more.
 src/pages/bot-builder/workspace-wrapper.tsx(23,25): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
 src/pages/chart/chart-wrapper.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/pages/chart/chart.tsx(21,8): error TS6133: 'React' is declared but its value is never read.
 src/pages/chart/chart.tsx(21,28): error TS6133: 'useRef' is declared but its value is never read.
-src/pages/chart/chart.tsx(28,40): error TS7016: Could not find a declaration file for module '@deriv/deriv-charts'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/@deriv+deriv-charts@2.10.0/node_modules/@deriv/deriv-charts/dist/smartcharts.js' implicitly has an 'any' type.
+src/pages/chart/chart.tsx(28,40): error TS7016: Could not find a declaration file for module '@deriv/deriv-charts'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/@deriv+deriv-charts@2.10.0/node_modules/@deriv/deriv-charts/dist/smartcharts.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/deriv__deriv-charts` if it exists or add a new declaration (.d.ts) file containing `declare module '@deriv/deriv-charts';`
 src/pages/chart/chart.tsx(401,9): error TS6133: 'updateSymbol' is declared but its value is never read.
 src/pages/chart/chart.tsx(480,45): error TS2352: Conversion of type 'TicksStreamRequest' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
   Index signature for type 'string' is missing in type 'TicksStreamRequest'.
 src/pages/chart/FloatingDCirclesWidget.tsx(26,8): error TS6133: 'React' is declared but its value is never read.
-src/pages/chart/toolbar-widgets.tsx(2,80): error TS7016: Could not find a declaration file for module '@deriv/deriv-charts'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/@deriv+deriv-charts@2.10.0/node_modules/@deriv/deriv-charts/dist/smartcharts.js' implicitly has an 'any' type.
+src/pages/chart/toolbar-widgets.tsx(2,80): error TS7016: Could not find a declaration file for module '@deriv/deriv-charts'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/@deriv+deriv-charts@2.10.0/node_modules/@deriv/deriv-charts/dist/smartcharts.js' implicitly has an 'any' type.
   Try `npm i --save-dev @types/deriv__deriv-charts` if it exists or add a new declaration (.d.ts) file containing `declare module '@deriv/deriv-charts';`
 src/pages/d-circles/DCircles.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
 src/pages/d-circles/DCircles.tsx(109,34): error TS2550: Property 'at' does not exist on type 'number[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2022' or later.
@@ -586,19 +574,19 @@ src/pages/endpoint/index.tsx(1,1): error TS6133: 'React' is declared but its val
 src/pages/endpoint/index.tsx(5,10): error TS2305: Module '"@deriv-com/utils"' has no exported member 'LocalStorageConstants'.
 src/pages/main/main.tsx(20,1): error TS6133: 'LegacyGuide1pxIcon' is declared but its value is never read.
 src/pages/main/main.tsx(21,10): error TS6133: 'Localize' is declared but its value is never read.
-src/pages/main/main.tsx(48,9): error TS6133: 'is_chart_modal_visible' is declared but its value is never read.
-src/pages/main/main.tsx(49,9): error TS6133: 'is_trading_view_modal_visible' is declared but its value is never read.
-src/pages/main/main.tsx(129,36): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'Element'.
+src/pages/main/main.tsx(110,9): error TS6133: 'is_chart_modal_visible' is declared but its value is never read.
+src/pages/main/main.tsx(111,9): error TS6133: 'is_trading_view_modal_visible' is declared but its value is never read.
+src/pages/main/main.tsx(224,36): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'Element'.
   Type 'null' is not assignable to type 'Element'.
-src/pages/main/main.tsx(130,35): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'Element'.
+src/pages/main/main.tsx(225,35): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'Element'.
   Type 'null' is not assignable to type 'Element'.
-src/pages/main/main.tsx(195,56): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
-src/pages/main/main.tsx(203,26): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
-src/pages/main/main.tsx(266,25): error TS2741: Property 'history' is missing in type '{ children: Element[]; active_index: number; className: string; onTabItemClick: (tab_index: number) => void; top: true; }' but required in type 'TTabsProps'.
-src/pages/main/main.tsx(340,17): error TS2322: Type '(() => void) | null' is not assignable to type '(() => void) | undefined'.
+src/pages/main/main.tsx(290,56): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
+src/pages/main/main.tsx(298,26): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
+src/pages/main/main.tsx(367,25): error TS2741: Property 'history' is missing in type '{ children: Element[]; active_index: number; className: string; onTabItemClick: (tab_index: number) => void; top: true; }' but required in type 'TTabsProps'.
+src/pages/main/main.tsx(447,17): error TS2322: Type '(() => void) | null' is not assignable to type '(() => void) | undefined'.
   Type 'null' is not assignable to type '(() => void) | undefined'.
-src/pages/main/main.tsx(346,17): error TS2322: Type 'string' is not assignable to type 'boolean | undefined'.
-src/pages/main/main.tsx(347,17): error TS2322: Type 'string' is not assignable to type 'boolean | undefined'.
+src/pages/main/main.tsx(453,17): error TS2322: Type 'string' is not assignable to type 'boolean | undefined'.
+src/pages/main/main.tsx(454,17): error TS2322: Type 'string' is not assignable to type 'boolean | undefined'.
 src/pages/mobile-bottom-nav/MobileBottomNav.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
 src/pages/not-found.tsx(2,29): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
 src/pages/tutorials/common/search-input/index.tsx(33,17): error TS2353: Object literal may only specify known properties, and 'trailing' does not exist in type '{ immediate: boolean; }'.
@@ -734,8 +722,8 @@ src/Stores/dashboard-store.ts(137,64): error TS2769: No overload matches this ca
   The last overload gave the following error.
     Argument of type 'string | undefined' is not assignable to parameter of type 'string | Node'.
       Type 'undefined' is not assignable to type 'string | Node'.
-src/Stores/dashboard-store.ts(158,66): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'typeof import("C:/Users/cliff/Desktop/WARNER/flex/artifacts/ddbot-app/src/constants/quick-strategies/index")'.
-  No index signature with a parameter of type 'string' was found on type 'typeof import("C:/Users/cliff/Desktop/WARNER/flex/artifacts/ddbot-app/src/constants/quick-strategies/index")'.
+src/Stores/dashboard-store.ts(158,66): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'typeof import("C:/Users/cliff/Desktop/edge/flex/artifacts/ddbot-app/src/constants/quick-strategies/index")'.
+  No index signature with a parameter of type 'string' was found on type 'typeof import("C:/Users/cliff/Desktop/edge/flex/artifacts/ddbot-app/src/constants/quick-strategies/index")'.
 src/Stores/dashboard-store.ts(159,13): error TS2322: Type 'string' is not assignable to type 'string[]'.
 src/Stores/dashboard-store.ts(236,42): error TS2345: Argument of type 'TUserGuideContent' is not assignable to parameter of type 'never'.
 src/Stores/dashboard-store.ts(239,41): error TS2345: Argument of type 'TGuideContent' is not assignable to parameter of type 'never'.
@@ -751,7 +739,7 @@ src/stores/data-collection-store.ts(41,60): error TS2345: Argument of type 'TTra
         Type 'undefined' is not assignable to type '{ transaction_ids: { buy: number; }; }'.
 src/stores/data-collection-store.ts(60,28): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
 src/stores/data-collection-store.ts(63,43): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
-src/stores/data-collection-store.ts(84,77): error TS7016: Could not find a declaration file for module 'pako'. 'C:/Users/cliff/Desktop/WARNER/flex/node_modules/.pnpm/pako@2.2.0/node_modules/pako/dist/pako.esm.mjs' implicitly has an 'any' type.
+src/stores/data-collection-store.ts(84,77): error TS7016: Could not find a declaration file for module 'pako'. 'C:/Users/cliff/Desktop/edge/flex/node_modules/.pnpm/pako@2.2.0/node_modules/pako/dist/pako.esm.mjs' implicitly has an 'any' type.
   Try `npm i --save-dev @types/pako` if it exists or add a new declaration (.d.ts) file containing `declare module 'pako';`
 src/stores/flyout-help-store.ts(43,28): error TS7006: Parameter 'block_node' implicitly has an 'any' type.
 src/stores/flyout-help-store.ts(45,23): error TS7053: Element implicitly has an 'any' type because expression of type '"" | "epoch" | "trade_definition" | "before_purchase" | "during_purchase" | "after_purchase" | "tick_analysis" | "trade_definition_tradeoptions" | "sell_price" | "ohlc" | ... 31 more ... | "text_prompt_ext"' can't be used to index type 'typeof Blocks'.
@@ -759,7 +747,7 @@ src/stores/flyout-help-store.ts(45,23): error TS7053: Element implicitly has an 
 src/stores/flyout-help-store.ts(52,69): error TS2339: Property 'childNodes' does not exist on type 'never'.
 src/stores/flyout-help-store.ts(73,28): error TS7006: Parameter 'block_node' implicitly has an 'any' type.
 src/stores/flyout-help-store.ts(77,40): error TS2339: Property 'xml_list_group' does not exist on type 'FlyoutHelpStore'.
-src/stores/flyout-help-store.ts(79,29): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'typeof import("C:/Users/cliff/Desktop/WARNER/flex/artifacts/ddbot-app/src/utils/help-content/help-strings/index")'.
+src/stores/flyout-help-store.ts(79,29): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'typeof import("C:/Users/cliff/Desktop/edge/flex/artifacts/ddbot-app/src/utils/help-content/help-strings/index")'.
 src/stores/flyout-help-store.ts(84,34): error TS7006: Parameter 'blocks_type' implicitly has an 'any' type.
 src/stores/flyout-help-store.ts(85,66): error TS7006: Parameter 'block' implicitly has an 'any' type.
 src/stores/flyout-help-store.ts(89,37): error TS7006: Parameter 'is_last' implicitly has an 'any' type.
@@ -838,16 +826,16 @@ src/Stores/flyout-store.ts(270,5): error TS2416: Property 'onClickOutsideFlyout'
     Types of parameters 'event' and 'event' are incompatible.
       Type 'unknown' is not assignable to type 'MouseEvent'.
 src/Stores/flyout-store.ts(271,49): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
-src/Stores/flyout-store.ts(293,60): error TS2345: Argument of type 'Element | null' is not assignable to parameter of type 'HTMLElement'.
+src/Stores/flyout-store.ts(304,60): error TS2345: Argument of type 'Element | null' is not assignable to parameter of type 'HTMLElement'.
   Type 'null' is not assignable to type 'HTMLElement'.
-src/Stores/flyout-store.ts(294,26): error TS2345: Argument of type 'ChildNode[]' is not assignable to parameter of type 'Element[]'.
+src/Stores/flyout-store.ts(305,26): error TS2345: Argument of type 'ChildNode[]' is not assignable to parameter of type 'Element[]'.
   Type 'ChildNode' is missing the following properties from type 'Element': attributes, classList, className, clientHeight, and 127 more.
 src/stores/google-drive-store.ts(84,26): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/stores/google-drive-store.ts(85,23): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
 src/stores/google-drive-store.ts(86,24): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
-src/stores/journal-store.ts(10,10): error TS2614: Module '"./client-store"' has no exported member 'TAccountList'. Did you mean to use 'import TAccountList from "./client-store"' instead?
-src/stores/journal-store.ts(114,34): error TS2339: Property 'server_time' does not exist on type '{}'.
-src/stores/journal-store.ts(145,23): error TS18046: 'dbot' is of type 'unknown'.
+src/stores/journal-store.ts(12,10): error TS2614: Module '"./client-store"' has no exported member 'TAccountList'. Did you mean to use 'import TAccountList from "./client-store"' instead?
+src/stores/journal-store.ts(131,34): error TS2339: Property 'server_time' does not exist on type '{}'.
+src/stores/journal-store.ts(162,23): error TS18046: 'dbot' is of type 'unknown'.
 src/Stores/load-modal-store.ts(13,25): error TS2307: Cannot find module '@deriv/stores/types' or its corresponding type declarations.
 src/Stores/load-modal-store.ts(186,36): error TS2339: Property 'xml_doc' does not exist on type '{}'.
 src/Stores/load-modal-store.ts(187,38): error TS2339: Property 'file_name' does not exist on type '{}'.
@@ -900,10 +888,10 @@ src/stores/quick-strategy-store.ts(153,45): error TS2339: Property 'utils' does 
 src/stores/quick-strategy-store.ts(199,17): error TS2339: Property 'derivWorkspace' does not exist on type 'typeof Blockly'.
 src/stores/quick-strategy-store.ts(205,48): error TS2339: Property 'Events' does not exist on type 'typeof Blockly'.
 src/stores/quick-strategy-store.ts(216,42): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
-src/Stores/run-panel-store.ts(14,25): error TS2307: Cannot find module '@deriv/stores/types' or its corresponding type declarations.
-src/Stores/run-panel-store.ts(16,10): error TS2305: Module '"Types"' has no exported member 'TDbot'.
-src/Stores/run-panel-store.ts(31,19): error TS2694: Namespace 'global.NodeJS' has no exported member 'Timeout'.
-src/Stores/run-panel-store.ts(181,56): error TS2694: Namespace 'global.NodeJS' has no exported member 'Timeout'.
+src/Stores/run-panel-store.ts(15,25): error TS2307: Cannot find module '@deriv/stores/types' or its corresponding type declarations.
+src/Stores/run-panel-store.ts(17,10): error TS2305: Module '"Types"' has no exported member 'TDbot'.
+src/Stores/run-panel-store.ts(36,19): error TS2694: Namespace 'global.NodeJS' has no exported member 'Timeout'.
+src/Stores/run-panel-store.ts(194,56): error TS2694: Namespace 'global.NodeJS' has no exported member 'Timeout'.
 src/Stores/save-modal-store.ts(69,20): error TS2339: Property 'bot_name' does not exist on type 'string'.
 src/Stores/save-modal-store.ts(70,20): error TS2339: Property 'bot_name' does not exist on type '{}'.
 src/Stores/save-modal-store.ts(97,37): error TS2339: Property 'Xml' does not exist on type 'typeof Blockly'.
@@ -982,7 +970,7 @@ src/stores/toolbox-store.ts(407,50): error TS2345: Argument of type 'any' is not
 src/stores/toolbox-store.ts(411,50): error TS2339: Property 'Procedures' does not exist on type 'typeof Blockly'.
 src/stores/toolbox-store.ts(413,62): error TS7006: Parameter 'procedure_block' implicitly has an 'any' type.
 src/stores/transactions-store.ts(6,45): error TS2307: Cannot find module '@deriv/stores/types' or its corresponding type declarations.
-src/stores/transactions-store.ts(53,76): error TS2729: Property 'core' is used before its initialization.
+src/stores/transactions-store.ts(65,76): error TS2729: Property 'core' is used before its initialization.
 src/stores/ui-store.ts(74,21): error TS7006: Parameter 'value' implicitly has an 'any' type.
 src/types/stores.types.ts(1,25): error TS2307: Cannot find module '@deriv/stores/types' or its corresponding type declarations.
 src/utils/analytics/index.ts(31,9): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.

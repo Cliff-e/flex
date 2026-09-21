@@ -2,6 +2,7 @@ import { localize } from '@deriv-com/translations';
 import getCandleInterface from './CandleInterface';
 import getIndicatorsInterface from './IndicatorsInterface';
 import getMiscInterface from './MiscInterface';
+import { executionMode } from '../utils/execution-mode';
 
 const getToolsInterface = tradeEngine => {
     return {
@@ -47,8 +48,13 @@ const getToolsInterface = tradeEngine => {
         ...getMiscInterface(tradeEngine),
         ...getIndicatorsInterface(tradeEngine),
 
-        // Highlight the block that is being executed
+        // Highlight the block that is being executed.
+        // FAST mode skips this DOM feedback: it runs on the tick critical path (once
+        // per executed block plus a 1505ms timer per highlight) and has no effect on
+        // block evaluation or on trading. NORMAL keeps the original behaviour.
         highlightBlock: block_id => {
+            if (executionMode.isFast()) return;
+
             const block = window.Blockly.derivWorkspace.getBlockById(block_id);
             window.Blockly.BlockSvg.prototype.highlightExecutedBlock = function () {
                 const highlight_block_class = 'block--execution-highlighted';

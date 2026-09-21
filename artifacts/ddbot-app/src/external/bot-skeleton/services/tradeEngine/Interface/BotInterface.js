@@ -176,6 +176,18 @@ const getBotInterface = tradeEngine => {
          * @returns {boolean}
          */
         getVirtualHookStatus: () => tradeEngine.getVirtualHookStatus(),
+        /**
+         * FAST execution mode only: true while the epoch the engine is evaluating
+         * could not be evaluated because its own historical tick data has left the
+         * available Deriv history window.
+         *
+         * The generated FAST before-purchase loop skips its body while this is true,
+         * so a tick whose own data is unavailable is never traded on another epoch's
+         * data. Always false in NORMAL mode.
+         *
+         * @returns {boolean}
+         */
+        isTickDataUnavailable: () => tradeEngine.isTickDataUnavailable(),
         getAskPrice: contract_type => Number(getProposal(contract_type, tradeEngine).ask_price),
         getPayout: contract_type => Number(getProposal(contract_type, tradeEngine).payout),
         getPurchaseReference: () => tradeEngine.getPurchaseReference(),

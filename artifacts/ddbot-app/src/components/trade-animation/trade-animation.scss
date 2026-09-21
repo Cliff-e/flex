@@ -232,3 +232,67 @@
         width: 31.2rem !important;
     }
 }
+
+/* Execution-speed toggle for XML bots, sitting directly beside the Run/Stop
+   button in both the desktop toolbar row and the mobile controls row.
+   Left/right radii are square so it reads as one segmented control:
+   [ Run/Stop ][ NORMAL|FAST ][ contract status ]. */
+.animation__speed-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-width: 6.4rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--border-normal);
+    border-radius: 0;
+    background-color: var(--general-main-1);
+    color: var(--text-less-prominent);
+    font-size: 1.1rem;
+    font-weight: bold;
+    letter-spacing: 0.05rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        color: var(--text-general);
+        border-color: var(--text-less-prominent);
+    }
+
+    &--fast {
+        background-color: var(--status-success);
+        border-color: var(--status-success);
+        color: #ffffff;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+}
+
+/* Small on/off indicator: makes the compact control read as a toggle while the
+   mode label stays the only text content of the button. */
+.animation__speed-toggle-dot {
+    flex: 0 0 auto;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-inline-end: 0.5rem;
+    border-radius: 50%;
+    background-color: currentcolor;
+    opacity: 0.45;
+    transition: opacity 0.15s ease;
+}
+
+.animation__speed-toggle--fast .animation__speed-toggle-dot {
+    opacity: 1;
+}
+
+@media screen and (width <= 600px) {
+    .animation__speed-toggle {
+        min-width: 5.6rem;
+        padding: 0 0.5rem;
+        font-size: 1rem;
+    }
+}

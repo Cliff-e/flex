@@ -7,6 +7,7 @@ import { contract_stages, TContractStage } from '@/constants/contract-stage';
 import { run_panel } from '@/constants/run-panel';
 import { ErrorTypes, MessageTypes, observer, unrecoverable_errors } from '@/external/bot-skeleton';
 import { getSelectedTradeType } from '@/external/bot-skeleton/scratch/utils';
+import { executionMode } from '@/external/bot-skeleton/services/tradeEngine/utils/execution-mode';
 // import { journalError, switch_account_notification } from '@/utils/bot-notifications';
 import GTM from '@/utils/gtm';
 import { helpers } from '@/utils/store-helpers';
@@ -22,6 +23,10 @@ export type TContractState = {
     data: number;
     id: string;
 };
+
+// NORMAL / FAST execution-speed mode for XML bots (see execution-mode.js).
+// Session-only on purpose: every page load starts in NORMAL.
+export type TExecutionMode = 'NORMAL' | 'FAST';
 
 export default class RunPanelStore {
     root_store: RootStore;
@@ -53,7 +58,10 @@ export default class RunPanelStore {
             setHasOpenContract: action,
             setIsRunning: action,
             onRunButtonClick: action,
+            setExecutionMode: action,
+            toggleExecutionMode: action,
             is_contracy_buying_in_progress: observable,
+            execution_mode: observable,
             OpenPositionLimitExceededEvent: action,
             onStopButtonClick: action,
             onClearStatClick: action,
@@ -107,6 +115,11 @@ export default class RunPanelStore {
     is_sell_requested = false;
     show_bot_stop_message = false;
     is_contracy_buying_in_progress = false;
+
+    // Execution-speed toggle state. Mirrored into the engine singleton via the actions
+    // below, and intentionally locked while a bot is running so the mode baked into the
+    // generated strategy code always matches the mode the engine uses.
+    execution_mode: TExecutionMode = 'NORMAL';
 
     run_id = '';
     onOkButtonClick: (() => void) | null = null;
@@ -711,6 +724,25 @@ export default class RunPanelStore {
 
     setIsRunning = (is_running: boolean) => {
         this.is_running = is_running;
+    };
+
+    /**
+     * Sets the XML bot execution mode (NORMAL | FAST).
+     *
+     * Ignored while a bot is running: the generated strategy code embeds the mode it
+     * was started with, so allowing a mid-run switch would let the visible label
+     * disagree with what is actually executing.
+     */
+    setExecutionMode = (execution_mode: TExecutionMode) => {
+        if (this.is_running) return;
+
+        this.execution_mode = execution_mode;
+        executionMode.set(execution_mode);
+    };
+
+    /** Flips NORMAL <-> FAST. Bound to the toggle beside the Run button. */
+    toggleExecutionMode = () => {
+        this.setExecutionMode(this.execution_mode === 'FAST' ? 'NORMAL' : 'FAST');
     };
 
     onMount = () => {

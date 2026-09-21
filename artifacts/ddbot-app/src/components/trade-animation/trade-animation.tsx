@@ -39,6 +39,8 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
         onRunButtonClick,
         onStopBotClick,
         performSelfExclusionCheck,
+        execution_mode,
+        toggleExecutionMode,
     } = run_panel;
     const { account_status } = client;
     const cashier_validation = account_status?.cashier_validation;
@@ -163,6 +165,9 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
     // becomes a login CTA — guests cannot execute real trades on simulated data.
     const isPreviewMode = dataMode === 'preview' && !is_stop_button_visible;
 
+    // XML execution-speed toggle state (NORMAL = off, FAST = on).
+    const is_fast_execution = execution_mode === 'FAST';
+
     // Fix TypeScript error by ensuring active_tab is a number
     // Use a non-null assertion to tell TypeScript that active_tab will be a number
     const safeActiveTab = (typeof active_tab === 'number' ? active_tab : 0) as number;
@@ -278,6 +283,32 @@ const TradeAnimation = observer(({ className, should_show_overlay }: TTradeAnima
                     {button_props.text}
                 </Button>
             )}
+            {/*
+              * NORMAL / FAST execution-speed toggle for XML bots. Rendered directly
+              * beside the Run/Stop button inside the existing responsive row, so the
+              * desktop toolbar and the mobile controls bar share one implementation.
+              * Locked while a bot is running: the mode is baked into the generated
+              * strategy code at Run time.
+              */}
+            <button
+                type='button'
+                className={classNames('animation__speed-toggle', {
+                    'animation__speed-toggle--fast': is_fast_execution,
+                })}
+                data-testid='dt_execution_speed_toggle'
+                aria-pressed={is_fast_execution}
+                aria-label={localize('Bot execution speed')}
+                title={
+                    is_fast_execution
+                        ? localize('FAST: every eligible tick is evaluated')
+                        : localize('NORMAL: standard execution speed')
+                }
+                disabled={is_stop_button_visible}
+                onClick={toggleExecutionMode}
+            >
+                <span className='animation__speed-toggle-dot' aria-hidden='true' />
+                {is_fast_execution ? localize('FAST') : localize('NORMAL')}
+            </button>
             <div
                 className={classNames('animation__container', className, {
                     'animation--running': contract_stage > 0,
