@@ -236,7 +236,9 @@
 /* Execution-speed toggle for XML bots, sitting directly beside the Run/Stop
    button in both the desktop toolbar row and the mobile controls row.
    Left/right radii are square so it reads as one segmented control:
-   [ Run/Stop ][ NORMAL|FAST ][ contract status ]. */
+   [ Run/Stop ][ NORMAL|FAST ][ contract status ].
+   NORMAL: pale/faint blue chip with black label.
+   FAST:   orange chip with black label. */
 .animation__speed-toggle {
     display: inline-flex;
     flex: 0 0 auto;
@@ -245,10 +247,10 @@
     height: 100%;
     min-width: 6.4rem;
     padding: 0 0.8rem;
-    border: 1px solid var(--border-normal);
+    border: 1px solid #b9d2ff;
     border-radius: 0;
-    background-color: var(--general-main-1);
-    color: var(--text-less-prominent);
+    background-color: #dfeaff;
+    color: #000;
     font-size: 1.1rem;
     font-weight: bold;
     letter-spacing: 0.05rem;
@@ -256,14 +258,20 @@
     transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 
     &:hover:not(:disabled) {
-        color: var(--text-general);
-        border-color: var(--text-less-prominent);
+        background-color: #cde0ff;
+        border-color: #9dbcff;
+        color: #000;
     }
 
     &--fast {
-        background-color: var(--status-success);
-        border-color: var(--status-success);
-        color: #ffffff;
+        background-color: var(--ckk-orange, #ff8a3d);
+        border-color: var(--ckk-orange, #ff8a3d);
+        color: #000;
+
+        &:hover:not(:disabled) {
+            background-color: #ff9d5c;
+            border-color: #ff9d5c;
+        }
     }
 
     &:disabled {
