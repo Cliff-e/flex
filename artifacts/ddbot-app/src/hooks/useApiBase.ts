@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     account_list$,
     authData$,
@@ -28,9 +28,26 @@ export const useApiBase = () => {
 
     // Operational state — still driven by RxJS observables (not auth decisions).
     const [isAuthorizing, setIsAuthorizing] = useState<boolean>(false);
-    const [accountList, setAccountList] = useState<TAuthData['account_list']>([]);
+
+    // Account DISPLAY state. It is bootstrapped from the canonical accounts the
+    // OAuth backend already fetched and AuthSessionManager persisted. The WS
+    // authorize response remains authoritative: once it produces a non-empty
+    // list / loginid, these values take over and stored data is no longer used.
+    //
+    // This does NOT mark the session authorized — trading is still gated by
+    // AuthSessionManager.isAuthorized(). It only prevents the header from
+    // showing a permanent loading skeleton when authorize() is slow or fails.
+    const [accountList, setAccountList] = useState<TAuthData['account_list']>(() =>
+        AuthSessionManager.getStoredAccounts()
+    );
     const [authData, setAuthData] = useState<TAuthData | null>(null);
-    const [activeLoginid, setActiveLoginid] = useState<string>('');
+    const [activeLoginid, setActiveLoginid] = useState<string>(() => {
+        const { accountId } = AuthSessionManager.getAuthInfo();
+        if (!accountId) return '';
+        const stored = AuthSessionManager.getStoredAccounts();
+        return stored.some(account => account.loginid === accountId) ? accountId : '';
+    });
+    const wsAccountStateAuthoritative = useRef(false);
 
     useEffect(() => {
         // Connection + operational state via RxJS (unchanged).
@@ -41,11 +58,30 @@ export const useApiBase = () => {
             setIsAuthorizing(authorizing);
         });
         const accountListSubscription = account_list$.subscribe(list => {
-            setAccountList(list);
+            if (list?.length) {
+                wsAccountStateAuthoritative.current = true;
+                setAccountList(list);
+            } else if (wsAccountStateAuthoritative.current) {
+                // An authoritative empty list means the session was cleared.
+                setAccountList([]);
+            } else {
+                setAccountList(AuthSessionManager.getStoredAccounts());
+            }
         });
         const authDataSubscription = authData$.subscribe(data => {
             setAuthData(data);
-            setActiveLoginid(data?.loginid ?? '');
+            if (data?.loginid) {
+                wsAccountStateAuthoritative.current = true;
+                setActiveLoginid(data.loginid);
+            } else if (wsAccountStateAuthoritative.current) {
+                setActiveLoginid('');
+            } else {
+                const { accountId } = AuthSessionManager.getAuthInfo();
+                const stored = AuthSessionManager.getStoredAccounts();
+                setActiveLoginid(
+                    accountId && stored.some(account => account.loginid === accountId) ? accountId : ''
+                );
+            }
         });
 
         // Auth decisions via canonical state — single source of truth.
@@ -54,6 +90,21 @@ export const useApiBase = () => {
             setIsAuthorized(canonical.isAuthorized);
             // isLoggedIn: true whenever a token exists — see comment on initial state above.
             setIsLoggedIn(!!AuthSessionManager.getAuthInfo().accessToken);
+
+            // Refresh the display snapshot while the WS has not produced its own
+            // account data yet (login completion, account list repair, logout).
+            if (!wsAccountStateAuthoritative.current) {
+                const stored = AuthSessionManager.getStoredAccounts();
+                setAccountList(stored);
+                const { accountId } = AuthSessionManager.getAuthInfo();
+                setActiveLoginid(previous =>
+                    stored.some(account => account.loginid === previous)
+                        ? previous
+                        : accountId && stored.some(account => account.loginid === accountId)
+                          ? accountId
+                          : ''
+                );
+            }
         });
 
         return () => {

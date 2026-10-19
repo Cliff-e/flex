@@ -1,5 +1,6 @@
 import Cookies from 'js-cookie';
 import { TAuthData } from '@/types/api-types';
+import { buildStoredAccountList, type RawAccount } from './account-list';
 
 const APP_ID =
     (typeof import.meta !== 'undefined'
@@ -101,6 +102,13 @@ export class AuthSessionManagerClass {
     } | null = null;
     private _otpSeq = 0;
     private _subscribers = new Set<AuthChangeCallback>();
+
+    /**
+     * Cached view of the accounts persisted by the OAuth callback / REST
+     * balance refresh. Keyed on the raw localStorage payloads so the cache can
+     * never survive an actual account-list or balance mutation.
+     */
+    private _storedAccountsCache: { key: string; value: TAuthData['account_list'] } | null = null;
 
     // WS auth state — set by api-base via setWsAuthorized()
     private _wsAuthorized = false;
@@ -241,6 +249,48 @@ export class AuthSessionManagerClass {
             return list[loginid] ?? null;
         } catch {
             return null;
+        }
+    }
+
+    /**
+     * Returns the authorised account metadata persisted at login (and refreshed
+     * by the REST balance refresh), normalised to the app's account_list shape.
+     *
+     * This is DISPLAY-ONLY metadata. It deliberately never returns access
+     * tokens, and it must never be used to decide whether the WS session is
+     * authorized — that remains AuthSessionManager.isAuthorized() / the
+     * canonical state. It exists so the header can render the real account
+     * names immediately after a reload instead of waiting for (or permanently
+     * depending on) a WS `authorize` response.
+     *
+     * Reads:
+     *   clientAccounts — loginid → { currency, account_type, balance, ... }
+     *   accountsList   — loginid → token (used only for loginids the REST
+     *                    payload omitted)
+     *   restAccounts   — loginid → { balance, currency, type } (balance fallback)
+     */
+    getStoredAccounts(): TAuthData['account_list'] {
+        try {
+            const clientAccountsRaw = localStorage.getItem('clientAccounts');
+            const accountsListRaw = localStorage.getItem('accountsList');
+            const restAccountsRaw = localStorage.getItem('restAccounts');
+            const cacheKey = `${clientAccountsRaw ?? ''}|${accountsListRaw ?? ''}|${restAccountsRaw ?? ''}`;
+
+            if (this._storedAccountsCache?.key === cacheKey) {
+                return this._storedAccountsCache.value;
+            }
+
+            const normalized = buildStoredAccountList({
+                clientAccounts: clientAccountsRaw ? (JSON.parse(clientAccountsRaw) as Record<string, RawAccount>) : {},
+                accountsList: accountsListRaw ? (JSON.parse(accountsListRaw) as Record<string, string>) : {},
+                restAccounts: restAccountsRaw ? (JSON.parse(restAccountsRaw) as Record<string, RawAccount>) : {},
+            });
+
+            this._storedAccountsCache = { key: cacheKey, value: normalized };
+            return normalized;
+        } catch (error) {
+            console.warn('[AUTH-ASM][getStoredAccounts] Could not read persisted accounts:', error);
+            return [];
         }
     }
 

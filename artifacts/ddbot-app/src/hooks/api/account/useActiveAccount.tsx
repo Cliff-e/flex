@@ -28,11 +28,16 @@ const useActiveAccount = ({ allBalanceData }: { allBalanceData: Balance | null }
             (typeof (activeAccount as { balance?: number }).balance === 'number'
                 ? (activeAccount as { balance?: number }).balance
                 : undefined);
-        const formattedBalance = balanceValue != null ? balanceValue.toFixed(getDecimalPlaces(currency)) : undefined;
+        // Never coerce an unknown balance to 0 — that silently presents a
+        // fabricated amount. addComma(undefined) returns "0", so guard first.
+        const formattedBalance =
+            balanceValue != null && Number.isFinite(Number(balanceValue))
+                ? addComma(Number(balanceValue).toFixed(getDecimalPlaces(currency)))
+                : undefined;
 
         return {
             ...activeAccount,
-            balance: addComma(formattedBalance) ?? '0',
+            balance: formattedBalance ?? '—',
             currencyLabel: activeAccount?.is_virtual ? localize('Demo') : activeAccount?.currency,
             icon: (
                 <CurrencyIcon

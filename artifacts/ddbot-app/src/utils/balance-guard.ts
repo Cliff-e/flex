@@ -10,6 +10,14 @@
 
 type AccountBalanceEntry = { balance?: number; currency?: string; [k: string]: unknown };
 
+export type BalanceAccountsMap = { accounts: Record<string, AccountBalanceEntry>; [k: string]: unknown };
+
+export type AuthorizeBalancePayload = {
+    loginid?: string;
+    balance?: number | null;
+    currency?: string;
+};
+
 export type BalanceMessage = {
     loginid?: string;
     balance?: number;
@@ -39,10 +47,7 @@ export function isBalanceMessageRelevant(
  * Never wipes accounts that aren't present in the incoming message, so a
  * stale `accounts` map can't clear the freshly selected account's data.
  */
-export function mergeBalanceAccounts(
-    existing: unknown,
-    incoming: BalanceMessage
-): { accounts: Record<string, AccountBalanceEntry>; [k: string]: unknown } {
+export function mergeBalanceAccounts(existing: unknown, incoming: BalanceMessage): BalanceAccountsMap {
     const prev =
         (existing as { accounts?: Record<string, AccountBalanceEntry> } | null | undefined)?.accounts ?? {};
 
@@ -61,6 +66,61 @@ export function mergeBalanceAccounts(
     }
 
     return existing && Object.keys(existing as object).length
-        ? (existing as { accounts: Record<string, AccountBalanceEntry> })
+        ? (existing as BalanceAccountsMap)
         : { accounts: {} };
+}
+
+/**
+ * Seeds the balance carried by an `authorize` response.
+ *
+ * The new trading API may deliver the authorize message before the React
+ * message listener is attached (the header is in its authorizing state), so
+ * this helper lets CoreStoreProvider seed the value from the EventBus instead
+ * of relying on that transient subscription.
+ *
+ * Returns null when the payload cannot be trusted (no loginid / no finite
+ * balance) so callers never write a fabricated value.
+ */
+export function seedAuthorizeBalance(
+    existing: unknown,
+    auth: AuthorizeBalancePayload | null | undefined
+): BalanceAccountsMap | null {
+    if (!auth?.loginid || auth.balance == null || !Number.isFinite(Number(auth.balance))) {
+        return null;
+    }
+
+    return mergeBalanceAccounts(existing, {
+        loginid: auth.loginid,
+        balance: Number(auth.balance),
+        currency: auth.currency,
+    });
+}
+
+/**
+ * Fills balance entries that are missing from the live map using the balances
+ * fetched at login. Existing (live WS) values are never overwritten, so a
+ * stale REST snapshot cannot replace a fresher balance push.
+ *
+ * Returns `existing` unchanged when nothing was added, allowing callers to
+ * avoid needless store updates.
+ */
+export function fillMissingBalances(
+    existing: unknown,
+    incoming: Record<string, AccountBalanceEntry> | null | undefined
+): BalanceAccountsMap | null {
+    const prev = (existing as { accounts?: Record<string, AccountBalanceEntry> } | null | undefined)?.accounts ?? {};
+    const accounts = { ...prev };
+    let changed = false;
+
+    Object.entries(incoming ?? {}).forEach(([loginid, entry]) => {
+        if (!loginid || !entry || accounts[loginid]) return;
+        accounts[loginid] = { ...entry };
+        changed = true;
+    });
+
+    if (!changed) {
+        return (existing as BalanceAccountsMap | null | undefined) ?? null;
+    }
+
+    return { ...((existing as Record<string, unknown>) ?? {}), accounts };
 }

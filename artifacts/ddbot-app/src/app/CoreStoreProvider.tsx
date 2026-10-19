@@ -11,8 +11,13 @@ import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
 import { TLandingCompany, TSocketResponseData } from '@/types/api-types';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
-import { isBalanceMessageRelevant, mergeBalanceAccounts } from '@/utils/balance-guard';
-import type { BalanceMessage } from '@/utils/balance-guard';
+import { EventBus } from '@/utils/EventBus';
+import {
+    fillMissingBalances,
+    isBalanceMessageRelevant,
+    mergeBalanceAccounts,
+    seedAuthorizeBalance,
+} from '@/utils/balance-guard';
 import type { Balance } from '@deriv/api-types';
 import { useTranslations } from '@deriv-com/translations';
 
@@ -56,9 +61,10 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
         [activeLoginid, accountList]
     );
 
-    // Seed balance immediately from REST accounts data written by the callback page.
-    // This shows the user's balance while the WebSocket OTP connection is still being
-    // established, and is overwritten by the live WS balance subscription once it fires.
+    // Seed balances from the REST accounts data written by the callback page.
+    // This shows the user's real balances while the authenticated WebSocket is
+    // still being established. Only missing entries are filled — a live WS
+    // balance push always wins over this snapshot.
     useEffect(() => {
         if (!client) return;
         try {
@@ -67,23 +73,34 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
             const restBalances: Record<string, { balance: number; currency: string; type?: string }> = JSON.parse(raw);
             if (!restBalances || typeof restBalances !== 'object') return;
 
-            // Only seed if we don't already have live WS balance data
-            if (!client.all_accounts_balance) {
-                client.setAllAccountsBalance({ accounts: restBalances } as any);
+            const next = fillMissingBalances(client.all_accounts_balance, restBalances);
+            const currentCount = Object.keys(client.all_accounts_balance?.accounts ?? {}).length;
+            if (next && Object.keys(next.accounts).length > currentCount) {
+                client.setAllAccountsBalance(next as unknown as Balance);
             }
         } catch (_) { /* ignore parse errors */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [client]);
+    }, [client, isAuthorized]);
 
+    // Keep client.balance / client.currency in sync with the selected account.
+    // When the new account has no balance entry yet, clear the previous
+    // account's value instead of leaving it on screen as if it were current.
     useEffect(() => {
-        const currentBalanceData = client?.all_accounts_balance?.accounts?.[activeAccount?.loginid ?? ''];
-        if (currentBalanceData) {
-            client?.setBalance(currentBalanceData.balance.toFixed(getDecimalPlaces(currentBalanceData.currency)));
-            client?.setCurrency(currentBalanceData.currency);
+        if (!client || !activeAccount) return;
+
+        const currentBalanceData = client.all_accounts_balance?.accounts?.[activeAccount.loginid];
+        const currency = currentBalanceData?.currency ?? activeAccount.currency ?? client.currency;
+
+        if (currency) client.setCurrency(currency);
+
+        if (currentBalanceData?.balance != null) {
+            client.setBalance(currentBalanceData.balance.toFixed(getDecimalPlaces(currentBalanceData.currency ?? currency)));
+        } else {
+            client.setBalance('');
         }
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeAccount?.loginid, client?.all_accounts_balance]);
+    }, [activeAccount?.loginid, activeAccount?.currency, client?.all_accounts_balance, client]);
 
     useEffect(() => {
         if (client && activeAccount) {
@@ -152,64 +169,61 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
         };
     }, [client, common, connectionStatus]);
 
+    // Balance + authorize data is delivered through EventBus. WebSocketManager's
+    // raw-socket listener emits every message, including messages that arrive
+    // while `isAuthorizing` is true. The previous api.onMessage() subscription
+    // was gated on !isAuthorizing, so the authorize balance and the first
+    // balance push were routinely missed during login and account switching.
+    useEffect(() => {
+        if (!client) return;
+
+        const unsubscribeAuth = EventBus.on('auth:success', data => {
+            const next = seedAuthorizeBalance(client.all_accounts_balance, data);
+            if (next) client.setAllAccountsBalance(next as unknown as Balance);
+        });
+
+        const unsubscribeBalance = EventBus.on('balance', balance => {
+            if (!balance || !isBalanceMessageRelevant(balance, activeLoginid, AuthSessionManager.isAuthorized())) return;
+            client.setAllAccountsBalance(
+                mergeBalanceAccounts(client.all_accounts_balance, balance) as unknown as Balance
+            );
+        });
+
+        return () => {
+            unsubscribeAuth();
+            unsubscribeBalance();
+        };
+    }, [client, activeLoginid]);
+
+    // Auth-error handling only. Balance/authorize data is handled above via
+    // EventBus, which does not drop messages during authorization.
     const handleMessages = useCallback(
-        async (res: Record<string, unknown>) => {
-            if (!res) return;
-            const data = res.data as TSocketResponseData<'balance'>;
-            const anyData = data as unknown as {
-                msg_type?: string;
-                error?: { code?: string };
-                balance?: BalanceMessage;
-                authorize?: { loginid?: string; balance?: number; currency?: string };
-            };
+        async (message: unknown) => {
+            const res = message as { data?: { error?: { code?: string } } } | null;
+            const errorCode = res?.data?.error?.code;
 
             if (
-                anyData.error?.code === 'AuthorizationRequired' ||
-                anyData.error?.code === 'DisabledClient' ||
-                anyData.error?.code === 'InvalidToken'
+                errorCode === 'AuthorizationRequired' ||
+                errorCode === 'DisabledClient' ||
+                errorCode === 'InvalidToken'
             ) {
                 await oAuthLogout();
             }
-
-            if (anyData.msg_type === 'balance' && anyData.balance && !anyData.error) {
-                if (!isBalanceMessageRelevant(anyData.balance, activeLoginid, AuthSessionManager.isAuthorized())) return;
-                client.setAllAccountsBalance(
-                    mergeBalanceAccounts(client.all_accounts_balance, anyData.balance) as unknown as Balance
-                );
-            }
-
-            // The new trading API's authorize response carries the authoritative
-            // balance for the newly authorized account. Seed it immediately so the
-            // switcher/header show the correct balance without waiting for the
-            // (async) balance subscription push.
-            if (anyData.msg_type === 'authorize') {
-                const auth = anyData.authorize;
-                if (auth?.loginid === activeLoginid && auth.balance != null) {
-                    client.setAllAccountsBalance(
-                        mergeBalanceAccounts(client.all_accounts_balance, {
-                            loginid: auth.loginid,
-                            balance: auth.balance,
-                            currency: auth.currency,
-                        }) as unknown as Balance
-                    );
-                }
-            }
         },
-        [client, oAuthLogout, activeLoginid]
+        [oAuthLogout]
     );
 
     useEffect(() => {
-        if (!isAuthorizing && client) {
-            const subscription = api_base?.api?.onMessage().subscribe(handleMessages);
-            msg_listener.current = { unsubscribe: subscription?.unsubscribe };
-        }
+        if (!client || !api_base?.api) return;
+
+        const subscription = api_base.api.onMessage().subscribe(handleMessages);
+        msg_listener.current = { unsubscribe: subscription?.unsubscribe };
 
         return () => {
-            if (msg_listener.current) {
-                msg_listener.current.unsubscribe?.();
-            }
+            msg_listener.current?.unsubscribe?.();
+            msg_listener.current = null;
         };
-    }, [connectionStatus, handleMessages, isAuthorizing, isAuthorized, client]);
+    }, [connectionStatus, handleMessages, client]);
 
     useEffect(() => {
         if (!isAuthorizing && isAuthorized && !accountInitialization.current && client) {

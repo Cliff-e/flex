@@ -102,12 +102,19 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
 
     const modifiedAccountList = useMemo(() => {
         return accountList?.map(account => {
+            const accountBalance =
+                client.all_accounts_balance?.accounts?.[account?.loginid]?.balance ??
+                (account as { balance?: number }).balance;
+            // addComma(undefined) returns "0" — guard before calling it so an
+            // unknown balance is shown as unknown, never as a fabricated zero.
+            const formattedBalance =
+                accountBalance != null && Number.isFinite(Number(accountBalance))
+                    ? addComma(Number(accountBalance).toFixed(getDecimalPlaces(account.currency)))
+                    : undefined;
+
             return {
                 ...account,
-                balance: addComma(
-                    (client.all_accounts_balance?.accounts?.[account?.loginid]?.balance ??
-                        (account as { balance?: number }).balance)?.toFixed(getDecimalPlaces(account.currency)) ?? '0'
-                ),
+                balance: formattedBalance ?? '—',
                 currencyLabel: account?.is_virtual
                     ? tabs_labels.demo
                     : (client.website_status?.currencies_config?.[account?.currency]?.name ?? account?.currency),

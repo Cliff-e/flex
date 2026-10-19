@@ -1,11 +1,17 @@
 export type EventMap = {
     tick: { symbol: string; quote: number; epoch: number; [k: string]: unknown };
-    balance: { balance: number; currency: string; [k: string]: unknown };
+    balance: { balance: number; currency: string; loginid?: string; [k: string]: unknown };
     transaction: unknown;
     proposal: { req_id?: number; proposal?: { id: string; [k: string]: unknown }; error?: { message: string }; [k: string]: unknown };
     buy: { req_id?: number; buy?: { contract_id: number; [k: string]: unknown }; error?: { message: string }; [k: string]: unknown };
     proposal_open_contract: { proposal_open_contract?: { contract_id: number; is_sold: number; profit: number; exit_tick: unknown; [k: string]: unknown }; [k: string]: unknown };
-    'auth:success': { loginid: string; account_list: unknown[]; [k: string]: unknown };
+    'auth:success': {
+        loginid: string;
+        account_list: unknown[];
+        balance?: number;
+        currency?: string;
+        [k: string]: unknown;
+    };
     'auth:failed': { code?: string; message?: string; [k: string]: unknown };
     'auth:logout': undefined;
     'ws:connected': undefined;

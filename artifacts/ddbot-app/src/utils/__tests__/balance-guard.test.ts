@@ -1,4 +1,9 @@
-import { isBalanceMessageRelevant, mergeBalanceAccounts } from '../balance-guard';
+import {
+    fillMissingBalances,
+    isBalanceMessageRelevant,
+    mergeBalanceAccounts,
+    seedAuthorizeBalance,
+} from '../balance-guard';
 
 describe('isBalanceMessageRelevant', () => {
     it('rejects when not authorized', () => {
@@ -42,5 +47,42 @@ describe('mergeBalanceAccounts', () => {
     it('returns an empty map when there is nothing to merge', () => {
         const result = mergeBalanceAccounts(null, {});
         expect(result.accounts).toEqual({});
+    });
+});
+
+describe('seedAuthorizeBalance', () => {
+    it('seeds the authorize balance under its own loginid', () => {
+        const result = seedAuthorizeBalance(
+            { accounts: { CR1: { balance: 10, currency: 'USD' } } },
+            { loginid: 'CR2', balance: 250.5, currency: 'EUR' }
+        );
+
+        expect(result?.accounts.CR1.balance).toBe(10);
+        expect(result?.accounts.CR2.balance).toBe(250.5);
+        expect(result?.accounts.CR2.currency).toBe('EUR');
+    });
+
+    it('rejects payloads without a loginid or a finite balance', () => {
+        expect(seedAuthorizeBalance(null, { balance: 100 })).toBeNull();
+        expect(seedAuthorizeBalance(null, { loginid: 'CR1' })).toBeNull();
+        expect(seedAuthorizeBalance(null, { loginid: 'CR1', balance: Number.NaN })).toBeNull();
+    });
+});
+
+describe('fillMissingBalances', () => {
+    it('fills only accounts missing from the live map', () => {
+        const existing = { accounts: { CR1: { balance: 75, currency: 'USD' } } };
+        const result = fillMissingBalances(existing, {
+            CR1: { balance: 50, currency: 'USD' },
+            CR2: { balance: 100, currency: 'USD' },
+        });
+
+        expect(result?.accounts.CR1.balance).toBe(75);
+        expect(result?.accounts.CR2.balance).toBe(100);
+    });
+
+    it('returns the existing reference when nothing needs to be added', () => {
+        const existing = { accounts: { CR1: { balance: 75, currency: 'USD' } } };
+        expect(fillMissingBalances(existing, { CR1: { balance: 50, currency: 'USD' } })).toBe(existing);
     });
 });

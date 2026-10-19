@@ -29,7 +29,7 @@ type TAppHeaderProps = {
 
 const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
     const { isDesktop } = useDevice();
-    const { isAuthorizing, activeLoginid, isLoggedIn } = useApiBase();
+    const { isAuthorizing, activeLoginid } = useApiBase();
     const { client } = useStore() ?? {};
 
     const { data: activeAccount } = useActiveAccount({ allBalanceData: client?.all_accounts_balance });
@@ -47,10 +47,15 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
         //
         // Rendering priority:
         //   1. Explicit loading states (initialising, WS authorising)
-        //   2. WS authorized — show full account section (activeLoginid populated)
-        //   3. Canonical auth exists but WS not yet done — show interim loader
-        //      (prevents the Login/Sign Up flash while authorizeAndSubscribe() runs)
-        //   4. Truly logged-out — show Login + Sign Up buttons
+        //   2. Resolved active account — show the full account section
+        //   3. Otherwise — Login / Sign Up
+        //
+        // There is deliberately no "token exists but account unresolved" loading
+        // branch: that state used to render a skeleton forever whenever WS
+        // authorize() failed or never resolved. Account display state is now
+        // bootstrapped from the canonical persisted account list, so a finished
+        // auth attempt either has an account to show or must surface an
+        // actionable Login state.
         if (isAuthenticating || isAuthorizing) {
             return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
         } else if (activeLoginid) {
@@ -135,13 +140,7 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                         })()}
                 </div>
             );
-        } else if (isLoggedIn) {
-            // Canonical auth exists (token + loginid in storage) but WS authorize()
-            // hasn't completed yet. Show a loading indicator rather than Login/Sign Up —
-            // this prevents the flash of logged-out UI while authorizeAndSubscribe() runs.
-            return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
         } else {
-            // [HEADER] rendering Login button
             console.log('[HEADER] rendering Login button');
             return (
                 <div className='auth-actions'>
@@ -183,7 +182,6 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
         isAuthorizing,
         isDesktop,
         activeLoginid,
-        isLoggedIn,
         standalone_routes,
         client,
         has_wallet,

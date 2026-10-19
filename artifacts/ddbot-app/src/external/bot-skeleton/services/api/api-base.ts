@@ -15,7 +15,10 @@ import {
     setIsAuthorizing,
 } from './observables/connection-status-stream';
 import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import { normalizeAccountList, mergeAccountLists, type RawAccount } from '@/utils/account-list';
 import chart_api from './chart-api';
+
+const AUTHORIZE_TIMEOUT_MS = 15_000;
 
 type CurrentSubscription = {
     id: string;
@@ -349,36 +352,26 @@ class APIBase {
         try {
             const raw = localStorage.getItem('clientAccounts');
             if (!raw) return false;
-            const clientAccounts = JSON.parse(raw) as Record<
-                string,
-                { loginid: string; token: string; currency: string; account_type?: string; balance?: number }
-            >;
-            const accountListArr = Object.values(clientAccounts).map(acc => ({
-                loginid: acc.loginid,
-                currency: acc.currency || 'USD',
-                account_type: acc.account_type || 'real',
-                balance: acc.balance ?? 0,
-                is_disabled: 0,
-                is_virtual: (acc.account_type === 'demo' || acc.account_type === 'virtual') ? 1 : 0,
-                token: acc.token,
-            }));
+            const clientAccounts = JSON.parse(raw) as Record<string, RawAccount & { token?: string }>;
+            const accountListArr = normalizeAccountList(Object.values(clientAccounts));
             if (!accountListArr.length) return false;
 
             const storedLoginId = AuthSessionManager.getAuthInfo().accountId ?? '';
             const activeAcc =
                 accountListArr.find(a => a.loginid === storedLoginId) ?? accountListArr[0];
+            const activeBalance = (activeAcc as { balance?: number }).balance;
 
             const syntheticAuthData = {
                 loginid: activeAcc.loginid,
                 account_list: accountListArr,
-                balance: activeAcc.balance,
+                balance: activeBalance,
                 currency: activeAcc.currency,
                 is_virtual: activeAcc.is_virtual,
                 country: localStorage.getItem('client.country') ?? '',
                 email: '',
                 fullname: '',
                 landing_company_fullname: '',
-                landing_company_name: activeAcc.loginid.match(/^VRT/i) ? 'virtual' : 'svg',
+                landing_company_name: activeAcc.landing_company_name ?? (activeAcc.is_virtual ? 'virtual' : 'svg'),
                 linked_to: [],
                 local_currencies: {},
                 preferred_language: 'EN',
@@ -436,6 +429,9 @@ class APIBase {
         if (!token || !this.api) {
             console.warn('[AUTH 14][api-base.authorizeAndSubscribe] ABORTING — no token or no api instance',
                 '| hasToken:', !!token, '| hasApi:', !!this.api);
+            // init() sets the authorizing flag before calling us; make sure an
+            // early abort cannot leave the header spinning forever.
+            setIsAuthorizing(false);
             return false;
         }
 
@@ -446,6 +442,7 @@ class APIBase {
                 '| otpAccountId:', otpAccountId,
                 '| expectedLoginid:', expectedLoginid,
             );
+            setIsAuthorizing(false);
             return false;
         }
 
@@ -461,7 +458,34 @@ class APIBase {
         );
 
         try {
-            const { authorize, error } = await this.api.authorize(this.token);
+            // A missing response must not leave the header in its authorizing
+            // state forever. Race the request against a bounded timeout; the
+            // underlying promise is ignored after the race settles, and the
+            // epoch/identity checks below still reject stale results.
+            let authorizeTimeout: ReturnType<typeof setTimeout> | undefined;
+            let authorizeResult: { authorize: TAuthData; error: unknown };
+            try {
+                authorizeResult = await Promise.race([
+                    this.api.authorize(this.token),
+                    new Promise<never>((_, reject) => {
+                        authorizeTimeout = setTimeout(
+                            () => reject(new Error(`authorize request timed out after ${AUTHORIZE_TIMEOUT_MS}ms`)),
+                            AUTHORIZE_TIMEOUT_MS
+                        );
+                    }),
+                ]);
+            } catch (authorizeError) {
+                console.error('[AUTH 15][api-base.authorizeAndSubscribe] authorize request failed or timed out:',
+                    authorizeError);
+                this.is_authorized = false;
+                setIsAuthorized(false);
+                AuthSessionManager.setWsAuthorized(false, null);
+                return false;
+            } finally {
+                if (authorizeTimeout) clearTimeout(authorizeTimeout);
+            }
+
+            const { authorize, error } = authorizeResult;
 
             if (epoch != null && epoch !== this._epoch) {
                 return false;
@@ -569,49 +593,47 @@ class APIBase {
             //   2. Reconstruct from the clientAccounts map written by callback-page.tsx.
             //   3. Last resort: build a minimal single-entry list from the top-level
             //      authorize fields (loginid / currency / is_virtual / etc.).
-            let resolvedAccountList: TAuthData['account_list'] = authorize?.account_list || [];
+            let resolvedAccountList: TAuthData['account_list'] = normalizeAccountList(
+                (authorize?.account_list ?? []) as unknown as RawAccount[]
+            );
 
             if (resolvedAccountList.length === 0 && authorize.loginid) {
                 console.log('[api-base] authorize returned empty account_list — attempting REST reconstruction');
                 try {
                     const raw = localStorage.getItem('clientAccounts');
                     if (raw) {
-                        const parsed = JSON.parse(raw) as Record<string, {
-                            loginid: string; token: string; currency: string;
-                            account_type?: string; balance?: number;
-                        }>;
-                        const arr = Object.values(parsed).map(acc => ({
-                            loginid: acc.loginid,
-                            currency: acc.currency || 'USD',
-                            account_type: acc.account_type || 'real',
-                            is_virtual: (acc.account_type === 'demo' || acc.account_type === 'virtual') ? 1 : 0,
-                            is_disabled: 0,
-                            landing_company_name: /^VRT/i.test(acc.loginid) ? 'virtual' : 'svg',
-                        }));
-                        if (arr.length) {
-                            resolvedAccountList = arr as unknown as TAuthData['account_list'];
-                            console.log('[api-base] account_list reconstructed from REST data, count:', arr.length);
+                        const parsed = JSON.parse(raw) as Record<string, RawAccount>;
+                        resolvedAccountList = normalizeAccountList(Object.values(parsed));
+                        if (resolvedAccountList.length) {
+                            console.log('[api-base] account_list reconstructed from REST data, count:', resolvedAccountList.length);
                         }
                     }
                 } catch (_) { /* ignore parse errors */ }
 
                 if (resolvedAccountList.length === 0) {
                     // Minimal entry built from authorize response top-level fields
-                    resolvedAccountList = [{
+                    resolvedAccountList = normalizeAccountList([{
                         loginid: authorize.loginid,
-                        currency: authorize.currency || 'USD',
-                        account_type: authorize.is_virtual ? 'demo' : 'real',
-                        is_virtual: authorize.is_virtual || 0,
-                        is_disabled: 0,
-                        landing_company_name: authorize.landing_company_name || 'svg',
-                    }] as unknown as TAuthData['account_list'];
+                        currency: authorize.currency,
+                        is_virtual: authorize.is_virtual,
+                        landing_company_name: authorize.landing_company_name,
+                    }]);
                     console.log('[api-base] account_list built from authorize response fields for loginid:', authorize.loginid);
                 }
             }
 
-            const authorizeWithList = resolvedAccountList !== (authorize?.account_list || [])
-                ? { ...authorize, account_list: resolvedAccountList }
-                : authorize;
+            // The WS list can be partial (or empty) on the new trading API. The
+            // REST accounts fetched at login are authoritative about which
+            // accounts exist, so keep any accounts the WS response omitted.
+            // WS entries win for loginids present in both.
+            resolvedAccountList = mergeAccountLists(
+                resolvedAccountList,
+                AuthSessionManager.getStoredAccounts()
+            );
+
+            // Always rebuild the auth payload with the normalized list so all
+            // downstream consumers see consistent is_virtual/currency metadata.
+            const authorizeWithList = { ...authorize, account_list: resolvedAccountList };
 
             setAccountList(resolvedAccountList);
             setAuthData(authorizeWithList);
