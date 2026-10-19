@@ -1,89 +1,15 @@
+import { useState } from 'react';
 import clsx from 'clsx';
 import { toast } from 'react-toastify';
 import { api_base } from '@/external/bot-skeleton';
+import { useDemoBalanceReset } from '@/hooks/useDemoBalanceReset';
+import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { refreshBalancesFromRest } from '@/utils/balance-refresh';
 import { localize } from '@deriv-com/translations';
 import { AccountSwitcher as UIAccountSwitcher } from '@deriv-com/ui';
 import AccountSwitcherFooter from './account-swticher-footer';
 import { TDemoAccounts } from './types';
 import { AccountSwitcherDivider, convertCommaValue } from './utils';
-
-/**
- * Requests a demo-balance top-up and waits for the result instead of firing
- * the request and forgetting about it — the previous fire-and-forget call
- * gave no feedback on failure and never nudged the UI to refresh, so the
- * button appeared to do nothing even when the request actually failed.
- *
- * `topup_virtual` is applied to whichever account the WS connection is
- * currently *authorized as* (api_base.account_id) — it is not scoped by the
- * `loginid` argument. If the account switch to this demo account hasn't
- * finished re-authorizing the WS connection yet (or the switch silently
- * failed), the request lands on the wrong/previous account and Deriv
- * rejects it (e.g. `PermissionDenied` on a real account, or a mismatched
- * loginid). We guard against that instead of sending blind and only
- * discovering the mismatch via a cryptic error.
- */
-const resetDemoBalance = async (loginid: string) => {
-    const request = { topup_virtual: 1 };
-    try {
-        const currentAuthorizedLoginid = api_base?.account_id;
-        if (currentAuthorizedLoginid && currentAuthorizedLoginid !== loginid) {
-            console.error('[demo-accounts] resetDemoBalance account-context mismatch', {
-                requestedLoginid: loginid,
-                wsAuthorizedLoginid: currentAuthorizedLoginid,
-            });
-            throw new Error(
-                'Your session is still switching accounts. Please wait a moment and try resetting the balance again.'
-            );
-        }
-
-        console.log('[demo-accounts] resetDemoBalance request:', {
-            request,
-            targetLoginid: loginid,
-            wsAuthorizedLoginid: currentAuthorizedLoginid,
-        });
-
-        const response = (await api_base?.api?.send(request)) as
-            | { error?: { code?: string; message?: string; details?: unknown }; topup_virtual?: unknown }
-            | undefined;
-
-        console.log('[demo-accounts] resetDemoBalance response:', response);
-
-        if (response?.error) {
-            console.error('[demo-accounts] resetDemoBalance failed', {
-                request,
-                response,
-                errorCode: response.error.code,
-                errorMessage: response.error.message,
-                errorDetails: response.error.details,
-                targetLoginid: loginid,
-                wsAuthorizedLoginid: currentAuthorizedLoginid,
-            });
-            throw new Error(response.error.message || 'Failed to reset demo balance');
-        }
-        // The WS balance subscription (see api-base.subscribe, `account: 'all'`)
-        // normally pushes the updated balance automatically, but fall back to a
-        // REST refresh so the UI is guaranteed to reflect the new balance even
-        // if that push is delayed or missed.
-        const accessToken = localStorage.getItem('authToken') ?? '';
-        if (accessToken) {
-            await refreshBalancesFromRest(accessToken, loginid);
-        }
-        toast.success(localize('Your demo balance has been reset.'));
-    } catch (error) {
-        console.error('[demo-accounts] resetDemoBalance threw', {
-            request,
-            targetLoginid: loginid,
-            error,
-            errorCode: (error as { error?: { code?: string } })?.error?.code,
-            errorMessage: (error as Error)?.message,
-            errorDetails: (error as { error?: { details?: unknown } })?.error?.details,
-        });
-        toast.error(
-            (error as Error)?.message ? localize((error as Error).message) : localize('Failed to reset demo balance.')
-        );
-    }
-};
 
 const DemoAccounts = ({
     tabs_labels,
@@ -94,6 +20,33 @@ const DemoAccounts = ({
     oAuthLogout,
     is_logging_out,
 }: TDemoAccounts) => {
+    const { reset, is_resetting } = useDemoBalanceReset();
+    const [resettingLoginid, setResettingLoginid] = useState<string | null>(null);
+
+    const handleReset = async (loginid: string) => {
+        if (is_resetting) return;
+        setResettingLoginid(loginid);
+        const ok = await reset(loginid);
+        setResettingLoginid(null);
+
+        if (!ok) {
+            toast.error(localize('Could not reset demo balance. Please try again.'));
+            return;
+        }
+
+        toast.success(localize('Your demo balance has been reset.'));
+
+        // Refresh the displayed balance from the authoritative source. The
+        // helper is guarded (only writes when this account is still active and
+        // authorized); fall back to a WS balance snapshot if the REST backend
+        // is unavailable.
+        const accessToken = AuthSessionManager.getAuthInfo().accessToken ?? '';
+        const result = await refreshBalancesFromRest(accessToken, loginid);
+        if (!result) {
+            await api_base.requestBalanceSnapshot();
+        }
+    };
+
     return (
         <>
             <UIAccountSwitcher.AccountsPanel
@@ -103,30 +56,33 @@ const DemoAccounts = ({
                 key={tabs_labels.demo.toLowerCase()}
             >
                 {modifiedVRTCRAccountList &&
-                    modifiedVRTCRAccountList.map(account => (
-                        <span
-                            className={clsx('account-switcher__item', {
-                                'account-switcher__item--disabled': account.is_disabled,
-                            })}
-                            key={account.loginid}
-                        >
-                            <UIAccountSwitcher.AccountsItem
-                                account={account}
-                                onSelectAccount={() => {
-                                    if (!account.is_disabled) switchAccount(account.loginid);
-                                }}
-                                onResetBalance={
-                                    isVirtual &&
-                                    activeLoginId === account.loginid &&
-                                    convertCommaValue(account.balance) !== 10000
-                                        ? () => {
-                                              resetDemoBalance(String(account.loginid));
-                                          }
-                                        : undefined
-                                }
-                            />
-                        </span>
-                    ))}
+                    modifiedVRTCRAccountList.map(account => {
+                        const isCurrent = isVirtual && activeLoginId === account.loginid;
+                        const isThisResetting = resettingLoginid === String(account.loginid);
+                        const showReset = isCurrent && !isThisResetting && convertCommaValue(account.balance) !== 10000;
+                        const displayAccount = isThisResetting
+                            ? { ...account, balance: localize('Resetting'), currency: '' }
+                            : account;
+
+                        return (
+                            <span
+                                className={clsx('account-switcher__item', {
+                                    'account-switcher__item--disabled': account.is_disabled,
+                                })}
+                                key={account.loginid}
+                            >
+                                <UIAccountSwitcher.AccountsItem
+                                    account={displayAccount}
+                                    onSelectAccount={() => {
+                                        if (!account.is_disabled) switchAccount(account.loginid);
+                                    }}
+                                    onResetBalance={
+                                        showReset ? () => handleReset(String(account.loginid)) : undefined
+                                    }
+                                />
+                            </span>
+                        );
+                    })}
             </UIAccountSwitcher.AccountsPanel>
             <AccountSwitcherDivider />
             <AccountSwitcherFooter

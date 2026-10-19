@@ -5,6 +5,12 @@
     flex-direction: column;
     height: 100vh;
 
+    @include mobile-or-tablet-screen {
+        // Track the real visual viewport so mobile browser chrome (which
+        // overlaps 100vh) doesn't hide the bottom of the dashboard.
+        height: 100dvh;
+    }
+
     .deriv-header {
         background: var(--general-main-1);
         height: 4.9rem;

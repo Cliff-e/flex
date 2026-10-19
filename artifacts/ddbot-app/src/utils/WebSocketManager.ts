@@ -16,7 +16,7 @@ function maskToken(t: string | null | undefined): string {
     return `${t.slice(0, 8)}…${t.slice(-4)}`;
 }
 
-class WebSocketManagerClass {
+export class WebSocketManagerClass {
     private _api: InstanceType<typeof DerivAPIBasic> | null = null;
     private _socket: WebSocket | null = null;
     private _connected = false;
@@ -25,14 +25,34 @@ class WebSocketManagerClass {
     private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     private _stopReconnect = false;
     private _pendingOtpToken: string | null = null;
+    private _pendingOtpAccountId: string | null = null;
+    private _generation = 0;
+    private _pendingReject: ((reason?: unknown) => void) | null = null;
 
     /** The OTP token extracted from the current authenticated WS URL. */
     getPendingOtpToken(): string | null {
         return this._pendingOtpToken;
     }
 
+    /** The account ID the pending OTP token was issued for (when available). */
+    getPendingOtpAccountId(): string | null {
+        return this._pendingOtpAccountId;
+    }
+
     wasLastConnectionOtp(): boolean {
         return this._pendingOtpToken !== null;
+    }
+
+    /**
+     * Resolves once any in-flight connection attempt settles (success or
+     * failure). Callers that need to force a brand-new connection use this to
+     * avoid racing an in-progress connect.
+     */
+    whenIdle(): Promise<void> {
+        if (this._connecting) {
+            return this._connecting.catch(() => {});
+        }
+        return Promise.resolve();
     }
 
     /**
@@ -54,30 +74,56 @@ class WebSocketManagerClass {
 
     /**
      * Establishes ONE authenticated WebSocket connection.
-     * Concurrent callers receive the same Promise (no double-connect).
-     * Returns immediately if already connected.
+     * Concurrent non-forced callers receive the same Promise (no double-connect).
+     * A forced connect supersedes any in-flight connection and starts fresh —
+     * required for account switching so the previous account's OTP socket is
+     * never reused for the new account.
      */
-    connect(): Promise<void> {
-        if (this.isConnected()) {
-            console.log('[AUTH 11][WSManager.connect] Already connected — returning immediately');
-            return Promise.resolve();
-        }
-        if (this._connecting) {
-            console.log('[AUTH 11][WSManager.connect] Connection already in-flight — deduplicating');
-            return this._connecting;
+    connect(options: { force?: boolean; accountId?: string; accessToken?: string } = {}): Promise<void> {
+        const { force = false, accountId, accessToken } = options;
+
+        if (force) {
+            this._generation += 1;
+            this._stopReconnect = true;
+            this._clearReconnectTimer();
+            this._abortInFlightConnection();
+            this._teardown();
+        } else {
+            if (this.isConnected()) {
+                console.log('[AUTH 11][WSManager.connect] Already connected — returning immediately');
+                return Promise.resolve();
+            }
+            if (this._connecting) {
+                console.log('[AUTH 11][WSManager.connect] Connection already in-flight — deduplicating');
+                return this._connecting;
+            }
         }
 
+        const gen = this._generation;
         this._stopReconnect = false;
-        this._connecting = this._doConnect().finally(() => {
-            this._connecting = null;
+        this._connecting = this._doConnect(gen, accountId, accessToken).finally(() => {
+            if (gen === this._generation) {
+                this._connecting = null;
+            }
         });
         return this._connecting;
     }
 
     disconnect(): void {
+        this._generation += 1;
         this._stopReconnect = true;
         this._clearReconnectTimer();
+        this._abortInFlightConnection();
         this._teardown();
+    }
+
+    private _abortInFlightConnection(): void {
+        if (this._pendingReject) {
+            const reject = this._pendingReject;
+            this._pendingReject = null;
+            reject(new Error('WebSocketManager: connection superseded'));
+        }
+        this._connecting = null;
     }
 
     /**
@@ -93,9 +139,14 @@ class WebSocketManagerClass {
         }
     }
 
-    private async _doConnect(): Promise<void> {
-        let wsUrl = PUBLIC_WS_URL;
+    private _doConnect(
+        gen: number,
+        accountId?: string,
+        accessToken?: string
+    ): Promise<void> {
         this._pendingOtpToken = null;
+        this._pendingOtpAccountId =
+            accountId ?? AuthSessionManager.getAuthInfo().accountId ?? null;
 
         // OTP fetch is gated on AccountModeController, not on stored tokens.
         // This ensures the public WebSocket connects immediately on startup,
@@ -106,42 +157,51 @@ class WebSocketManagerClass {
         console.log('[AUTH 11][WSManager._doConnect] Starting connection',
             '| accountModeActive:', accountModeActive,
             '| accountId (ASM):', _logAccountId ?? '(none)',
+            '| explicitAccountId:', accountId ?? '(none)',
             '| hasAuthToken (ASM):', !!_logToken,
         );
 
-        if (accountModeActive) {
-            try {
-                console.log('[AUTH 12][WSManager._doConnect] → Requesting OTP WS URL…');
-                const { url, token } = await AuthSessionManager.getOtpWsUrl();
-                wsUrl = url;
-                this._pendingOtpToken = token;
-                console.log('[AUTH 12][WSManager._doConnect] ← OTP URL obtained',
-                    '| hasOtpToken:', !!token,
-                    '| maskedOtp:', maskToken(token),
-                );
-            } catch (e) {
-                console.warn('[AUTH 12][WSManager._doConnect] OTP fetch FAILED — falling back to PUBLIC WS',
-                    '| reason:', (e as Error).message,
-                    '| PUBLIC_WS_URL:', PUBLIC_WS_URL,
-                );
+        const otpRequest: Promise<{ url: string; token: string | null }> = accountModeActive
+            ? AuthSessionManager.getOtpWsUrl(accountId, accessToken)
+                .then(({ url, token }) => {
+                    console.log('[AUTH 12][WSManager._doConnect] ← OTP URL obtained',
+                        '| hasOtpToken:', !!token,
+                        '| maskedOtp:', maskToken(token),
+                    );
+                    return { url, token };
+                })
+                .catch(e => {
+                    console.warn('[AUTH 12][WSManager._doConnect] OTP fetch FAILED — falling back to PUBLIC WS',
+                        '| reason:', (e as Error).message,
+                        '| PUBLIC_WS_URL:', PUBLIC_WS_URL,
+                    );
+                    return { url: PUBLIC_WS_URL, token: null };
+                })
+            : Promise.resolve({ url: PUBLIC_WS_URL, token: null });
+
+        return otpRequest.then(({ url, token }) => {
+            if (gen !== this._generation) {
+                throw new Error('WebSocketManager: connection superseded before open');
             }
-        } else {
-            console.log('[AUTH 11][WSManager._doConnect] Account Mode not active — connecting with PUBLIC WS URL (no OTP)');
-        }
 
-        console.log('[AUTH 12b][WSManager._doConnect] Opening WebSocket',
-            '| isOtpUrl:', wsUrl !== PUBLIC_WS_URL,
-            '| urlHost:', (() => { try { return new URL(wsUrl).host; } catch { return wsUrl.slice(0, 40); } })(),
-        );
+            const wsUrl = url;
+            this._pendingOtpToken = token;
 
-        return new Promise<void>((resolve, reject) => {
-            this._teardown();
+            console.log('[AUTH 12b][WSManager._doConnect] Opening WebSocket',
+                '| isOtpUrl:', wsUrl !== PUBLIC_WS_URL,
+                '| urlHost:', (() => { try { return new URL(wsUrl).host; } catch { return wsUrl.slice(0, 40); } })(),
+            );
+
+            return new Promise<void>((resolve, reject) => {
+                this._pendingReject = reject;
+                this._teardown();
 
             let socket: WebSocket;
             try {
                 socket = new WebSocket(wsUrl);
             } catch (e) {
                 console.error('[AUTH 12b][WSManager._doConnect] new WebSocket() threw:', e);
+                if (this._pendingReject === reject) this._pendingReject = null;
                 reject(e);
                 return;
             }
@@ -150,6 +210,7 @@ class WebSocketManagerClass {
 
             const connectTimeout = setTimeout(() => {
                 console.error('[AUTH 12b][WSManager._doConnect] Connection TIMED OUT after 15s');
+                if (this._pendingReject === reject) this._pendingReject = null;
                 reject(new Error('WebSocketManager: connection timed out'));
                 socket.close();
             }, 15_000);
@@ -174,17 +235,25 @@ class WebSocketManagerClass {
 
             socket.addEventListener('open', () => {
                 clearTimeout(connectTimeout);
+                if (gen !== this._generation) {
+                    socket.close();
+                    if (this._pendingReject === reject) this._pendingReject = null;
+                    reject(new Error('WebSocketManager: connection superseded'));
+                    return;
+                }
                 this._connected = true;
                 this._reconnectAttempts = 0;
                 console.log('[AUTH 13][WSManager] ✓ WebSocket OPEN',
                     '| wasOtpUrl:', wsUrl !== PUBLIC_WS_URL,
                     '| pendingOtpToken:', maskToken(this._pendingOtpToken),
                 );
+                if (this._pendingReject === reject) this._pendingReject = null;
                 EventBus.emit('ws:connected', undefined);
                 resolve();
             });
 
             socket.addEventListener('message', (evt: MessageEvent) => {
+                if (gen !== this._generation) return;
                 try {
                     const msg = JSON.parse(evt.data as string);
                     this._routeMessage(msg);
@@ -193,6 +262,11 @@ class WebSocketManagerClass {
 
             socket.addEventListener('close', (evt: CloseEvent) => {
                 clearTimeout(connectTimeout);
+                if (gen !== this._generation) {
+                    if (this._pendingReject === reject) this._pendingReject = null;
+                    reject(new Error('WebSocketManager: connection superseded'));
+                    return;
+                }
                 const wasConnected = this._connected;
                 this._connected = false;
                 AuthSessionManager.invalidateOtpCache();
@@ -209,6 +283,8 @@ class WebSocketManagerClass {
                         '| code:', evt.code,
                         '| reason:', evt.reason || '(none)',
                     );
+                    if (this._pendingReject === reject) this._pendingReject = null;
+                    reject(new Error('WebSocketManager: connection closed before open'));
                 }
             });
 
@@ -220,6 +296,7 @@ class WebSocketManagerClass {
             this._api = new DerivAPIBasic({
                 connection: socket,
                 middleware: new APIMiddleware({}),
+            });
             });
         });
     }

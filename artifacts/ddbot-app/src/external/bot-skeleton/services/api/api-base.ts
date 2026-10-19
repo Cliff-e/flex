@@ -60,18 +60,24 @@ class APIBase {
     active_symbols_promise: Promise<void> | null = null;
     common_store: CommonStore | undefined;
     landing_company: string | null = null;
+    is_switching = false;
 
     private _wsEventUnsubs: Array<() => void> = [];
+    private _epoch = 0;
+    private _switchChain: Promise<unknown> = Promise.resolve();
+    private _subscribedApi: TApiBaseApi | null = null;
 
     unsubscribeAllSubscriptions = () => {
         this.current_auth_subscriptions?.forEach(subscription_promise => {
-            subscription_promise.then(({ subscription }) => {
-                if (subscription?.id) {
-                    this.api?.send({
-                        forget: subscription.id,
-                    });
-                }
-            });
+            subscription_promise
+                .then(({ subscription }) => {
+                    if (subscription?.id) {
+                        this.api?.send({
+                            forget: subscription.id,
+                        });
+                    }
+                })
+                .catch(() => {});
         });
         this.current_auth_subscriptions = [];
     };
@@ -85,19 +91,65 @@ class APIBase {
         WebSocketManager.disconnect();
     }
 
-    async init(force_create_connection = false) {
+    async init(
+        force_create_connection = false,
+        switchOptions?: {
+            accountId?: string;
+            accessToken?: string;
+            expectedLoginid?: string;
+            commitAccount?: boolean;
+        }
+    ): Promise<boolean> {
+        const epoch = ++this._epoch;
         this.toggleRunButton(true);
         this.unsubscribeAllSubscriptions();
         this._detachWsEvents();
 
-        // Ensure ONE shared connection exists.
-        // If forcing a new connection, disconnect first so WebSocketManager reconnects.
-        if (force_create_connection && WebSocketManager.isConnected()) {
+        // For a forced reconnect (account switch / re-auth), flip into the
+        // "resolving account" state immediately — before any OTP fetch or
+        // socket handshake — so the header shows a loader instead of the
+        // previous account while the new account is being resolved.
+        if (force_create_connection) {
+            this.is_authorized = false;
+            setIsAuthorizing(true);
+            setIsAuthorized(false);
+            AuthSessionManager.setWsAuthorized(false, null);
+            setConnectionStatus(CONNECTION_STATUS.CLOSED);
+
+            // Wait for any in-flight connect to settle, then take ownership of
+            // a brand-new connection for the target account.
+            await WebSocketManager.whenIdle();
+            if (epoch !== this._epoch) {
+                setIsAuthorizing(false);
+                this.toggleRunButton(false);
+                return false;
+            }
             WebSocketManager.disconnect();
         }
 
-        await WebSocketManager.connect();
+        try {
+            await WebSocketManager.connect(
+                switchOptions
+                    ? { force: true, accountId: switchOptions.accountId, accessToken: switchOptions.accessToken }
+                    : {}
+            );
+        } catch (e) {
+            if (epoch === this._epoch) {
+                console.error('[api-base] WebSocket connect failed:', e);
+                setIsAuthorizing(false);
+                this.toggleRunButton(false);
+            }
+            return false;
+        }
+
+        if (epoch !== this._epoch) {
+            setIsAuthorizing(false);
+            this.toggleRunButton(false);
+            return false;
+        }
+
         this.api = WebSocketManager.getApi() as unknown as TApiBaseApi;
+        setConnectionStatus(CONNECTION_STATUS.OPENED);
 
         // Active symbols are public market data — always fetch immediately,
         // regardless of authentication state.
@@ -115,10 +167,9 @@ class APIBase {
         // Fallback: if canonical auth exists (access token in storage) but account
         // mode was not explicitly enabled — e.g. the page reloaded before App.tsx's
         // useEffect ran — self-heal by enabling account mode and authorizing.
-        // This prevents the split-brain state where credentials exist but no WS
-        // auth is ever attempted.
         const { accessToken: asmFallbackToken } = AuthSessionManager.getAuthInfo();
-        const shouldAuthorize = AccountModeController.isAccountModeActive() || !!asmFallbackToken;
+        const shouldAuthorize =
+            AccountModeController.isAccountModeActive() || !!asmFallbackToken || !!switchOptions?.accessToken;
 
         if (shouldAuthorize) {
             if (!AccountModeController.isAccountModeActive()) {
@@ -126,10 +177,110 @@ class APIBase {
                 AccountModeController.enableAccountMode();
             }
             setIsAuthorizing(true);
-            await this.authorizeAndSubscribe();
+            await this.authorizeAndSubscribe({
+                epoch,
+                expectedLoginid: switchOptions?.expectedLoginid,
+                commitAccount: switchOptions?.commitAccount ?? false,
+                commitLoginid: switchOptions?.accountId,
+                commitToken: switchOptions?.accessToken,
+            });
         }
 
         chart_api.init();
+        this.toggleRunButton(false);
+
+        if (epoch !== this._epoch) return false;
+        return force_create_connection ? this.is_authorized : true;
+    }
+
+    /**
+     * Serialized, latest-account-wins switch entry point.
+     *
+     * Multiple rapid taps are queued so only one switch runs at a time and the
+     * final selection always wins. The previous account's credentials are only
+     * overwritten after the target account authorizes successfully, so a failed
+     * switch never leaves the app in a half-switched state.
+     */
+    switchAccount(loginId: number | string): Promise<{ ok: boolean; code?: string; message?: string }> {
+        const loginid = loginId.toString();
+        this._switchChain = this._switchChain.then(
+            () => this._doSwitch(loginid),
+            () => this._doSwitch(loginid)
+        );
+        return this._switchChain as Promise<{ ok: boolean; code?: string; message?: string }>;
+    }
+
+    private async _doSwitch(loginid: string): Promise<{ ok: boolean; code?: string; message?: string }> {
+        const previous = AuthSessionManager.getAuthInfo();
+        const token = AuthSessionManager.getAccountToken(loginid) || previous.accessToken;
+
+        if (!token) {
+            return {
+                ok: false,
+                code: 'no-token',
+                message: 'This account has no saved credentials. Please log in again.',
+            };
+        }
+
+        if (previous.accountId === loginid && this.is_authorized) {
+            return { ok: true };
+        }
+
+        // Invalidate any in-flight init/authorize so its stale result cannot
+        // overwrite the state produced by this switch.
+        this._epoch += 1;
+        this.is_switching = true;
+
+        try {
+            const ok = await this.init(true, {
+                accountId: loginid,
+                accessToken: token,
+                expectedLoginid: loginid,
+                commitAccount: true,
+            });
+
+            if (ok) {
+                return { ok: true };
+            }
+
+            // Best-effort reconnect back to the previous account so the UI is
+            // not left disconnected after a failed switch.
+            if (previous.accountId && previous.accessToken) {
+                try {
+                    await this.init(true, {
+                        accountId: previous.accountId,
+                        accessToken: previous.accessToken,
+                        expectedLoginid: previous.accountId,
+                        commitAccount: true,
+                    });
+                } catch (e) {
+                    console.error('[api-base] Failed to restore previous account after switch failure:', e);
+                }
+            }
+
+            return {
+                ok: false,
+                code: 'switch-failed',
+                message: 'Could not switch to the selected account. Please try again.',
+            };
+        } catch (e) {
+            console.error('[api-base] switchAccount threw:', e);
+            return {
+                ok: false,
+                code: 'switch-failed',
+                message: (e as Error)?.message || 'Account switch failed. Please try again.',
+            };
+        } finally {
+            this.is_switching = false;
+        }
+    }
+
+    /** Requests a one-shot authoritative balance for the authorized account. */
+    requestBalanceSnapshot(): Promise<unknown> {
+        if (this.api && this.is_authorized) {
+            this.api.send({ balance: 1 });
+        }
+        return Promise.resolve();
     }
 
     private _attachWsEvents() {
@@ -250,7 +401,16 @@ class APIBase {
         }
     }
 
-    async authorizeAndSubscribe() {
+    async authorizeAndSubscribe(options?: {
+        epoch?: number;
+        expectedLoginid?: string;
+        commitAccount?: boolean;
+        commitLoginid?: string;
+        commitToken?: string;
+    }): Promise<boolean> {
+        const epoch = options?.epoch;
+        const expectedLoginid = options?.expectedLoginid;
+
         // Use the OTP token embedded in the WS URL (already connected via WebSocketManager).
         // Fall back to the raw authToken when no OTP was obtained.
         const otpToken = WebSocketManager.wasLastConnectionOtp()
@@ -263,26 +423,11 @@ class APIBase {
         const maskTok = (t: string | null | undefined) =>
             !t ? '(none)' : t.length <= 12 ? t.slice(0, 4) + '…' : `${t.slice(0, 8)}…${t.slice(-4)}`;
 
-        // [CONFLICT LOG] Compare AuthSessionManager value to raw localStorage directly.
-        const rawLsToken = localStorage.getItem('authToken');
-        const rawLsLoginid = localStorage.getItem('active_loginid');
-        if (rawLsToken !== asmToken) {
-            console.warn('[AUTH-CONFLICT][api-base.authorizeAndSubscribe] authToken MISMATCH',
-                '| localStorage.authToken:', maskTok(rawLsToken),
-                '| AuthSessionManager.accessToken:', maskTok(asmToken),
-            );
-        }
-        if (rawLsLoginid !== asmAccountId) {
-            console.warn('[AUTH-CONFLICT][api-base.authorizeAndSubscribe] active_loginid MISMATCH',
-                '| localStorage.active_loginid:', rawLsLoginid ?? '(null)',
-                '| AuthSessionManager.accountId:', asmAccountId ?? '(null)',
-            );
-        }
-
         console.log('[AUTH 14][api-base.authorizeAndSubscribe] Token selection:',
             '| wasLastConnectionOtp:', WebSocketManager.wasLastConnectionOtp(),
             '| otpToken:', maskTok(otpToken),
             '| asmToken:', maskTok(asmToken),
+            '| expectedLoginid:', expectedLoginid ?? '(none)',
             '| USING:', otpToken ? 'OTP token' : 'ASM token',
             '| selectedToken:', maskTok(token),
             '| api ready:', !!this.api,
@@ -291,11 +436,21 @@ class APIBase {
         if (!token || !this.api) {
             console.warn('[AUTH 14][api-base.authorizeAndSubscribe] ABORTING — no token or no api instance',
                 '| hasToken:', !!token, '| hasApi:', !!this.api);
-            return;
+            return false;
+        }
+
+        // Guard: the OTP token must belong to the account we intend to authorize.
+        const otpAccountId = WebSocketManager.getPendingOtpAccountId();
+        if (expectedLoginid && otpToken && otpAccountId && otpAccountId !== expectedLoginid) {
+            console.error('[AUTH 14][api-base.authorizeAndSubscribe] OTP/account mismatch — aborting switch',
+                '| otpAccountId:', otpAccountId,
+                '| expectedLoginid:', expectedLoginid,
+            );
+            return false;
         }
 
         this.token = token;
-        this.account_id = asmAccountId ?? '';
+        this.account_id = expectedLoginid ?? asmAccountId ?? '';
         setIsAuthorizing(true);
         setIsAuthorized(false);
         AuthSessionManager.setWsAuthorized(false, null);
@@ -308,6 +463,10 @@ class APIBase {
         try {
             const { authorize, error } = await this.api.authorize(this.token);
 
+            if (epoch != null && epoch !== this._epoch) {
+                return false;
+            }
+
             if (error) {
                 const errCode = (error as { code?: string })?.code;
                 const errMsg  = (error as { message?: string })?.message;
@@ -315,6 +474,16 @@ class APIBase {
                     '| code:', errCode, '| message:', errMsg,
                     '| tokenType:', otpToken ? 'OTP' : 'raw',
                 );
+
+                // For an explicit account switch we never fabricate success from
+                // cached REST data — a rejected token means the switch failed and
+                // the caller restores the previous account.
+                if (expectedLoginid) {
+                    this.is_authorized = false;
+                    setIsAuthorized(false);
+                    AuthSessionManager.setWsAuthorized(false, null);
+                    return false;
+                }
 
                 if (errCode === 'InvalidToken') {
                     if (otpToken) {
@@ -346,8 +515,7 @@ class APIBase {
                 } else {
                     console.error('[AUTH 15][api-base] Authorization error (non-InvalidToken):', error);
                 }
-                setIsAuthorizing(false);
-                return;
+                return false;
             }
 
             // Success
@@ -358,12 +526,31 @@ class APIBase {
                 '| balance:', authorize?.balance,
             );
 
-            this.account_info = authorize;
+            // Identity check: never accept an authorization for a different
+            // account than the one the user selected.
+            if (expectedLoginid && authorize.loginid !== expectedLoginid) {
+                console.error('[AUTH 15][api-base.authorizeAndSubscribe] authorize loginid mismatch',
+                    '| expected:', expectedLoginid,
+                    '| actual:', authorize?.loginid,
+                );
+                this.is_authorized = false;
+                setIsAuthorized(false);
+                AuthSessionManager.setWsAuthorized(false, null);
+                return false;
+            }
 
-            // Sync loginid from WS authorize() response when it was not yet
-            // stored (accounts fetch failed on the callback page — token-only
-            // state with no active_loginid in localStorage).
-            if (authorize.loginid) {
+            this.account_info = authorize;
+            this.account_id = authorize.loginid ?? this.account_id;
+
+            if (options?.commitAccount && options.commitLoginid && options.commitToken) {
+                // Only now — after the target account authorized — persist the
+                // switch. A failed switch therefore leaves the previous account
+                // credentials untouched.
+                AuthSessionManager.setActiveAccount(options.commitLoginid, options.commitToken);
+            } else if (authorize.loginid) {
+                // Sync loginid from WS authorize() response when it was not yet
+                // stored (accounts fetch failed on the callback page — token-only
+                // state with no active_loginid in localStorage).
                 const currentId = AuthSessionManager.getAuthInfo().accountId;
                 if (!currentId) {
                     console.log('[AUTH 15][api-base] Populating loginid from WS authorize response:', authorize.loginid);
@@ -439,7 +626,16 @@ class APIBase {
             } else {
                 this.active_symbols_promise = this.getActiveSymbols();
             }
-            this.subscribe();
+
+            // (Re)subscribe only when the socket changed — avoids duplicate
+            // balance/transaction subscriptions on the same connection.
+            if (this._subscribedApi !== this.api) {
+                this._subscribedApi = this.api;
+                this.subscribe().catch(() => {});
+            }
+
+            setConnectionStatus(CONNECTION_STATUS.OPENED);
+            return true;
         } catch (e) {
             console.error('[AUTH 15][api-base.authorizeAndSubscribe] authorize() threw:', e);
             this.is_authorized = false;
@@ -449,6 +645,7 @@ class APIBase {
             setIsAuthorized(false);
             AuthSessionManager.setWsAuthorized(false, null);
             globalObserver.emit('Error', e);
+            return false;
         } finally {
             setIsAuthorizing(false);
         }

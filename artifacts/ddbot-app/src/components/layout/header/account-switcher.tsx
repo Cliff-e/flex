@@ -11,10 +11,12 @@ import { AuthSessionManager } from '@/utils/AuthSessionManager';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
 import { waitForDomElement } from '@/utils/dom-observer';
-import { getCachedBalance, refreshBalancesFromRest } from '@/utils/balance-refresh';
+import { refreshBalancesFromRest } from '@/utils/balance-refresh';
 import { Analytics } from '@deriv-com/analytics';
 import { localize } from '@deriv-com/translations';
 import { AccountSwitcher as UIAccountSwitcher, useDevice } from '@deriv-com/ui';
+import { toast } from 'react-toastify';
+import type { Balance } from '@deriv/api-types';
 import DemoAccounts from './common/demo-accounts';
 import RealAccounts from './common/real-accounts';
 import { TAccountSwitcher, TAccountSwitcherProps, TModifiedAccount } from './common/types';
@@ -103,9 +105,8 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
             return {
                 ...account,
                 balance: addComma(
-                    client.all_accounts_balance?.accounts?.[account?.loginid]?.balance?.toFixed(
-                        getDecimalPlaces(account.currency)
-                    ) ?? '0'
+                    (client.all_accounts_balance?.accounts?.[account?.loginid]?.balance ??
+                        (account as { balance?: number }).balance)?.toFixed(getDecimalPlaces(account.currency)) ?? '0'
                 ),
                 currencyLabel: account?.is_virtual
                     ? tabs_labels.demo
@@ -153,11 +154,8 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
 
     const switchAccount = async (loginId: number) => {
         if (loginId.toString() === activeAccount?.loginid) return;
-        // Look up the token for the selected account via AuthSessionManager.
-        const token = AuthSessionManager.getAccountToken(loginId.toString());
-        if (!token) return;
-        // Route the write through AuthSessionManager — never write auth keys directly.
-        AuthSessionManager.setActiveAccount(loginId.toString(), token);
+        const loginIdStr = loginId.toString();
+
         const account_type =
             loginId
                 .toString()
@@ -167,32 +165,31 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
         Analytics.setAttributes({
             account_type,
         });
-        await api_base?.init(true);
 
-        // 1. Instant update from cached data so the header doesn't lag
-        const loginIdStr = loginId.toString();
-        const cached = getCachedBalance(loginIdStr);
-        if (cached) {
-            client.setBalance(cached.balance);
-            client.setCurrency(cached.currency);
+        // Delegate to the transactional switch in api-base — it serializes rapid
+        // taps (last selection wins), authorizes the target account, and only
+        // persists the switch after success. The header loader is driven by
+        // isAuthorizing inside api-base.
+        const result = await api_base?.switchAccount(loginIdStr);
+        if (!result?.ok) {
+            toast.error(localize(result?.message || 'Failed to switch account. Please try again.'));
+            return;
         }
 
-        // 2. Background REST refresh for fresh server-side balances
-        const accessToken = localStorage.getItem('authToken') ?? '';
-        refreshBalancesFromRest(accessToken, loginIdStr).then(result => {
-            if (!result) return;
-            client.setBalance(result.activeBalance);
-            client.setCurrency(result.activeCurrency);
+        // Refresh balances for the now-active account (guarded inside the helper).
+        const accessToken = AuthSessionManager.getAuthInfo().accessToken ?? '';
+        refreshBalancesFromRest(accessToken, loginIdStr).then(balances => {
+            if (!balances) return;
             client.setAllAccountsBalance({
-                balance: Number(result.activeBalance),
-                currency: result.activeCurrency,
+                balance: Number(balances.activeBalance),
+                currency: balances.activeCurrency,
                 loginid: loginIdStr,
-                accounts: result.allAccounts,
+                accounts: balances.allAccounts as unknown as Balance['accounts'],
             });
         });
 
         const search_params = new URLSearchParams(window.location.search);
-        const selected_account = modifiedAccountList.find(acc => acc.loginid === loginId.toString());
+        const selected_account = modifiedAccountList.find(acc => acc.loginid === loginIdStr);
         if (!selected_account) return;
         const account_param = selected_account.is_virtual ? 'demo' : selected_account.currency;
         search_params.set('account', account_param);

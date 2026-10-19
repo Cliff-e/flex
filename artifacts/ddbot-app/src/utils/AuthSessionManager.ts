@@ -88,9 +88,18 @@ type AuthChangeCallback = (isAuthorized: boolean) => void;
 // AuthSessionManagerClass
 // ---------------------------------------------------------------------------
 
-class AuthSessionManagerClass {
-    private _otpCache: { url: string; token: string | null; expiresAt: number } | null = null;
-    private _pendingOtpFetch: Promise<{ url: string; token: string | null }> | null = null;
+export class AuthSessionManagerClass {
+    private _otpCache: {
+        accountId: string;
+        url: string;
+        token: string | null;
+        expiresAt: number;
+    } | null = null;
+    private _pendingOtpFetch: {
+        accountId: string;
+        promise: Promise<{ url: string; token: string | null }>;
+    } | null = null;
+    private _otpSeq = 0;
     private _subscribers = new Set<AuthChangeCallback>();
 
     // WS auth state — set by api-base via setWsAuthorized()
@@ -167,8 +176,7 @@ class AuthSessionManagerClass {
             localStorage.setItem('active_loginid', loginid);
         }
         // Invalidate OTP cache — new account needs a fresh OTP URL
-        this._otpCache = null;
-        this._pendingOtpFetch = null;
+        this.invalidateOtpCache();
 
         // Suppress the orphan guard while we're waiting for the WS to authorize.
         // When the exchange succeeds but returns no accounts (e.g. empty list from
@@ -250,8 +258,7 @@ class AuthSessionManagerClass {
         const wasAuthorized = this._wsAuthorized;
         this._wsAuthorized = false;
         this._wsAuthData = null;
-        this._otpCache = null;
-        this._pendingOtpFetch = null;
+        this.invalidateOtpCache();
         console.log('[AUTH-ASM][clearSession] All in-memory auth state cleared',
             '| wasAuthorized:', wasAuthorized,
         );
@@ -362,38 +369,56 @@ class AuthSessionManagerClass {
 
     /**
      * Returns a valid OTP WS URL + extracted OTP token.
-     * Deduplicates concurrent callers and caches the result for OTP_CACHE_TTL_MS.
+     *
+     * The cache and in-flight de-duplication are keyed by account ID, so a
+     * pending OTP request for one account can never be returned to — or poison
+     * the cache of — a different account during rapid Real↔Demo switching.
      */
-    async getOtpWsUrl(): Promise<{ url: string; token: string | null }> {
-        if (this._otpCache && Date.now() < this._otpCache.expiresAt) {
-            return { url: this._otpCache.url, token: this._otpCache.token };
-        }
+    async getOtpWsUrl(accountId?: string, accessToken?: string): Promise<{ url: string; token: string | null }> {
+        const info = this.getAuthInfo();
+        const id = accountId ?? info.accountId;
+        const token = accessToken ?? info.accessToken;
+        const appId = info.appId;
 
-        if (this._pendingOtpFetch) {
-            return this._pendingOtpFetch;
-        }
-
-        const { accountId, accessToken, appId } = this.getAuthInfo();
-        if (!accountId || !accessToken) {
+        if (!id || !token) {
             throw new Error('Not authenticated — log in first');
         }
 
-        this._pendingOtpFetch = this._fetchOtp(accountId, accessToken, appId)
+        if (this._otpCache && this._otpCache.accountId === id && Date.now() < this._otpCache.expiresAt) {
+            return { url: this._otpCache.url, token: this._otpCache.token };
+        }
+
+        if (this._pendingOtpFetch && this._pendingOtpFetch.accountId === id) {
+            return this._pendingOtpFetch.promise;
+        }
+
+        const seq = ++this._otpSeq;
+        const promise = this._fetchOtp(id, token, appId)
             .then(result => {
-                this._otpCache = { ...result, expiresAt: Date.now() + OTP_CACHE_TTL_MS };
-                this._pendingOtpFetch = null;
+                if (seq === this._otpSeq) {
+                    this._otpCache = { accountId: id, ...result, expiresAt: Date.now() + OTP_CACHE_TTL_MS };
+                }
+                if (this._pendingOtpFetch?.accountId === id) {
+                    this._pendingOtpFetch = null;
+                }
                 return result;
             })
             .catch(err => {
-                this._pendingOtpFetch = null;
+                if (this._pendingOtpFetch?.accountId === id) {
+                    this._pendingOtpFetch = null;
+                }
                 throw err;
             });
 
-        return this._pendingOtpFetch;
+        this._pendingOtpFetch = { accountId: id, promise };
+        return promise;
     }
 
     invalidateOtpCache(): void {
         this._otpCache = null;
+        // Discard any in-flight OTP result too — a switch invalidates it.
+        this._pendingOtpFetch = null;
+        this._otpSeq += 1;
         console.log('[AUTH-ASM][invalidateOtpCache] OTP cache cleared');
     }
 

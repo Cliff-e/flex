@@ -19,6 +19,7 @@ import AccountsInfoLoader from './account-info-loader';
 import AccountSwitcher from './account-switcher';
 import MenuItems from './menu-items';
 import MobileMenu from './mobile-menu';
+import MobileThemeToggle from './mobile-theme-toggle';
 import PlatformSwitcher from './platform-switcher';
 import './header.scss';
 
@@ -209,6 +210,7 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                 {isDesktop && <PlatformSwitcher />}
             </Wrapper>
             <Wrapper variant='right'>
+                {!isDesktop && <MobileThemeToggle />}
                 {!isDesktop && <PWAInstallButton variant='primary' size='medium' />}
                 {renderAccountSection()}
             </Wrapper>

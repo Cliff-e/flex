@@ -1,5 +1,7 @@
 import { action, makeObservable, observable } from 'mobx';
 import { isTouchDevice } from '@/components/shared/utils/screen/responsive';
+import { applyTheme, readStoredTheme } from '@/utils/theme';
+import type { TTheme } from '@/utils/theme';
 
 export default class UiStore {
     is_mobile = true;
@@ -7,6 +9,7 @@ export default class UiStore {
     is_tablet = false;
     is_chart_layout_default = true;
     is_dark_mode_on = localStorage.getItem('theme') !== 'light';
+    theme: TTheme = readStoredTheme();
     account_switcher_disabled_message = '';
     current_focus = null;
     show_prompt = false;
@@ -32,9 +35,11 @@ export default class UiStore {
             setDarkMode: action.bound,
             setDevice: action.bound,
             setPromptHandler: action.bound,
+            setTheme: action.bound,
             setIsTradingAssessmentForNewUserEnabled: action.bound,
             toggleAccountsDialog: action.bound,
             toggleOnScreenKeyboard: action.bound,
+            theme: observable,
         });
     }
 
@@ -55,6 +60,14 @@ export default class UiStore {
 
     setDarkMode = (value: boolean) => {
         this.is_dark_mode_on = value;
+    };
+
+    setTheme = (value: TTheme) => {
+        const applied = applyTheme(value);
+        this.theme = applied;
+        // Light is the only light theme — Dark and CKK Green are both dark for
+        // downstream consumers (@deriv-com/ui ThemeProvider, smartcharts, stores).
+        this.is_dark_mode_on = applied !== 'light';
     };
 
     setDevice = (value: 'mobile' | 'desktop' | 'tablet') => {

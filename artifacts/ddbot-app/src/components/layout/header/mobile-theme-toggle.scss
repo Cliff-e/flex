@@ -1,0 +1,59 @@
+.mobile-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 3.2rem;
+    min-width: 3.2rem;
+    padding: 0 0.6rem;
+    margin-inline-end: 0.4rem;
+    border: 1px solid var(--ckk-orange-deep, #ff6f1a);
+    border-radius: 99px;
+    background: linear-gradient(135deg, var(--ckk-orange, #ff8a3d) 0%, var(--ckk-orange-deep, #ff6f1a) 100%);
+    color: #1a0d04;
+    cursor: pointer;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    box-shadow: 0 8px 18px -12px rgb(255 111 26 / 95%);
+
+    svg > g > path,
+    svg > path {
+        fill: #1a0d04;
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--ckk-lime, #7ed957);
+        outline-offset: 2px;
+    }
+
+    &__swatch {
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1px rgb(3 13 7 / 40%);
+    }
+
+    &--dark &__swatch {
+        background: #22d3ee;
+    }
+
+    &--light &__swatch {
+        background: #ffffff;
+    }
+
+    &--ckk-green &__swatch {
+        background: #7ed957;
+    }
+}
+
+@media (max-width: 380px) {
+    .mobile-theme-toggle {
+        padding: 0 0.5rem;
+        margin-inline-end: 0.2rem;
+    }
+}

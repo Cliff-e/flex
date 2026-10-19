@@ -773,12 +773,12 @@
 
 /* ─────────────────────────────────────────────────────────────────────
    SCROLL FIX
-   Use the same CSS vars the bot-builder already uses for its height.
-   --tab-content-height      = calc(100vh - 16.6rem)   [desktop]
-   --tab-content-height-mobile = calc(100vh - 12.6rem) [mobile]
-   These measure exactly from the bottom of the tab bar to the screen
-   bottom, so setting this on the content area makes it scrollable
-   while the tab bar always stays visible above it.
+   Desktop keeps the existing fixed tab-content height. On mobile/tablet
+   the tab wrapper becomes a flex column so the content area is the real
+   scroll container — no magic viewport numbers, and it adapts to browser
+   chrome (dvh) and safe-area insets.
+   --tab-content-height      = calc(100dvh - 8.8rem)   [desktop]
+   --tab-content-height-mobile = calc(100dvh - 7.6rem) [mobile fallback]
 ───────────────────────────────────────────────────────────────────── */
 .main .dc-tabs__content {
     height: var(--tab-content-height) !important;
@@ -788,9 +788,18 @@
 
 @include mobile-or-tablet-screen {
     .main .dc-tabs__content {
-        /* Bottom nav removed — content now uses the full available height. */
-        height: var(--tab-content-height-mobile) !important;
-        padding-bottom: 0;
+        /* Constrain the content area to the real remaining viewport and let it
+           scroll. dvh tracks mobile browser chrome; safe-area inset keeps the
+           last row clear of the home indicator. */
+        height: calc(100vh - 8.8rem) !important;
+        height: calc(100dvh - 8.8rem) !important;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        touch-action: pan-y;
+        padding-bottom: calc(1.6rem + env(safe-area-inset-bottom));
     }
 }
 
@@ -836,6 +845,8 @@
 .main {
     --tab-content-height: calc(100vh - 8.8rem);
     --tab-content-height-mobile: calc(100vh - 7.6rem);
+    --tab-content-height: calc(100dvh - 8.8rem);
+    --tab-content-height-mobile: calc(100dvh - 7.6rem);
 }
 
 /* ─────────────────────────────────────────────────────────────────────

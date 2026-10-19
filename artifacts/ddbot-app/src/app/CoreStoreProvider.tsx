@@ -10,6 +10,10 @@ import { useOauth2 } from '@/hooks/auth/useOauth2';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
 import { TLandingCompany, TSocketResponseData } from '@/types/api-types';
+import { AuthSessionManager } from '@/utils/AuthSessionManager';
+import { isBalanceMessageRelevant, mergeBalanceAccounts } from '@/utils/balance-guard';
+import type { BalanceMessage } from '@/utils/balance-guard';
+import type { Balance } from '@deriv/api-types';
 import { useTranslations } from '@deriv-com/translations';
 
 type TClientInformation = {
@@ -152,38 +156,46 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
         async (res: Record<string, unknown>) => {
             if (!res) return;
             const data = res.data as TSocketResponseData<'balance'>;
-            const { msg_type, error } = data;
+            const anyData = data as unknown as {
+                msg_type?: string;
+                error?: { code?: string };
+                balance?: BalanceMessage;
+                authorize?: { loginid?: string; balance?: number; currency?: string };
+            };
 
             if (
-                error?.code === 'AuthorizationRequired' ||
-                error?.code === 'DisabledClient' ||
-                error?.code === 'InvalidToken'
+                anyData.error?.code === 'AuthorizationRequired' ||
+                anyData.error?.code === 'DisabledClient' ||
+                anyData.error?.code === 'InvalidToken'
             ) {
                 await oAuthLogout();
             }
 
-            if (msg_type === 'balance' && data && !error) {
-                const balance = data.balance;
-                if (balance?.accounts) {
-                    client.setAllAccountsBalance(balance);
-                } else if (balance?.loginid) {
-                    if (!client?.all_accounts_balance?.accounts || !balance?.loginid) return;
-                    const accounts = { ...client.all_accounts_balance.accounts };
-                    const currentLoggedInBalance = { ...accounts[balance.loginid] };
-                    currentLoggedInBalance.balance = balance.balance;
+            if (anyData.msg_type === 'balance' && anyData.balance && !anyData.error) {
+                if (!isBalanceMessageRelevant(anyData.balance, activeLoginid, AuthSessionManager.isAuthorized())) return;
+                client.setAllAccountsBalance(
+                    mergeBalanceAccounts(client.all_accounts_balance, anyData.balance) as unknown as Balance
+                );
+            }
 
-                    const updatedAccounts = {
-                        ...client.all_accounts_balance,
-                        accounts: {
-                            ...client.all_accounts_balance.accounts,
-                            [balance.loginid]: currentLoggedInBalance,
-                        },
-                    };
-                    client.setAllAccountsBalance(updatedAccounts);
+            // The new trading API's authorize response carries the authoritative
+            // balance for the newly authorized account. Seed it immediately so the
+            // switcher/header show the correct balance without waiting for the
+            // (async) balance subscription push.
+            if (anyData.msg_type === 'authorize') {
+                const auth = anyData.authorize;
+                if (auth?.loginid === activeLoginid && auth.balance != null) {
+                    client.setAllAccountsBalance(
+                        mergeBalanceAccounts(client.all_accounts_balance, {
+                            loginid: auth.loginid,
+                            balance: auth.balance,
+                            currency: auth.currency,
+                        }) as unknown as Balance
+                    );
                 }
             }
         },
-        [client, oAuthLogout]
+        [client, oAuthLogout, activeLoginid]
     );
 
     useEffect(() => {

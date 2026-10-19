@@ -683,3 +683,25 @@
     border: 1px solid #1d3050;
     background: rgb(6 12 22 / 72%);
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Mobile/tablet vertical scrolling
+   Let the dashboard content grow to its natural height so the parent
+   .dc-tabs__content (the real scroll container) can scroll through it.
+   The desktop fixed-height/overflow behaviour is unchanged.
+───────────────────────────────────────────────────────────────────── */
+@include mobile-or-tablet-screen {
+    .bot-dashboard {
+        height: 100%;
+    }
+
+    .tab__dashboard {
+        display: block;
+    }
+
+    .tab__dashboard__content {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+    }
+}

@@ -40,6 +40,17 @@ export async function refreshBalancesFromRest(
         return null;
     }
 
+    // Guard against stale refreshes during/after account switching: only write
+    // balances when the target loginid is still the active, WS-authorized account.
+    const currentAuth = AuthSessionManager.getAuthInfo();
+    if (currentAuth.accountId !== activeLoginId || !AuthSessionManager.isAuthorized()) {
+        console.warn('[balance-refresh] Skipping refresh — account is stale or not authorized', {
+            activeLoginId,
+            currentAccountId: currentAuth.accountId,
+        });
+        return null;
+    }
+
     const { appId } = AuthSessionManager.getAuthInfo();
 
     try {

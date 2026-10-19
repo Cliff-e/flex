@@ -17,23 +17,32 @@ const useActiveAccount = ({ allBalanceData }: { allBalanceData: Balance | null }
     const currentBalanceData = allBalanceData?.accounts?.[activeAccount?.loginid ?? ''];
 
     const modifiedAccount = useMemo(() => {
-        return activeAccount
-            ? {
-                  ...activeAccount,
-                  balance:
-                      addComma(currentBalanceData?.balance?.toFixed(getDecimalPlaces(currentBalanceData.currency))) ??
-                      '0',
-                  currencyLabel: activeAccount?.is_virtual ? localize('Demo') : activeAccount?.currency,
-                  icon: (
-                      <CurrencyIcon
-                          currency={activeAccount?.currency?.toLowerCase()}
-                          isVirtual={Boolean(activeAccount?.is_virtual)}
-                      />
-                  ),
-                  isVirtual: Boolean(activeAccount?.is_virtual),
-                  isActive: activeAccount?.loginid === activeLoginid,
-              }
-            : undefined;
+        if (!activeAccount) return undefined;
+
+        // Prefer the live balance map, then fall back to the balance carried by
+        // the authorize/account-list entry so the freshly switched account shows
+        // its real balance immediately instead of a stale "0".
+        const currency = currentBalanceData?.currency ?? activeAccount?.currency;
+        const balanceValue =
+            currentBalanceData?.balance ??
+            (typeof (activeAccount as { balance?: number }).balance === 'number'
+                ? (activeAccount as { balance?: number }).balance
+                : undefined);
+        const formattedBalance = balanceValue != null ? balanceValue.toFixed(getDecimalPlaces(currency)) : undefined;
+
+        return {
+            ...activeAccount,
+            balance: addComma(formattedBalance) ?? '0',
+            currencyLabel: activeAccount?.is_virtual ? localize('Demo') : activeAccount?.currency,
+            icon: (
+                <CurrencyIcon
+                    currency={activeAccount?.currency?.toLowerCase()}
+                    isVirtual={Boolean(activeAccount?.is_virtual)}
+                />
+            ),
+            isVirtual: Boolean(activeAccount?.is_virtual),
+            isActive: activeAccount?.loginid === activeLoginid,
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeAccount, activeLoginid, allBalanceData]);
 
